@@ -55,3 +55,6 @@ documents-storage/
 *.tsbuildinfo
 .eslintcache
 coverage/
+
+.vercel
+.env*
