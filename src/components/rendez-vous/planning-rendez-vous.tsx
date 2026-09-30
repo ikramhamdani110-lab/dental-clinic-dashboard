@@ -47,20 +47,23 @@ type Vue = 'jour' | 'semaine' | 'mois'
  * Le vocabulaire est celui du tableau de bord et de la fiche patient, afin qu'un
  * meme etat ne soit jamais designe de deux facons :
  *
- *   Fait ............ le patient est venu, le rendez-vous est honore
- *   N'est pas venu .. le patient ne s'est pas presente
- *   Reprogramme ..... le rendez-vous a ete reporte
+ * LISTE UTILISABLE PAR LE MEDECIN — TROIS CONSTATS, TROIS STATUTS :
  *
- * Les statuts d'ORGANISATION (`PLANIFIE`, `CONFIRME`, `EN_ATTENTE`,
- * `EN_COURS`) ne sont pas proposes : ils decrivent l'etat administratif du
- * creneau, pas ce que le medecin constate chez le patient. `ANNULE` ne l'est pas
- * davantage — un creneau supprime ne se marque pas « absent », et la suppression
- * passe par un autre chemin.
+ *   Absent ........ le patient ne s'est pas presente ;
+ *   Reprogramme ... le rendez-vous a ete reporte ;
+ *   Annule ........ le rendez-vous ne se tiendra pas.
+ *
+ * Ce sont les SEULES valeurs proposées. Les statuts d'organisation (`PLANIFIE`,
+ * `CONFIRME`, `EN_ATTENTE`, `EN_COURS`, `TERMINE`) decrivent l'etat administratif
+ * du creneau, pas ce que le medecin constate : ils restent dans l'enumeration de
+ * la base, sont ecrits par le service a la creation, et restent presents dans
+ * tous les enregistrements historiques — ils ne sont simplement plus
+ * selectables. Aucun changement de schema, d'enumeration ni de validation.
  */
 const OPTIONS_STATUT = [
-  { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
   { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
   { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
+  { valeur: 'ANNULE', libelle: t('rendezVous.statuts.ANNULE') },
 ]
 
 /**
@@ -76,11 +79,6 @@ const OPTIONS_STATUT = [
  */
 const OPTIONS_FILTRE_STATUT = [
   { valeur: STATUT_TOUS, libelle: 'Tous' },
-  { valeur: 'PLANIFIE', libelle: t('rendezVous.statuts.PLANIFIE') },
-  { valeur: 'CONFIRME', libelle: t('rendezVous.statuts.CONFIRME') },
-  { valeur: 'EN_ATTENTE', libelle: t('rendezVous.statuts.EN_ATTENTE') },
-  { valeur: 'EN_COURS', libelle: t('rendezVous.statuts.EN_COURS') },
-  { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
   { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
   { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
   { valeur: 'ANNULE', libelle: t('rendezVous.statuts.ANNULE') },
@@ -284,12 +282,16 @@ export function PlanningRendezVous(): React.JSX.Element {
                 {rendezVous.map((rdv) => (
                   <tr key={rdv.id}>
                     <td data-etiquette={t('commun.date')}>
-                      {new Date(rdv.dateDebut).toLocaleString('fr-FR', {
+                      {/*
+                        L'HEURE N'EST PLUS AFFICHEE (demande explicite) : seule la
+                        DATE reste visible. La valeur stockee du creneau, elle, est
+                        inchangee — la planification, la detection de conflit et
+                        les filtres de date continuent de l'utiliser.
+                      */}
+                      {new Date(rdv.dateDebut).toLocaleDateString('fr-FR', {
                         weekday: 'short',
                         day: '2-digit',
                         month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
                       })}
                     </td>
                     <td data-etiquette={t('commun.patient')}>

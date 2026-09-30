@@ -8,13 +8,13 @@ import { t, tf } from '@content/index'
 import { formaterMontant } from '@backend/domain/finance'
 
 import { Bouton, LienBouton } from '@/components/ui/bouton'
-import { ChampSelection, ChampTexte } from '@/components/ui/champ'
+import { ChampDate, ChampSelection } from '@/components/ui/champ'
 import { Pagination } from '@/components/patients/liste-patients'
 import { useRequete } from '@/lib/hooks/use-requete'
 
 /**
  * =============================================================================
- *  RAPPORTS — SYNTHESE FINANCIERE DE LA CLINIQUE (§27)
+ *  RAPPORTS — SYNTHESE FINANCIERE DE LA CLINIQUE (§27)
  * =============================================================================
  *
  *  Cette page est LA vue financiere de l'application : les paiements se creent
@@ -39,6 +39,13 @@ interface SyntheseFinanciere {
   totalRevenusCentimes: number
   nombrePaiements: number
   montantRestantCentimes: number
+  revenusAnneeCentimes: number
+  anneeReference: number
+  /**
+   * Revenus du mois qui contient la fin de la periode. Conserves pour la carte
+   * « comparaison avec le mois precedent », qui est une lecture MENSUELLE et
+   * reste donc sur une maille de mois.
+   */
   revenusMoisCentimes: number
   revenusMoisPrecedentCentimes: number
   moisPrecedent: { annee: number; mois: number }
@@ -98,21 +105,22 @@ const ANNEE_COURANTE = new Date().getFullYear()
 /**
  * Champs de dates pour la période personnalisée.
  *
- * ROOT CAUSE DU BUG « Au » :
- *   Les inputs « Du » et « Au » étaient rendus directement dans la fonction
- *   `Rapports`. Lorsque les hooks `useRequete` (synthese, evolution) déclenchent
- *   des mises à jour d'état asynchrones, `Rapports` se re-rend. Si un appel
- *   async arrive PENDANT la frappe dans « Au », React re-évalue la fonction
- *   parent, recalcule le JSX conditionnel, et peut démonter/remonter le fragment
- *   — causant la perte de focus après chaque chiffre saisi.
+ * ROOT CAUSE DU BUG DE SAISIE :
+ *   Les deux champs etaient des <input type="date"> lies a un etat controle du
+ *   composant parent. Ce type d'input n'est pas saisissable au clavier de facon
+ *   continue : le navigateur impose ses propres segments, reecrit la valeur a
+ *   chaque frappe, et le composant controle remonte alors la page. Resultat :
+ *   chiffres supprimes, curseur deplace, date remplacee en plein milieu de la
+ *   saisie, sur « Du » comme sur « Au ».
  *
- *   `React.memo` isole ce composant : il ne se re-rend QUE si `du`, `au`,
- *   `onChangeDu`, `onChangeAu` ou `onAfficher` changent de référence. Les
- *   mises à jour asynchrones des hooks parents ne propagent donc plus ici, et
- *   les inputs restent montés et focalisés pendant toute la frappe.
- *
- *   « Du » et « Au » utilisent EXACTEMENT la même implémentation : aucune
- *   asymétrie ne peut expliquer un comportement différent entre les deux.
+ *   Correction : chaque date est desormais saisie par `ChampDate`, un champ de
+ *   TEXTE a frappe libre. La frappe vit dans l'etat local du champ et n'est
+ *   convertie en ISO (aaaa-mm-jj) qu'a la SORTIE du champ, donc jamais pendant
+ *   la saisie. Les deux champs sont deux instances independantes : taper dans
+ *   l'un ne peut pas toucher l'autre.
+
+ *   `React.memo` isole en outre ce bloc : les mises a jour asynchrones des hooks
+ *   parents ne le re-rendent pas pendant la frappe.
  */
 const ChampsDatesPersonnalisees = memo(function ChampsDatesPersonnalisees({
   du,
@@ -130,21 +138,21 @@ const ChampsDatesPersonnalisees = memo(function ChampsDatesPersonnalisees({
   return (
     <>
       <div style={{ minWidth: '10rem' }}>
-        <ChampTexte
+        <ChampDate
           nom="periode-du"
-          type="date"
           etiquette={t('rapports.du')}
-          value={du}
-          onChange={(evenement) => onChangeDu(evenement.target.value)}
+          valeur={du}
+          onChangeIso={onChangeDu}
+          requis
         />
       </div>
       <div style={{ minWidth: '10rem' }}>
-        <ChampTexte
+        <ChampDate
           nom="periode-au"
-          type="date"
           etiquette={t('rapports.au')}
-          value={au}
-          onChange={(evenement) => onChangeAu(evenement.target.value)}
+          valeur={au}
+          onChangeIso={onChangeAu}
+          requis
         />
       </div>
       {/*
@@ -180,7 +188,7 @@ export function Rapports(): React.JSX.Element {
   /**
    * Callback stable pour le bouton « Afficher » de la période personnalisée.
    * Wrappé dans useCallback afin que la référence ne change que quand `du` ou
-   * `au` changent — garantissant que `React.memo` dans `ChampsDatesPersonnalisees`
+   * `au` changent — garantissant que `React.memo` dans `ChampsDatesPersonnalisees`
    * ne re-rende pas le composant lors des mises à jour asynchrones du parent.
    */
   const handleAfficher = useCallback(() => {
@@ -221,7 +229,7 @@ export function Rapports(): React.JSX.Element {
   )
 
   /*
-   * EVOLUTION — ELLE SUIT LA PERIODE, PAS LE MONTAGE.
+   * EVOLUTION — ELLE SUIT LA PERIODE, PAS LE MONTAGE.
    *
    *   - periode « cette annee » ou « annee precedente » : la courbe decrit
    *     l'annee choisie dans le menu (12 points mensuels), ce qui permet de la
@@ -299,7 +307,7 @@ export function Rapports(): React.JSX.Element {
 
             {synthese.donnees ? (
               <span className="entete-page-sous-titre">
-                {new Date(synthese.donnees.periode.debut).toLocaleDateString('fr-FR')} —{' '}
+                {new Date(synthese.donnees.periode.debut).toLocaleDateString('fr-FR')} —{' '}
                 {new Date(synthese.donnees.periode.fin).toLocaleDateString('fr-FR')}
               </span>
             ) : null}
@@ -329,7 +337,7 @@ export function Rapports(): React.JSX.Element {
             Le menu ANNUEL n'apparait QUE pour les periodes « cette annee » et
             « annee precedente » : ce sont les seules ou le medecin choisit une
             annee precise. Ailleurs, la courbe suit le filtre de periode et ce
-            menu n'aurait aucun effet — l'afficher laisserait croire le contraire.
+            menu n'aurait aucun effet — l'afficher laisserait croire le contraire.
           */}
           {anneePiloteeParLaPeriode ? (
             <div style={{ minWidth: '8rem' }}>
@@ -459,19 +467,16 @@ function SyntheseFinanciereCartes({
           <span className="statistique-detail">{t('rapports.montantRestantAide')}</span>
         </div>
         <div className="statistique">
-          <span className="statistique-etiquette">{t('rapports.revenusDuMois')}</span>
+          <span className="statistique-etiquette">{t('rapports.revenusDeLAnnee')}</span>
           <span className="statistique-valeur">
-            {formaterMontant(synthese.revenusMoisCentimes)}
+            {formaterMontant(synthese.revenusAnneeCentimes)}
           </span>
           {/*
-            Le libelle decrit le MOIS DE REFERENCE renvoye par le serveur, et non
-            le mois calendaire courant : c'est ce qui le rend coherent avec le
-            filtre de periode. Afficher « aujourd'hui » ici contredirait le
-            montant des qu'une autre periode est choisie.
+            L'annee affichee est celle que le serveur a retenue comme reference :
+            l'annee civile contenant la FIN de la periode choisie. Le chiffre et
+            l'annee viennent donc de la meme agregation et ne peuvent pas diverger.
           */}
-          <span className="statistique-detail">
-            {MOIS_FR[synthese.moisPrecedent.mois + 1] ?? ''} {synthese.periode.fin.slice(0, 4)}
-          </span>
+          <span className="statistique-detail">{synthese.anneeReference}</span>
         </div>
       </div>
     </section>
@@ -490,9 +495,9 @@ function SyntheseFinanciereCartes({
  *   periode : un point par JOUR sur une fenetre courte, un point par MOIS
  *   au-dela. L'etiquette de l'axe suit donc cette maille :
  *
- *     - 'jour' : « 12/09 » — le quantieme suffit, l'annee est connue par la
+ *     - 'jour' : « 12/09 » — le quantieme suffit, l'annee est connue par la
  *       periode affichee juste au-dessus ;
- *     - 'mois' : « Sep » — la lecture mensuelle reste identique a avant.
+ *     - 'mois' : « Sep » — la lecture mensuelle reste identique a avant.
  */
 function CourbeRevenus({
   points,
@@ -594,7 +599,7 @@ function ComparaisonMois({
           </div>
           <div className="solde-element">
             <span className="solde-etiquette">
-              {t('rapports.moisPrecedent')} — {nomMoisPrecedent}
+              {t('rapports.moisPrecedent')} — {nomMoisPrecedent}
             </span>
             <span className="solde-valeur">
               {formaterMontant(synthese.revenusMoisPrecedentCentimes)}
@@ -617,7 +622,7 @@ function ComparaisonMois({
 }
 
 /**
- * Soldes patients — montants restants a recevoir.
+ * Soldes patients — montants restants a recevoir.
  *
  * Le calcul (facture - paye), le filtre des soldes positifs, le tri et la
  * pagination sont entierement realises EN BASE (§27, §35) : le navigateur ne

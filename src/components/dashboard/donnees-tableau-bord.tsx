@@ -24,7 +24,7 @@ import { surModification } from '@/lib/evenements-donnees'
  *
  *  Puis deux listes :
  *    - les rendez-vous d'AUJOURD'HUI, avec leur statut lisible ;
- *    - les NOUVEAUX rendez-vous, c'est-a-dire ceux prevus a une date a venir.
+ *    - les rendez-vous CREES AUJOURD'HUI, quelle que soit leur date.
  *
  *  CE QUI A ETE RETIRE, ET POURQUOI
  *
@@ -33,7 +33,7 @@ import { surModification } from '@/lib/evenements-donnees'
  *  dans les sections dediees (Rapports, Patients). Un tableau de bord charge de
  *  tout devient un ecran que l'on survole au lieu d'un ecran que l'on lit.
  *
- *  Aucune valeur n'est codee en dur : tout provient de GET /api/dashboard, qui
+ *  AUCUNE VALEUR N'EST CODEE EN DUR : tout provient de GET /api/dashboard, qui
  *  agrege en base. L'interface ne calcule aucun total et ne telecharge aucune
  *  liste complete.
  *
@@ -57,19 +57,21 @@ interface RendezVousJour {
 }
 
 /**
- * Un patient venu SANS rendez-vous.
+ * Un rendez-vous CREE AUJOURD'HUI.
  *
- * Meme table que les rendez-vous, mais distingue par le marqueur de motif cote
- * serveur. `motifConsultation` est le motif deja depouille du marqueur technique :
- * l'interface affiche donc ce seul champ, jamais la chaine brute.
+ * La date affichee est `dateDebut` — le jour du rendez-vous — et non l'instant de
+ * saisie : le medecin a besoin de savoir QUAND le patient viendra, la colonne
+ * « cree aujourd'hui » portant deja l'information de fraicheur. Le serveur garantit
+ * que la ligne est bien une creation du jour.
  */
-interface PatientSansRendezVous {
+interface RendezVousCreeAujourdhui {
   id: string
   patient: string
   telephone: string
   dateDebut: string
-  motifConsultation: string
-  patientConnu: boolean
+  dateFin: string
+  statut: string
+  motif: string | null
 }
 
 interface DonneesTableauBord {
@@ -80,7 +82,7 @@ interface DonneesTableauBord {
   revenusJourCentimes: number
   nombrePaiementsJour: number
   totalRestantCentimes: number
-  patientsSansRendezVous: PatientSansRendezVous[]
+  rendezVousCreesAujourdhui: RendezVousCreeAujourdhui[]
 }
 
 export function DonneesTableauBord(): React.JSX.Element {
@@ -163,7 +165,13 @@ export function DonneesTableauBord(): React.JSX.Element {
             <table className="tableau tableau-cartes">
               <thead>
                 <tr>
-                  <th scope="col">{t('rendezVous.heure')}</th>
+                  {/*
+                    L'HEURE N'EST PLUS AFFICHEE : la colonne « Heure » est
+                    remplacee par la DATE du rendez-vous, qui reste affichee. Le
+                    changement est purement visuel — la date et l'heure stockees
+                    en base sont inchangees.
+                  */}
+                  <th scope="col">{t('rendezVous.date')}</th>
                   <th scope="col">{t('rendezVous.patient')}</th>
                   <th scope="col">{t('rendezVous.traitement')}</th>
                   <th scope="col">{t('rendezVous.statut')}</th>
@@ -172,7 +180,13 @@ export function DonneesTableauBord(): React.JSX.Element {
               <tbody>
                 {donnees.rendezVousDuJour.map((rdv) => (
                   <tr key={rdv.id}>
-                    <td data-etiquette={t('rendezVous.heure')}>{heure(rdv.dateDebut)}</td>
+                    <td data-etiquette={t('rendezVous.date')}>
+                      {new Date(rdv.dateDebut).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </td>
                     <td data-etiquette={t('rendezVous.patient')}>
                       <span className="liste-compacte-principal">
                         <span className="liste-compacte-titre">{rdv.patient}</span>
@@ -193,26 +207,30 @@ export function DonneesTableauBord(): React.JSX.Element {
         )}
       </section>
 
-      {/* ── 3. PATIENTS VENUS SANS RENDEZ-VOUS ─────────────────────────────────── */}
+      {/* ── 3. NOUVEAUX RENDEZ-VOUS (CREES AUJOURD'HUI) ───────────────────────── */}
       {/*
-        * CETTE LISTE NE DOIT PAS AFFICHER LES RENDEZ-VOUS A VENIR.
+        * SECTION BASEE SUR LA DATE DE CREATION, PAS SUR LA DATE DU RENDEZ-VOUS.
         *
-        * Elle montre les personnes sans rendez-vous prevu qui se sont presentees
-        * AUJOURD'HUI. Les deux populations sont disjointes par construction : le
-        * serveur les separe sur un marqueur de motif, en base. Un meme patient ne
-        * peut donc pas figurer dans les deux listes, et un rendez-vous planifie
-        * d'aujourd'hui n'apparait jamais ici.
+        * Elle repond a la question que le medecin se pose en arrivant le matin :
+        * « qu'est-ce qui m'a ete demande aujourd'hui ? ». Le nombre annonce est
+        * donc la sortie de la base, jamais une valeur figee dans l'interface.
+        *
+        * Elle remplace l'ancienne section « patients sans rendez-vous », qui
+        * melangeait deux notions sans rapport entre elles : le mode de venue
+        * d'une part, et l'age d'une saisie d'autre part. Le nombre d'urgentistes
+        * etait un indicateur de flux, pas un indicateur d'activite du jour.
         */}
-      <section className="carte" aria-labelledby="titre-sans-rdv">
+      <section className="carte" aria-labelledby="titre-nouveaux-rdv">
         <div className="carte-entete">
-          <h2 className="carte-titre" id="titre-sans-rdv">
-            {t('tableauDeBord.patientsSansRendezVous')} — {donnees.patientsSansRendezVous.length}
+          <h2 className="carte-titre" id="titre-nouveaux-rdv">
+            {t('tableauDeBord.nouveauxRendezVousCrees')} —{' '}
+            {donnees.rendezVousCreesAujourdhui.length}
           </h2>
         </div>
 
-        {donnees.patientsSansRendezVous.length === 0 ? (
+        {donnees.rendezVousCreesAujourdhui.length === 0 ? (
           <div className="etat-vide">
-            <p className="etat-vide-texte">{t('tableauDeBord.aucunPatientSansRendezVous')}</p>
+            <p className="etat-vide-texte">{t('tableauDeBord.aucunNouveauRendezVousCree')}</p>
           </div>
         ) : (
           <div className="tableau-conteneur">
@@ -220,22 +238,32 @@ export function DonneesTableauBord(): React.JSX.Element {
               <thead>
                 <tr>
                   <th scope="col">{t('rendezVous.patient')}</th>
-                  <th scope="col">{t('rendezVous.heure')}</th>
-                  <th scope="col">{t('tableauDeBord.motifConsultation')}</th>
+                  <th scope="col">{t('rendezVous.date')}</th>
+                  <th scope="col">{t('rendezVous.traitement')}</th>
+                  <th scope="col">{t('rendezVous.statut')}</th>
                 </tr>
               </thead>
               <tbody>
-                {donnees.patientsSansRendezVous.map((visite) => (
-                  <tr key={visite.id}>
+                {donnees.rendezVousCreesAujourdhui.map((rdv) => (
+                  <tr key={rdv.id}>
                     <td data-etiquette={t('rendezVous.patient')}>
                       <span className="liste-compacte-principal">
-                        <span className="liste-compacte-titre">{visite.patient}</span>
-                        <span className="liste-compacte-detail">{visite.telephone}</span>
+                        <span className="liste-compacte-titre">{rdv.patient}</span>
+                        <span className="liste-compacte-detail">{rdv.telephone}</span>
                       </span>
                     </td>
-                    <td data-etiquette={t('rendezVous.heure')}>{heure(visite.dateDebut)}</td>
-                    <td data-etiquette={t('tableauDeBord.motifConsultation')}>
-                      {visite.motifConsultation || '—'}
+                    <td data-etiquette={t('rendezVous.date')}>
+                      {new Date(rdv.dateDebut).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </td>
+                    <td data-etiquette={t('rendezVous.traitement')}>
+                      {rdv.motif ?? '—'}
+                    </td>
+                    <td data-etiquette={t('rendezVous.statut')}>
+                      <StatutRendezVousJour statut={rdv.statut} dateFin={rdv.dateFin} />
                     </td>
                   </tr>
                 ))}
@@ -350,6 +378,8 @@ export function libelleStatutJour(
   return 'NON_VENU'
 }
 
-function heure(iso: string): string {
-  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-}
+/*
+ * L'ancien helper `heure()` n'est plus utilise : l'heure du rendez-vous n'est
+ * plus affichee nulle part dans le tableau de bord. Les dates et heures stockees
+ * restent intactes et servent toujours a la planification et aux calculs.
+ */

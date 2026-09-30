@@ -26,6 +26,7 @@ interface RdvJour {
   datePaiement?: never
   dateDebut: Date
   dateFin: Date
+  createdAt?: Date
   statut: string
   motif: string | null
   patient: { id: string; nom: string; prenom: string; telephone: string }
@@ -35,6 +36,8 @@ interface RdvJour {
 let rdvDuJour: RdvJour[] = []
 /** Visites sans rendez-vous renvoyees par `appointment.findMany` (2e appel). */
 let visitesSansRdv: RdvJour[] = []
+/** Rendez-vous CREES aujourd'hui, quel que soit leur jour de rendez-vous. */
+let rendezVousCreesAujourdhui: RdvJour[] = []
 /** Patients deja connus renvoyes par le 3e appel (`distinct`). */
 let patientsConnus: Array<{ patientId: string }> = []
 let requetes: Array<{ where?: unknown; distinct?: unknown }> = []
@@ -44,12 +47,14 @@ const fakePrisma = {
     findMany: vi.fn(async (args: { where?: Record<string, unknown>; distinct?: unknown }) => {
       requetes.push(args)
       const filtre = args.where ?? {}
-      // 1. Historique des patients deja connus (2e passe, filtre par patientId).
+      // 1. Historique des patients deja connus (filtre par patientId).
       if (filtre.patientId) return patientsConnus
-      // 2. Visites spontanees du jour (filtre positif sur le marqueur).
+      // 2. Rendez-vous CREES aujourd'hui (filtre sur `createdAt`).
+      if (filtre.createdAt) return rendezVousCreesAujourdhui
+      // 3. Visites spontanees du jour (filtre positif sur le marqueur).
       const motif = filtre.motif as { startsWith?: string } | undefined
       if (motif?.startsWith) return visitesSansRdv
-      // 3. Rendez-vous planifies du jour.
+      // 4. Rendez-vous planifies du jour.
       return rdvDuJour
     }),
     count: vi.fn(async () => rdvDuJour.length),
@@ -86,6 +91,7 @@ function rdv(id: string, patientId: string, heure: number): RdvJour {
 beforeEach(() => {
   rdvDuJour = []
   visitesSansRdv = []
+  rendezVousCreesAujourdhui = []
   patientsConnus = []
   requetes = []
   fakePrisma.appointment.findMany.mockClear()
@@ -233,7 +239,7 @@ function visite(id: string, patientId: string, heure: number, consultation: stri
   }
 }
 
-describe('Tableau de bord — patients sans rendez-vous', () => {
+describe('Tableau de bord — nouveaux rendez-vous (crees aujourd hui)', () => {
   it('separe un rendez-vous planifie d’une visite spontanee', async () => {
     rdvDuJour = [rdv('a', 'p1', 9)]
     visitesSansRdv = [visite('v1', 'p2', 10, 'Extraction dentaire')]
@@ -241,45 +247,134 @@ describe('Tableau de bord — patients sans rendez-vous', () => {
     const donnees = await donneesTableauBord()
 
     expect(donnees.rendezVousDuJour.map((r) => r.id)).toEqual(['a'])
-    expect(donnees.patientsSansRendezVous.map((v) => v.id)).toEqual(['v1'])
+    // La liste des nouveaux rendez-vous est une liste de SAISIES : elle ne se
+    // deduit pas des visites spontanees du jour.
+    expect(donnees.rendezVousCreesAujourdhui).toEqual([])
   })
 
-  it('CAS 4 — un patient NOUVEAU avec rendez-vous reste « planifie »', async () => {
-    // Aucun historique : le patient est nouveau...
-    patientsConnus = []
-    rdvDuJour = [rdv('a', 'p-nouveau', 9)]
-    visitesSansRdv = []
+  it('un rendez-vous PRIS aujourd hui pour DEMAIN est bien un nouveau rendez-vous', async () => {
+    // C'est le cas central du besoin : la date de CR&EATION prime sur la date du
+    // rendez-vous. Un rendez-vous pour demain pris ce matin doit figurer dans la
+    // liste du jour, meme si sa `dateDebut` n'est pas aujourd'hui.
+    const demain = new Date()
+    demain.setDate(demain.getDate() + 1)
+    rendezVousCreesAujourdhui = [
+      {
+        id: 'r1',
+        dateDebut: demain,
+        dateFin: demain,
+        createdAt: new Date(),
+        statut: 'PLANIFIE',
+        motif: 'Detartrage',
+        patient: { id: 'p1', nom: 'Nom', prenom: 'Prenom', telephone: '0550000000' },
+      },
+    ]
 
     const donnees = await donneesTableauBord()
 
-    // ...et il figure bien dans les rendez-vous du jour, pas dans les visites.
-    expect(donnees.rendezVousDuJour).toHaveLength(1)
-    expect(donnees.rendezVousNouveaux).toBe(1)
-    expect(donnees.patientsSansRendezVous).toHaveLength(0)
+    expect(donnees.rendezVousCreesAujourdhui).toHaveLength(1)
+    expect(donnees.rendezVousCreesAujourdhui[0]?.id).toBe('r1')
   })
 
-  it('CAS 3 — un patient EXISTANT sans rendez-vous est classe « sans rendez-vous »', async () => {
-    // Le patient a deja consulte : il est connu du cabinet.
+  it('le filtre porte sur `createdAt`, PAS sur `dateDebut`', async () => {
+    rendezVousCreesAujourdhui = []
+
+    await donneesTableauBord()
+
+    // Regression : filtrer sur `dateDebut` ne listerait que les rendez-vous pris
+    // aujourd'hui POUR aujourd'hui — c'est-a-dire quasi toujours la liste vide.
+    const requete = requetes.find((r) => {
+      const where = r.where as { createdAt?: unknown } | undefined
+      return where?.createdAt !== undefined
+    })
+    expect(requete).toBeDefined()
+    expect((requete?.where as { createdAt: { gte: Date; lte: Date } }).createdAt).toEqual({
+      gte: expect.any(Date),
+      lte: expect.any(Date),
+    })
+  })
+
+  it('ne filtre PAS par `dateDebut` : la date de creation est la seule borne', async () => {
+    rendezVousCreesAujourdhui = []
+
+    await donneesTableauBord()
+
+    const requete = requetes.find((r) => {
+      const where = r.where as { createdAt?: unknown } | undefined
+      return where?.createdAt !== undefined
+    })
+    // Aucune borne sur `dateDebut` : un rendez-vous planifie pour plus tard doit
+    // pouvoir remonter dans la liste du jour ou il a ete enregistre.
+    expect((requete?.where as Record<string, unknown>).dateDebut).toBeUndefined()
+  })
+
+  it('un rendez-vous ANNULE aujourd hui reste visible : c’est une saisie du jour', async () => {
+    rendezVousCreesAujourdhui = [
+      {
+        id: 'r1',
+        dateDebut: new Date(),
+        dateFin: new Date(),
+        createdAt: new Date(),
+        statut: 'ANNULE',
+        motif: null,
+        patient: { id: 'p1', nom: 'Nom', prenom: 'Prenom', telephone: '0550000000' },
+      },
+    ]
+
+    const donnees = await donneesTableauBord()
+
+    expect(donnees.rendezVousCreesAujourdhui).toHaveLength(1)
+    expect(donnees.rendezVousCreesAujourdhui[0]?.statut).toBe('ANNULE')
+  })
+
+  it('un patient CONNU qui prend rendez-vous aujourd hui apparait quand meme', async () => {
+    // Le critere est la date de creation, pas l'anciennete du patient.
     patientsConnus = [{ patientId: 'p-connu' }]
-    rdvDuJour = []
-    visitesSansRdv = [visite('v1', 'p-connu', 11, 'Premiere consultation')]
+    rendezVousCreesAujourdhui = [
+      {
+        id: 'r1',
+        dateDebut: new Date(),
+        dateFin: new Date(),
+        createdAt: new Date(),
+        statut: 'PLANIFIE',
+        motif: null,
+        patient: { id: 'p-connu', nom: 'Nom', prenom: 'Prenom', telephone: '0550000000' },
+      },
+    ]
 
     const donnees = await donneesTableauBord()
 
-    expect(donnees.patientsSansRendezVous).toHaveLength(1)
-    expect(donnees.patientsSansRendezVous[0]?.patientConnu).toBe(true)
-    // Et il n'est evidemment pas compte comme patient attendu.
-    expect(donnees.rendezVousDuJour).toHaveLength(0)
+    expect(donnees.rendezVousCreesAujourdhui).toHaveLength(1)
   })
 
-  it('retire le marqueur technique du motif affiche', async () => {
-    rdvDuJour = []
-    visitesSansRdv = [visite('v1', 'p1', 10, 'Extraction dentaire')]
+  it('deux rendez-vous pour le MEME patient apparaissent chacun', async () => {
+    // La section liste des RENDEZ-VOUS, pas des patients : un double pour un meme
+    // patient est deux vraies saisies distinctes. Le regroupement serait une
+    // perte d'information, pas un nettoyage.
+    rendezVousCreesAujourdhui = [
+      {
+        id: 'r1',
+        dateDebut: new Date(),
+        dateFin: new Date(),
+        createdAt: new Date(),
+        statut: 'PLANIFIE',
+        motif: null,
+        patient: { id: 'p1', nom: 'Nom', prenom: 'Prenom', telephone: '0550000000' },
+      },
+      {
+        id: 'r2',
+        dateDebut: new Date(),
+        dateFin: new Date(),
+        createdAt: new Date(),
+        statut: 'PLANIFIE',
+        motif: null,
+        patient: { id: 'p1', nom: 'Nom', prenom: 'Prenom', telephone: '0550000000' },
+      },
+    ]
 
     const donnees = await donneesTableauBord()
 
-    // L'interface affiche le motif de consultation SEUL.
-    expect(donnees.patientsSansRendezVous[0]?.motifConsultation).toBe('Extraction dentaire')
+    expect(donnees.rendezVousCreesAujourdhui.map((r) => r.id)).toEqual(['r1', 'r2'])
   })
 
   it('filtre les deux populations EN BASE (SQL), pas en memoire', async () => {
@@ -338,26 +433,14 @@ describe('Tableau de bord — patients sans rendez-vous', () => {
     expect(donnees.rendezVousAnciens + donnees.rendezVousNouveaux).toBe(1)
   })
 
-  it('un patient venu sans rendez-vous compte comme CONNU a sa seconde visite', async () => {
-    // Historique : seule la visite spontanee d'hier existe (pas de rendez-vous).
-    // `patientsConnus` provient de TOUS les rendez-vous anterieurs, quelle que
-    // soit leur nature : une visite spontanee passee rend donc le patient connu.
-    patientsConnus = [{ patientId: 'p1' }]
-    rdvDuJour = []
-    visitesSansRdv = [visite('v2', 'p1', 14, 'Soin de carie')]
-
-    const donnees = await donneesTableauBord()
-
-    expect(donnees.patientsSansRendezVous[0]?.patientConnu).toBe(true)
-  })
-
   it('journee vide : listes vides, aucune erreur', async () => {
     rdvDuJour = []
     visitesSansRdv = []
+    rendezVousCreesAujourdhui = []
 
     const donnees = await donneesTableauBord()
 
     expect(donnees.rendezVousDuJour).toEqual([])
-    expect(donnees.patientsSansRendezVous).toEqual([])
+    expect(donnees.rendezVousCreesAujourdhui).toEqual([])
   })
 })

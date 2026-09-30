@@ -2,7 +2,6 @@ import { prisma } from '@backend/database/prisma'
 import {
   FILTRE_RENDEZ_VOUS_PLANIFIES,
   MARQUEUR_SANS_RENDEZ_VOUS,
-  motifConsultationDe,
 } from '@backend/services/appointments.service'
 import { presencesDuJour } from '@backend/services/dashboard-metrics'
 import {
@@ -120,11 +119,20 @@ export interface RapportSyntheseFinanciere {
   /** Montant restant a recevoir sur l'ensemble des traitements non annules. */
   montantRestantCentimes: number
   /**
-   * Revenus du MOIS DE REFERENCE, c'est-a-dire du mois qui contient la fin de la
-   * periode selectionnee — et non du mois calendaire courant.
+   * Revenus de l'ANNEE CIVILE contenant la fin de la periode selectionnee.
    *
-   * C'est ce qui rend l'indicateur coherent avec le filtre : choisir « annee
-   * precedente » doit parler de l'annee precedente, pas du mois en cours.
+   * L'annee de reference est celle de la FIN DE LA PERIODE, exactement comme le
+   * l'etait le mois avant cet indicateur : c'est ce qui rend la valeur coherente
+   * avec le filtre. Choisir « annee precedente » parle donc de l'annee precedente,
+   * et une periode personnalisee terminee en 2025 parle de 2025.
+   */
+  revenusAnneeCentimes: number
+  /** Annee de reference de l'indicateur, rendue telle quelle sous le montant. */
+  anneeReference: number
+  /**
+   * Revenus du mois qui contient la fin de la periode. Conserves pour la carte
+   * « comparaison avec le mois precedent », qui est une lecture MENSUELLE et
+   * reste donc sur une maille de mois.
    */
   revenusMoisCentimes: number
   /** Revenus du mois COMPLET precedent celui de reference, et son libelle. */
@@ -142,7 +150,7 @@ export interface RapportSyntheseFinanciere {
  * Les quatre indicateurs proviennent d'AGREGATIONS EN BASE : aucune liste de
  * paiements n'est chargee dans Node pour calculer un total (§18, §35).
  *
- * MOIS DE REFERENCE — POURQUOI LA FIN DE PERIODE, ET NON « AUJOURD'HUI »
+ * PERIODE DE REFERENCE — POURQUOI LA FIN DE PERIODE, ET NON « AUJOURD'HUI »
  *
  *   Une version precedente ancrait les revenus du mois et la comparaison sur la
  *   date du jour (`new Date()`). Le filtre de periode n'avait alors AUCUN effet
@@ -150,10 +158,11 @@ export interface RapportSyntheseFinanciere {
 afficher
  *   les revenus du mois en cours, ce qui donnait un rapport incoherent.
  *
- *   Le mois de reference est desormais celui qui CONTIENT LA FIN DE LA PERIODE
- *   selectionnee. Consequence : pour « 30 jours », « cette annee » ou une periode
- *   personnalisee, les revenus du mois decrivent la fin de la fenetre etudiee, et
- *   la comparaison porte sur le mois calendaire precedent cette fin.
+ *   L'indicateur affiche desormais les revenus de l'ANNEE CIVILE qui CONTIENT LA
+ *   FIN DE LA PERIODE selectionnee. Consequence : « cette annee » parle de
+ *   l'annee en cours, « annee precedente » de l'annee precedente, et une periode
+ *   personnalisee terminee en 2025 parle de 2025. La regle de decoupage est celle
+ *   de `periodeAnnee`, identique a celle des autres periodes (bornes locales).
  *
  *   Le mois precedent n'est CALCULE QUE s'il a genere des revenus : sans
  *   reference, un pourcentage d'evolution serait trompeur (division par zero, ou
@@ -161,10 +170,11 @@ afficher
  */
 export async function rapportSyntheseFinanciere(periode: Periode): Promise<RapportSyntheseFinanciere> {
   /*
-   * Le mois de reference est celui de la FIN de la periode : c'est le mois que
-   * le medecin regarde quand il lit « Revenus du mois ».
+   * L'annee de reference est celle de la FIN de la periode : c'est l'annee que
+   * le medecin regarde quand il lit « Revenus de l'annee ».
    */
   const reference = periode.fin
+  const anneeReference = periodeAnnee(reference.getFullYear())
   const moisReference = periodeMois(reference)
   const moisPrecedentDebut = new Date(
     reference.getFullYear(),
@@ -185,13 +195,14 @@ export async function rapportSyntheseFinanciere(periode: Periode): Promise<Rappo
     999,
   )
 
-  const [totalRevenus, nombre, montantRestant, revenusMois, revenusMoisPrecedent] =
+  const [totalRevenus, nombre, montantRestant, revenusAnnee, revenusMois, revenusMoisPrecedent] =
     await Promise.all([
       totalEncaisse(periode.debut, periode.fin),
       prisma.payment.count({
         where: { statut: 'VALIDE', datePaiement: { gte: periode.debut, lte: periode.fin } },
       }),
       totalRestantARecevoir(),
+      totalEncaisse(anneeReference.debut, anneeReference.fin),
       totalEncaisse(moisReference.debut, moisReference.fin),
       totalEncaisse(moisPrecedentDebut, moisPrecedentFin),
     ])
@@ -206,6 +217,8 @@ export async function rapportSyntheseFinanciere(periode: Periode): Promise<Rappo
     totalRevenusCentimes: totalRevenus,
     nombrePaiements: nombre,
     montantRestantCentimes: montantRestant,
+    revenusAnneeCentimes: revenusAnnee,
+    anneeReference: reference.getFullYear(),
     revenusMoisCentimes: revenusMois,
     revenusMoisPrecedentCentimes: revenusMoisPrecedent,
     moisPrecedent: {
@@ -523,24 +536,6 @@ export interface TableauBordDonnees {
      */
     patientConnu: boolean
   }>
-  /**
-   * Visites du jour SANS rendez-vous planifie (patients venus spontanement).
-   *
-   * La distinction repose sur le marqueur de motif
-   * (`MARQUEUR_SANS_RENDEZ_VOUS`), jamais sur l'anciennete du patient :
-   * un patient connu peut arriver sans rendez-vous, un patient nouveau peut
-   * avoir un rendez-vous planifie.
-   */
-  patientsSansRendezVous: Array<{
-    id: string
-    patient: string
-    telephone: string
-    dateDebut: string
-    /** Motif de consultation seul, marqueur retire. */
-    motifConsultation: string | null
-    /** Faux si le patient n'avait AUCUN rendez-vous anterieur a aujourd'hui. */
-    patientConnu: boolean
-  }>
   /** Nombre total de patients enregistres au cabinet. */
   totalPatients: number
   /**
@@ -563,11 +558,18 @@ export interface TableauBordDonnees {
   revenusMoisCentimes: number
   totalRestantCentimes: number
   /**
-   * Rendez-vous a VENIR (strictement posterieurs a la journee en cours), tries
-   * du plus proche au plus lointain. C'est la liste des rendez-vous encore a
-   * honorer : elle ne recoupe jamais celle d'aujourd'hui.
+   * Rendez-vous CREES AUJOURD'HUI, quel que soit leur date de rendez-vous.
+   *
+   * La selection porte sur `createdAt` — l'instant de SAISIE du rendez-vous — et
+   * NON sur `dateDebut`. Les deux dates ne doivent pas etre confondues : un
+   * rendez-vous pris aujourd'hui pour dans trois mois compte, un rendez-vous
+   * pour aujourd'hui enregistre hier ne compte pas.
+   *
+   * Le critere est la date de CREATION, pas l'anciennete du patient : un patient
+   * deja connu qui prend un rendez-vous aujourd'hui doit apparaitre, puisque
+   * c'est bien un nouveau rendez-vous.
    */
-  nouveauxRendezVous: Array<{
+  rendezVousCreesAujourdhui: Array<{
     id: string
     patient: string
     telephone: string
@@ -616,7 +618,7 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     revenusMois,
     restant,
     prochain,
-    nouveaux,
+    rendezVousCreesAujourdhui,
   ] = await Promise.all([
     //
     // RENDEZ-VOUS PLANIFIES DU JOUR.
@@ -687,23 +689,30 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
       },
     }),
     //
-    // NOUVEAUX RENDEZ-VOUS (dates a venir).
+    // NOUVEAUX RENDEZ-VOUS (CREES AUJOURD'HUI).
     //
-    //  Strictement apres la fin de la journee : la liste ne peut donc pas
-    //  contenir un rendez-vous d'aujourd'hui, ce qui garantit que les deux
-    //  listes du tableau de bord sont bien disjointes.
+    //  Le filtre porte sur `createdAt`, l'instant de SAISIE, et non sur `dateDebut`,
+    //  la date du rendez-vous. Ce sont deux instants distincts et la confusion se
+    //  paie cher : en filtrant sur `dateDebut`, la liste ne contiendrait que les
+    //  rendez-vous PRENUS aujourd'hui POUR aujourd'hui — le vide le plus frequent
+    //  de la journee d'un cabinet. En filtrant sur `createdAt`, la liste repond a la
+    //  question que le medecin se pose reellement en arrivant le matin : « qu'est-ce
+    //  qui m'a ete demande aujourd'hui ? ». Un rendez-vous reserve pour la semaine
+    //  prochaine entre donc dans la liste du jour ou il a ete pris.
     //
-    //  ANNULE est exclu (creneau supprime). ABSENT ne l'est PAS : un statut
-    //  « absent » sur une date future ne veut rien dire, et un rendez-vous
-    //  reporte doit rester visible pour que le medecin le retrouve.
+    //  Aucun filtre de statut n'est applique : la section parle de saisies, pas de
+    //  rendez-vous a honorer. ANNULE est donc conserve — un rendez-vous annule
+    //  aujourd'hui a bien ete cree aujourd'hui, et le medecin doit pouvoir le voir.
+    //
+    //  Les bornes viennent de `periodeAujourdhui()` : meme decoupage que le reste
+    //  du tableau de bord, donc « aujourd'hui » designe le jour local du cabinet et
+    //  ne se decale pas avec l'heure UTC.
     //
     prisma.appointment.findMany({
       where: {
-        dateDebut: { gt: aujourdhui.fin },
-        statut: { not: 'ANNULE' },
-        AND: [FILTRE_RENDEZ_VOUS_PLANIFIES],
+        createdAt: { gte: aujourdhui.debut, lte: aujourdhui.fin },
       },
-      orderBy: { dateDebut: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take: 20,
       select: {
         id: true,
@@ -776,18 +785,19 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     patientConnu: dejaVenus.has(rdv.patient.id),
   }))
 
-  const patientsSansRendezVous = visitesJour.map((visite) => ({
-    id: visite.id,
-    patient: `${visite.patient.prenom} ${visite.patient.nom}`,
-    telephone: visite.patient.telephone,
-    dateDebut: visite.dateDebut.toISOString(),
-    motifConsultation: motifConsultationDe(visite.motif),
-    patientConnu: dejaVenus.has(visite.patient.id),
+  const rendezVousCreesDuJour = rendezVousCreesAujourdhui.map((rdv) => ({
+    id: rdv.id,
+    patient: `${rdv.patient.prenom} ${rdv.patient.nom}`,
+    telephone: rdv.patient.telephone,
+    dateDebut: rdv.dateDebut.toISOString(),
+    dateFin: rdv.dateFin.toISOString(),
+    statut: rdv.statut,
+    motif: rdv.motif,
   }))
 
   return {
     rendezVousDuJour,
-    patientsSansRendezVous,
+    rendezVousCreesAujourdhui: rendezVousCreesDuJour,
     totalPatients,
     patientsVenusJour,
     nouveauxPatientsJour,
@@ -800,15 +810,6 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     revenusSemaineCentimes: revenusSemaine,
     revenusMoisCentimes: revenusMois,
     totalRestantCentimes: restant,
-    nouveauxRendezVous: nouveaux.map((rdv) => ({
-      id: rdv.id,
-      patient: `${rdv.patient.prenom} ${rdv.patient.nom}`,
-      telephone: rdv.patient.telephone,
-      dateDebut: rdv.dateDebut.toISOString(),
-      dateFin: rdv.dateFin.toISOString(),
-      statut: rdv.statut,
-      motif: rdv.motif,
-    })),
     prochainsRendezVous: prochain.map((rdv) => ({
       id: rdv.id,
       patient: `${rdv.patient.prenom} ${rdv.patient.nom}`,

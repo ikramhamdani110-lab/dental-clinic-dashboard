@@ -451,8 +451,32 @@ a.rail-item:focus,
   z-index: 1;
 }
 
+/*
+ * APPARITION DU LIBELLE : SURVOL ET FOCUS CLAVIER VISIBLE.
+ *
+ * Le selecteur est `:focus-visible`, et non `:focus`.
+ *
+ * BUG CORRIGE — le libelle restait affiche apres un clic
+ *   Un clic pose le focus sur le lien. Or la regle d'origine s'appuyait sur
+ *   `.rail-item:focus`, qui reste VRAI tant que le focus est sur l'element : le
+ *   libelle restait donc colle au rail jusqu'a un clic dans le vide, ou jusqu'a
+ *   ce que le focus parte ailleurs. Le comportement voulu est un libelle
+ *   TEMPORAIRE, dont l'apparition et la disparition sont pilotees par le
+ *   POINTEUR, pas par le focus.
+ *
+ *   `:focus-visible` ne s'active que pour une intention CLAVIER (Tab, flèches) :
+ *   - au clic, le navigateur ne le considere pas comme visible, le libelle suit
+ *     donc le survol et disparait des que le pointeur quitte le rail ;
+ *   - au clavier, le focus reste parfaitement visible, donc l'indication
+ *     d'accessibilite est Preservee — un indicateur de focus reste affiche, seule
+ *     l'INFOBULLE temporaire est couplee a l'intention clavier.
+ *
+ * Le survol reste le declencheur principal : c'est lui qui fait apparaitre le
+ * libelle au deplacement de la souris sur un element, et c'est lui qui le fait
+ * disparaitre lorsque le pointeur sort.
+ */
 .rail-item:hover .rail-libelle,
-.rail-item:focus .rail-libelle {
+.rail-item:focus-visible .rail-libelle {
   opacity: 1;
   /* Fin de l'animation : le libelle a glisse vers la droite, en place. */
   transform: translate(0.4rem, -50%);
@@ -961,7 +985,7 @@ a.rail-item:focus,
   }
 
   .rail-item:hover .rail-libelle,
-  .rail-item:focus .rail-libelle {
+  .rail-item:focus-visible .rail-libelle {
     transform: translate(-50%, 0);
   }
 
