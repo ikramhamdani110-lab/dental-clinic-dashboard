@@ -1,0 +1,19 @@
+node_modules/
+.next/
+dist/
+.dist/
+.local/
+.tmp/
+coverage/
+database/prisma/local/
+database/prisma/migrations/
+package-lock.json
+*.db
+*.log
+*.dump
+
+# La configuration TypeScript de base et les fichiers generes par Next.js ont
+# leur propre mise en forme, verrouillee par l'outillage : les reformater
+# introduirait du bruit dans l'historique sans valeur ajoutee.
+tsconfig.json
+next-env.d.ts

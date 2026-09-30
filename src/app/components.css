@@ -1,0 +1,1403 @@
+/* =============================================================================
+ *  SAHED DENTAL CLINIC — STYLES DES COMPOSANTS
+ * =============================================================================
+ *
+ *  Styles centralises des composants reutilisables : boutons, champs, cartes,
+ *  tableaux, modales, notifications, badges de statut.
+ *
+ *  Approche volontairement sobre : bordures discretes, ombres legeres,
+ *  transitions courtes. Aucun effet decoratif gratuit.
+ * ========================================================================== */
+
+/* ── Boutons ───────────────────────────────────────────────────────────────── */
+
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espace-2);
+  padding: 0.5rem 0.9rem;
+  font-size: var(--taille-base);
+  font-weight: 500;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  border-radius: var(--rayon-moyen);
+  transition:
+    background-color var(--transition-rapide),
+    border-color var(--transition-rapide),
+    color var(--transition-rapide);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.bouton:disabled,
+.bouton[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.bouton-principal {
+  background-color: var(--accent);
+  color: var(--accent-texte);
+}
+.bouton-principal:hover:not(:disabled) {
+  background-color: var(--accent-survol);
+}
+.bouton-principal:active:not(:disabled) {
+  background-color: var(--accent-actif);
+}
+
+.bouton-secondaire {
+  background-color: var(--fond-surface-eleve);
+  color: var(--texte-principal);
+  border-color: var(--bordure);
+}
+.bouton-secondaire:hover:not(:disabled) {
+  background-color: var(--fond-surface-douce);
+  border-color: var(--bordure-forte);
+}
+
+.bouton-discret {
+  background-color: transparent;
+  color: var(--texte-secondaire);
+}
+.bouton-discret:hover:not(:disabled) {
+  background-color: var(--fond-surface-douce);
+  color: var(--texte-principal);
+}
+
+.bouton-danger {
+  background-color: transparent;
+  color: var(--erreur-texte);
+  border-color: var(--erreur);
+}
+.bouton-danger:hover:not(:disabled) {
+  background-color: var(--erreur-doux);
+}
+
+.bouton-danger-plein {
+  background-color: var(--erreur);
+  color: #ffffff;
+}
+.bouton-danger-plein:hover:not(:disabled) {
+  background-color: var(--erreur-texte);
+}
+
+.bouton-petit {
+  padding: 0.3rem 0.6rem;
+  font-size: var(--taille-petite);
+}
+
+.bouton-lien {
+  padding: 0;
+  color: var(--accent);
+  background: none;
+  border: none;
+}
+.bouton-lien:hover {
+  text-decoration: underline;
+}
+
+.bouton-theme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1rem;
+  color: var(--texte-secondaire);
+  border-radius: var(--rayon-moyen);
+  transition: background-color var(--transition-rapide);
+}
+.bouton-theme:hover {
+  background-color: var(--fond-surface-douce);
+  color: var(--texte-principal);
+}
+
+/* ── Formulaires ───────────────────────────────────────────────────────────── */
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-1);
+  /*
+   * UN CHAMP DE SAISIE NE SE COMPRIME PAS SOUS LA LARGEUR DE SON CONTENU.
+   *
+   * Dans une barre d'outils en `flex`, un enfant sans `min-width` explicite a une
+   * taille minimale implicite (`auto`) qui est ramenee a zero des qu'un ancetre
+   * est lui-meme un conteneur flex contraint. Le champ devenait alors plus
+   * etroit que son texte de substitution, qui apparaissait TRONQUE : mesure sur
+   * la liste des patients, 195 px de champ pour 184 px de texte plus 22 px de
+   * rembourrage.
+   *
+   * `min(100%, 14rem)` donne au champ la largeur qui affiche son contenu, SANS
+   * jamais depasser la place disponible : sur un ecran etroit, `min()` retombe
+   * sur `100%` et le champ continue de tenir dans la page. Aucun debordement
+   * horizontal n'est donc possible.
+   */
+  min-width: min(100%, 14rem);
+}
+
+.champ-etiquette {
+  font-size: var(--taille-petite);
+  font-weight: 600;
+  color: var(--texte-secondaire);
+}
+
+.champ-obligatoire::after {
+  content: ' *';
+  color: var(--erreur-texte);
+  font-weight: 700;
+}
+
+.champ-controle {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  font-size: var(--taille-base);
+  color: var(--texte-principal);
+  background-color: var(--fond-champ);
+  border: 1px solid var(--bordure-champ);
+  border-radius: var(--rayon-moyen);
+  transition:
+    border-color var(--transition-rapide),
+    box-shadow var(--transition-rapide);
+}
+
+.champ-controle:focus {
+  outline: none;
+  border-color: var(--bordure-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bordure-focus) 25%, transparent);
+}
+
+.champ-controle:disabled {
+  background-color: var(--fond-surface-douce);
+  color: var(--texte-tertiaire);
+  cursor: not-allowed;
+}
+
+.champ-controle[aria-invalid='true'] {
+  border-color: var(--erreur);
+}
+
+textarea.champ-controle {
+  resize: vertical;
+  min-height: 5rem;
+  font-family: inherit;
+}
+
+.champ-aide {
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+}
+
+.champ-erreur {
+  font-size: var(--taille-tres-petite);
+  color: var(--erreur-texte);
+  font-weight: 500;
+}
+
+.champ-grille {
+  display: grid;
+  gap: var(--espace-4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+/* ── Cartes et panneaux ────────────────────────────────────────────────────── */
+
+.carte {
+  background-color: var(--fond-surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-grand);
+  box-shadow: var(--ombre-petite);
+}
+
+.carte-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-3);
+  padding: var(--espace-4) var(--espace-5);
+  border-bottom: 1px solid var(--bordure);
+}
+
+.carte-titre {
+  font-size: var(--taille-titre-section);
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.carte-corps {
+  padding: var(--espace-5);
+}
+
+.carte-corps-compact {
+  padding: var(--espace-4);
+}
+
+/* Carte de statistique du tableau de bord */
+.statistique {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-1);
+  padding: var(--espace-4) var(--espace-5);
+  background-color: var(--fond-surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-grand);
+}
+
+.statistique-etiquette {
+  font-size: var(--taille-petite);
+  font-weight: 500;
+  color: var(--texte-tertiaire);
+}
+
+.statistique-valeur {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.statistique-detail {
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+}
+
+/* ── Grille de statistiques ────────────────────────────────────────────────── */
+
+.grille-statistiques {
+  display: grid;
+  gap: var(--espace-4);
+  /*
+   * `auto-fit` ET NON UN NOMBRE DE COLONNES FIGE.
+   *
+   * Le tableau de bord affiche CINQ cartes, les Rapports QUATRE, sur cette meme
+   * grille. Un nombre fige ne peut pas convenir aux deux : avec cinq colonnes,
+   * quatre cartes laissent une colonne VIDE de la largeur d'une carte entiere a
+   * droite de la rangee — mesure a 1366 et 1440 px, un trou de 246 a 261 px en
+   * plein milieu d'une rangee. Cet espace vide etait visible sur le BUREAU.
+   *
+   * `auto-fit` replie les pistes entierement VIDES : cinq cartes donnent cinq
+   * colonnes egales, quatre cartes donnent quatre colonnes egales. La rangee
+   * remplit toute la largeur dans les deux cas, et il n'y a rien a recompter a
+   * chaque nouvel indicateur.
+   *
+   * Le minimum de 11 rem commande le repli : cinq colonnes tiennent des 1024 px,
+   * car 5 x 11 rem = 880 px et la colonne de contenu mesure alors 920 px. La
+   * rangee unique de bureau est donc preservee.
+   *
+   * `min(11rem, 100%)` protege le cas limite d'un conteneur plus etroit que la
+   * piste : sans lui, une piste de 11 rem deborderait au lieu de se contracter.
+   */
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+}
+
+/*
+ * PALIER TABLETTE : DEUX COLONNES, ET LA DERNIERE CARTE PLEINE LARGEUR.
+ *
+ * Deux colonnes, c'est un nombre PAIR : quatre cartes se partagent deux rangees
+ * pleines. Cinq cartes forment `2 + 2 + 1`, et la cinquieme se retrouve seule
+ * sur sa rangee — un trou de la largeur d'une carte a sa droite : mesure a
+ * 340 px en 768x1024, et a 468 px en 1024x768.
+ *
+ * Plutot que de choisir un nombre de colonnes qui « divise cinq » — ce qui
+ * echoue des que le nombre de cartes change, et oblige a retoucher la feuille a
+ * chaque nouvel indicateur — c'est le CAS LUI-MEME qui est traite :
+ *
+ *   `:last-child:nth-child(odd)` ne cible que le dernier enfant, et seulement
+ *   lorsqu'il est de rang impair, donc uniquement quand le compte est impair. En
+ *   composant les deux colonnes, il COMBLE la rangee au lieu de la laisser a
+ *   moitie vide.
+ *
+ * La regle exprime « la derniere carte lorsqu'elle est orpheline », et non un
+ * cas particulier : elle reste vraie pour trois, cinq ou sept cartes, et ne
+ * fait rien quand le compte est pair.
+ */
+@media (max-width: 64rem) {
+  .grille-statistiques {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grille-statistiques > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Telephone : une seule colonne. C'est le SEUL palier ou l'empilement est
+   voulu, et il reste explicite. */
+@media (max-width: 40rem) {
+  .grille-statistiques {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Tableaux ──────────────────────────────────────────────────────────────── */
+
+.tableau-conteneur {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-grand);
+  background-color: var(--fond-surface);
+}
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--taille-base);
+}
+
+.tableau caption {
+  text-align: left;
+  padding: var(--espace-3) var(--espace-4);
+  color: var(--texte-tertiaire);
+  font-size: var(--taille-petite);
+}
+
+.tableau thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-dessous);
+  padding: var(--espace-3) var(--espace-4);
+  text-align: left;
+  font-size: var(--taille-petite);
+  font-weight: 600;
+  color: var(--texte-tertiaire);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background-color: var(--fond-surface-douce);
+  border-bottom: 1px solid var(--bordure);
+  white-space: nowrap;
+}
+
+.tableau tbody td {
+  padding: var(--espace-3) var(--espace-4);
+  color: var(--texte-principal);
+  border-bottom: 1px solid var(--bordure);
+  vertical-align: middle;
+}
+
+.tableau tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tableau tbody tr:hover {
+  background-color: var(--fond-surface-douce);
+}
+
+.tableau-numerique {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Tri : bouton dans l'en-tete */
+.tableau-tri {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espace-1);
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+.tableau-tri:hover {
+  color: var(--texte-principal);
+}
+
+/* ── Badges de statut ──────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  font-size: var(--taille-tres-petite);
+  font-weight: 600;
+  border-radius: var(--rayon-petit);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge-neutre {
+  background-color: var(--fond-surface-douce);
+  color: var(--texte-secondaire);
+  border-color: var(--bordure);
+}
+
+.badge-info {
+  background-color: var(--information-doux);
+  color: var(--information-texte);
+}
+
+.badge-succes {
+  background-color: var(--succes-doux);
+  color: var(--succes-texte);
+}
+
+.badge-avertissement {
+  background-color: var(--avertissement-doux);
+  color: var(--avertissement-texte);
+}
+
+.badge-erreur {
+  background-color: var(--erreur-doux);
+  color: var(--erreur-texte);
+}
+
+/* ── Modales ───────────────────────────────────────────────────────────────── */
+
+.voile-modale {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modale);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espace-4);
+  background-color: var(--voile-modale);
+  animation: sahed-apparition var(--transition-rapide);
+}
+
+.modale {
+  width: 100%;
+  max-width: 32rem;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  background-color: var(--fond-surface-eleve);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-grand);
+  box-shadow: var(--ombre-grande);
+  animation: sahed-apparition var(--transition-normale);
+}
+
+.modale-large {
+  max-width: 46rem;
+}
+
+.modale-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--espace-3);
+  padding: var(--espace-5) var(--espace-5) var(--espace-3);
+}
+
+.modale-titre {
+  font-size: var(--taille-titre-section);
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.modale-corps {
+  padding: 0 var(--espace-5) var(--espace-4);
+  color: var(--texte-secondaire);
+}
+
+.modale-pied {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--espace-3);
+  padding: var(--espace-4) var(--espace-5);
+  border-top: 1px solid var(--bordure);
+  background-color: var(--fond-surface-douce);
+  border-radius: 0 0 var(--rayon-grand) var(--rayon-grand);
+}
+
+.bouton-fermer-modale {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--texte-tertiaire);
+  border-radius: var(--rayon-petit);
+}
+.bouton-fermer-modale:hover {
+  background-color: var(--fond-surface-douce);
+  color: var(--texte-principal);
+}
+
+/* Avertissement encadre (suppression, delai de corbeille) */
+.encadre-avertissement {
+  padding: var(--espace-3) var(--espace-4);
+  background-color: var(--avertissement-doux);
+  border-left: 3px solid var(--avertissement);
+  border-radius: var(--rayon-petit);
+  color: var(--texte-secondaire);
+  font-size: var(--taille-petite);
+}
+
+.encadre-information {
+  padding: var(--espace-3) var(--espace-4);
+  background-color: var(--information-doux);
+  border-left: 3px solid var(--information);
+  border-radius: var(--rayon-petit);
+  color: var(--texte-secondaire);
+  font-size: var(--taille-petite);
+}
+
+.encadre-erreur {
+  padding: var(--espace-3) var(--espace-4);
+  background-color: var(--erreur-doux);
+  border-left: 3px solid var(--erreur);
+  border-radius: var(--rayon-petit);
+  color: var(--texte-secondaire);
+  font-size: var(--taille-petite);
+}
+
+/* ── Notifications (toasts) ────────────────────────────────────────────────── */
+
+.zone-notifications {
+  position: fixed;
+  top: var(--espace-4);
+  right: var(--espace-4);
+  z-index: var(--z-notification);
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+  max-width: 24rem;
+  pointer-events: none;
+}
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espace-3);
+  padding: var(--espace-3) var(--espace-4);
+  background-color: var(--fond-surface-eleve);
+  border: 1px solid var(--bordure);
+  border-left-width: 3px;
+  border-radius: var(--rayon-moyen);
+  box-shadow: var(--ombre-moyenne);
+  pointer-events: auto;
+  animation: sahed-apparition var(--transition-normale);
+}
+
+.notification-succes {
+  border-left-color: var(--succes);
+}
+.notification-erreur {
+  border-left-color: var(--erreur);
+}
+.notification-avertissement {
+  border-left-color: var(--avertissement);
+}
+.notification-information {
+  border-left-color: var(--information);
+}
+
+.notification-texte {
+  flex: 1;
+  font-size: var(--taille-petite);
+  color: var(--texte-principal);
+}
+
+/* ── Etats vides ───────────────────────────────────────────────────────────── */
+
+.etat-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espace-2);
+  padding: var(--espace-8) var(--espace-5);
+  text-align: center;
+  color: var(--texte-tertiaire);
+}
+
+.etat-vide-titre {
+  font-weight: 600;
+  color: var(--texte-secondaire);
+}
+
+.etat-vide-texte {
+  font-size: var(--taille-petite);
+  max-width: 30rem;
+}
+
+/* ── Onglets ───────────────────────────────────────────────────────────────── */
+
+.onglets {
+  display: flex;
+  gap: var(--espace-1);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--bordure);
+}
+
+.onglet {
+  padding: var(--espace-3) var(--espace-4);
+  font-size: var(--taille-base);
+  font-weight: 500;
+  color: var(--texte-tertiaire);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color var(--transition-rapide);
+}
+
+.onglet:hover {
+  color: var(--texte-principal);
+}
+
+.onglet[aria-selected='true'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Filtres et barre d'outils ─────────────────────────────────────────────── */
+
+.barre-outils {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-3);
+  justify-content: space-between;
+}
+
+.barre-outils-groupe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-2);
+  /*
+   * SANS LARGEUR MINIMALE, UN GROUPE DE CHAMPS PEUT ETRE COMPRIME jusqu'a
+   * tronquer son contenu. Le parent etant en `flex-wrap`, il est prefere de
+   * passer a la ligne plutot que d'ecraser le champ.
+   *
+   * La valeur doit couvrir le contenu REEL, et pas seulement la largeur d'une
+   * etiquette : `min-width` fixe une borne que le navigateur atteint en ecrasant
+   * le champ a l'interieur. Sur la liste des patients, le texte de substitution
+   * demande 184 px plus 22 px de rembourrage, soit 206 px : 12rem (192 px) ne
+   * suffisait donc pas, et le placeholder apparaissait TRONQUE.
+   *
+   * 13rem (208 px) couvre ce contenu avec une marge d'un pixel, tout en restant
+   * modeste pour ne pas manger la barre d'outils.
+   */
+  min-width: 13rem;
+}
+
+/* ── Pagination ────────────────────────────────────────────────────────────── */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-3);
+  flex-wrap: wrap;
+  padding: var(--espace-3) 0;
+  font-size: var(--taille-petite);
+  color: var(--texte-tertiaire);
+}
+
+.pagination-controles {
+  display: flex;
+  align-items: center;
+  gap: var(--espace-2);
+}
+
+/* ── Fil d'ariane ──────────────────────────────────────────────────────────── */
+
+.fil-ariane {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-2);
+  font-size: var(--taille-petite);
+  color: var(--texte-tertiaire);
+}
+
+.fil-ariane a {
+  color: var(--texte-tertiaire);
+}
+.fil-ariane a:hover {
+  color: var(--accent);
+}
+
+/* ── Chargement ────────────────────────────────────────────────────────────── */
+
+.rotation {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--bordure-forte);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: sahed-rotation 0.7s linear infinite;
+}
+
+.bandeau-chargement {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background-size: 200% 100%;
+  animation: sahed-chargement 1.2s linear infinite;
+}
+
+@keyframes sahed-chargement {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Etat d'erreur global (erreur de chargement de page) ───────────────────── */
+
+.page-erreur {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espace-4);
+  min-height: 60vh;
+  padding: var(--espace-6);
+  text-align: center;
+}
+
+.page-erreur-titre {
+  font-size: 1.25rem;
+  color: var(--texte-principal);
+}
+
+.page-erreur-texte {
+  max-width: 34rem;
+  color: var(--texte-secondaire);
+}
+
+/* ── Tableau de bord — grille ──────────────────────────────────────────────── */
+
+.grille-tableau-bord {
+  display: grid;
+  gap: var(--espace-5);
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.grille-tableau-bord-principal {
+  display: grid;
+  gap: var(--espace-5);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 64rem) {
+  .grille-tableau-bord-principal {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
+/* Liste compacte (rendez-vous du jour, activite recente) */
+.liste-compacte {
+  display: flex;
+  flex-direction: column;
+}
+
+.liste-compacte-element {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--espace-3);
+  padding: var(--espace-3) var(--espace-5);
+  border-bottom: 1px solid var(--bordure);
+  /* Sans `min-width: 0`, un enfant flex refuse de se contracter sous sa largeur
+     de contenu : le titre long et l'heure ne pouvaient pas tenir sur un ecran
+     etroit, et la ligne debordait horizontalement. */
+  min-width: 0;
+}
+
+/* Le bloc de gauche (titre + detail) se contracte et passe a la ligne ;
+   l'heure, chiffree, reste sur une seule ligne. */
+.liste-compacte-principal {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.liste-compacte-titre,
+.liste-compacte-detail {
+  overflow-wrap: anywhere;
+}
+
+/* Sur petit ecran, on reduit le rembourrage lateral : c'est lui qui consommait
+   le plus de largeur utile. */
+@media (max-width: 40rem) {
+  .liste-compacte-element {
+    padding: var(--espace-3) var(--espace-3);
+    gap: var(--espace-2);
+  }
+}
+
+/*
+ * Ecrans tres etroits (moins de 24 rem, soit 384 px : en dessous de tout
+ * telephone courant). A cette largeur, un rembourrage lateral de 1 rem de chaque
+ * cote represente deja 32 px sur 320 disponibles.
+ */
+@media (max-width: 24rem) {
+  .liste-compacte-element {
+    padding: var(--espace-2) var(--espace-1);
+    gap: 0.25rem;
+  }
+
+  .liste-compacte-principal {
+    /* Le titre cede toute la place necessaire a l'heure : sans cela, il restait
+       quelques pixels au-dela de la largeur disponible. */
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .liste-compacte-heure {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+}
+
+/* ── Boutons ──────────────────────────────────────────────────────────────── */
+
+/*
+ * Un libelle d'action peut etre long (« Enregistrer un patient sans
+ * rendez-vous ») : sur un ecran etroit, il depassait la largeur disponible.
+ * On autorise le texte a passer a la ligne et le bouton a se contraindre, au
+ * lieu de deborder. La borne 'max-width: 100%' limite le bouton a son conteneur.
+ */
+.bouton {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.liste-compacte-element:last-child {
+  border-bottom: none;
+}
+
+.liste-compacte-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.liste-compacte-titre {
+  font-weight: 500;
+  color: var(--texte-principal);
+}
+
+.liste-compacte-detail {
+  font-size: var(--taille-petite);
+  color: var(--texte-tertiaire);
+}
+
+.liste-compacte-heure {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--taille-petite);
+  color: var(--texte-secondaire);
+  white-space: nowrap;
+}
+
+/* ── Fiche patient ─────────────────────────────────────────────────────────── */
+
+.en-tete-fiche {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--espace-4);
+}
+
+.en-tete-fiche-identite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-1);
+}
+
+.en-tete-fiche-nom {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.en-tete-fiche-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-4);
+  font-size: var(--taille-petite);
+  color: var(--texte-tertiaire);
+}
+
+.actions-rapides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+}
+
+/* Grille des soldes du patient */
+.grille-solde {
+  display: grid;
+  gap: var(--espace-3);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.solde-element {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: var(--espace-3) var(--espace-4);
+  background-color: var(--fond-surface-douce);
+  border-radius: var(--rayon-moyen);
+}
+
+.solde-etiquette {
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+}
+
+.solde-valeur {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--texte-principal);
+}
+
+.solde-valeur-attention {
+  color: var(--avertissement-texte);
+}
+
+.solde-valeur-solde {
+  color: var(--succes-texte);
+}
+
+/* ── Liste de definitions (fiche d'informations) ───────────────────────────── */
+
+.liste-definitions {
+  display: grid;
+  gap: var(--espace-3);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.liste-definitions-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.liste-definitions-terme {
+  font-size: var(--taille-tres-petite);
+  font-weight: 600;
+  color: var(--texte-tertiaire);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.liste-definitions-valeur {
+  color: var(--texte-principal);
+  word-break: break-word;
+}
+
+.liste-definitions-valeur-vide {
+  color: var(--texte-tertiaire);
+  font-style: italic;
+}
+
+/* ── Odontogramme ──────────────────────────────────────────────────────────── */
+
+.odontogramme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-5);
+}
+
+.arcade {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+}
+
+.arcade-titre {
+  font-size: var(--taille-petite);
+  font-weight: 600;
+  color: var(--texte-tertiaire);
+}
+
+.arcade-rangee {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-1);
+  justify-content: center;
+}
+
+.dent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.9rem;
+  padding: 0.15rem;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  background-color: var(--fond-surface);
+  transition:
+    transform var(--transition-rapide),
+    border-color var(--transition-rapide);
+}
+
+.dent:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.dent[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.dent-numero {
+  font-size: var(--taille-tres-petite);
+  font-variant-numeric: tabular-nums;
+  color: var(--texte-secondaire);
+}
+
+.dent-marque {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1px solid var(--bordure);
+}
+
+.dent-saine .dent-marque {
+  background: var(--dent-saine);
+}
+.dent-carie .dent-marque {
+  background: var(--dent-carie);
+}
+.dent-obturee .dent-marque {
+  background: var(--dent-obturee);
+}
+.dent-absente .dent-marque {
+  background: var(--dent-absente);
+}
+.dent-couronne .dent-marque {
+  background: var(--dent-couronne);
+}
+.dent-devitalisee .dent-marque {
+  background: var(--dent-devitalisee);
+}
+.dent-extraction-prevue .dent-marque {
+  background: var(--dent-extraction);
+}
+.dent-implant .dent-marque {
+  background: var(--dent-implant);
+}
+.dent-autre .dent-marque {
+  background: var(--dent-autre);
+}
+
+.legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-3);
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-secondaire);
+}
+
+.legende-element {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espace-1);
+}
+
+.legende-pastille {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+}
+
+/* ── Corbeille : compte a rebours ──────────────────────────────────────────── */
+
+.compte-a-rebours {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.compte-a-rebours-urgent {
+  color: var(--erreur-texte);
+}
+
+.compte-a-rebours-imminent {
+  color: var(--avertissement-texte);
+}
+
+/* ── Journal d'activite ────────────────────────────────────────────────────── */
+
+.journal-metadonnees {
+  font-family: var(--police-mono);
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+  word-break: break-word;
+}
+
+/* ── Graphique de revenus ──────────────────────────────────────────────────── */
+
+.graphique-conteneur {
+  width: 100%;
+  height: 18rem;
+}
+
+/* ── Connexion ─────────────────────────────────────────────────────────────── */
+
+.page-connexion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--espace-5);
+  background-color: var(--fond-page);
+}
+
+.carte-connexion {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.connexion-marque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espace-2);
+  margin-bottom: var(--espace-5);
+  text-align: center;
+}
+
+.connexion-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent-texte);
+  background-color: var(--accent);
+  border-radius: var(--rayon-grand);
+}
+
+.connexion-titre {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.connexion-sous-titre {
+  font-size: var(--taille-petite);
+  color: var(--texte-tertiaire);
+}
+
+/* Ligne de securite sous le formulaire de connexion */
+.connexion-securite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espace-2);
+  margin-top: var(--espace-4);
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+}
+
+/* =============================================================================
+ *  RESPONSIVE — PALIERS DU TELEPHONE (jusqu'a 640 px)
+ * ==========================================================================
+ *
+ *  Ces regles ne visent pas a « cacher » un defaut : chacune corrige une
+ *  contrainte de mise en page reelle, verifiee en mesurant le rendu a 375, 390,
+ *  430, 768, 1024, 1366 et 1440 px de large.
+ *
+ *  Elles s'appliquent SOUS 40 rem. Au-dessus, la mise en page de bureau — et de
+ *  tablette — reste exactement inchangee.
+ */
+
+@media (max-width: 40rem) {
+  /*
+   * MODALES.
+   *
+   * Sur un telephone, une modale plus large que la fenetre impose un defilement
+   * horizontal a l'ecran entier. Le voile borne donc la largeur, et la modale
+   * s'y conforme.
+   *
+   * `100dvh` tient compte de la barre d'adresse mobile, qui reduit la hauteur
+   * reellement disponible ; `100vh` reste en repli pour les moteurs qui ignorent
+   * `dvh`. La valeur soustraite correspond au rembourrage du voile, pas a une
+   * marge arbitraire.
+   */
+  .voile-modale {
+    padding: var(--espace-3) var(--espace-2);
+  }
+  .modale {
+    max-width: 100%;
+    max-height: calc(100vh - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+  /* Le contenu de la modale se resserre, et le pied empile ses boutons : sur un
+     ecran tactile, des boutons pleine largeur restent atteignables au pouce, la
+     ou deux boutons côte a côte auraient ete trop etroits. `column-reverse`
+     garde l'action principale en haut, la ou le pouce se pose. */
+  .modale-entete {
+    padding: var(--espace-4) var(--espace-4) var(--espace-2);
+    gap: var(--espace-2);
+  }
+  .modale-corps {
+    padding: 0 var(--espace-4) var(--espace-3);
+  }
+  .modale-pied {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    padding: var(--espace-3) var(--espace-4);
+  }
+  .modale-pied .bouton {
+    width: 100%;
+  }
+  /*
+   * GRILLES A PISTE MINIMALE — LE PIEGE DE `auto-fit`.
+   *
+   * `.champ-grille` (minmax 14 rem) et `.liste-definitions` (minmax 16 rem)
+   * devraient se replier seules a une colonne sur un ecran plus etroit que leur
+   * piste minimale. Elles ne le font pas : la piste depasse la largeur
+   * disponible, et les colonnes DEBORDENT au lieu de se contracter. Le defaut
+   * est dans la piste, pas dans le conteneur.
+   *
+   * La colonne unique est donc imposee explicitement : chaque champ occupe toute
+   * la largeur, lisible et surtout saisissable au doigt.
+   */
+  .champ-grille,
+  .liste-definitions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /*
+   * BARRES D'OUTILS.
+   *
+   * Les groupes portent une largeur MINIMALE de 12 a 16 rem selon la barre, pour
+   * ne pas etre comprimes sur un ecran etroit. Sous 640 px, ce plancher depasse
+   * lui aussi la largeur disponible : on le retire pour que la barre passe a la
+   * ligne franchement, plutot que de deborder. Le parent etant en `flex-wrap`,
+   * c'est le comportement attendu.
+   */
+  .barre-outils-groupe {
+    min-width: 0;
+    width: 100%;
+  }
+  .barre-outils-groupe > * {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+  /* En-tete de carte : des que la place manque, le titre et l'action passent l'un
+     au-dessus de l'autre au lieu de se presser l'un contre l'autre. */
+  .carte-entete {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--espace-2);
+    padding: var(--espace-3) var(--espace-4);
+  }
+  /* Les actions de l'en-tete de fiche se partagent la largeur disponible. */
+  .actions-rapides > .bouton {
+    flex: 1 1 12rem;
+  }
+  /* Rembourrage lateral des cartes : 1,5 rem de chaque cote represente 48 px sur
+     un ecran de 375 px. On le resserre pour rendre de la largeur au contenu. */
+  .carte-corps {
+    padding: var(--espace-4);
+  }
+  .statistique {
+    padding: var(--espace-3) var(--espace-4);
+  }
+  /* La pagination occupe toute la largeur et repartit ses controles. */
+  .pagination-controles {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* ── Responsive : tableaux en cartes sur mobile ────────────────────────────── */
+
+@media (max-width: 48rem) {
+  .tableau-cartes thead {
+    display: none;
+  }
+
+  .tableau-cartes,
+  .tableau-cartes tbody,
+  .tableau-cartes tr,
+  .tableau-cartes td {
+    display: block;
+    width: 100%;
+  }
+
+  /*
+   * A ce stade, le tableau cesse d'etre un tableau : chaque LIGNE devient une
+   * carte empilee, et chaque CELLULE devient une paire etiquette / valeur.
+   *
+   * Le conteneur gardait cependant sa bordure et son rayon — deux traits
+   * concentriques autour de cartes elles-memes bordees, qui accumulaient les
+   * lignes et produisaient un double encadrement. La bordure exterieure est donc
+   * retiree : les separations sont portees par les lignes elles-memes, et chaque
+   * record reste visuellement distinct.
+   */
+  .tableau-conteneur:has(.tableau-cartes) {
+    border: none;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .tableau-cartes tr {
+    padding: var(--espace-3);
+    border-bottom: 1px solid var(--bordure);
+  }
+
+  /*
+   * La cellule devient une paire libelle / valeur. Deux precautions :
+   *
+   *   - `flex: 1 1 auto` + `min-width: 0` sur la valeur : sans minimum a zero,
+   *     elle refuse de se contracter sous la largeur de son contenu (un nom de
+   *     patient long, un montant chiffre) et repousse l'etiquette hors de la
+   *     carte. C'est la cause la plus frequente du debordement horizontal sur ce
+   *     palier.
+   *
+   *   - `overflow-wrap: anywhere` : un numero de telephone, une adresse peuvent
+   *     depasser la largeur restante. Ils se replient alors proprement plutot que
+   *     de deborder.
+   */
+  .tableau-cartes td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--espace-3);
+    padding: 0.2rem 0;
+    border: none;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  /* L'etiquette ne se comprime pas et ne se colle pas a la valeur. */
+  .tableau-cartes td::before {
+    content: attr(data-etiquette);
+    flex: 0 0 auto;
+    max-width: 45%;
+    font-size: var(--taille-tres-petite);
+    font-weight: 600;
+    color: var(--texte-tertiaire);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+  }
+  /* La valeur occupe le reste et se replie si besoin. */
+  .tableau-cartes td > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* Les colonnes NUMERIQUES gardent leur alignement a droite en mode carte, ou
+     l'alignement naturel du texte ferait diverger les montants. */
+  .tableau-cartes td.tableau-numerique {
+    text-align: right;
+  }
+
+  .tableau-cartes td[data-etiquette]:empty {
+    display: none;
+  }
+  /* Un badge d'action est une cible tactile : on lui rend sa hauteur. */
+  .tableau-cartes .badge,
+  .tableau-cartes .bouton-lien {
+    min-height: 2rem;
+    align-items: center;
+  }
+}
+

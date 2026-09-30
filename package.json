@@ -1,0 +1,56 @@
+{
+  "name": "sahed-dental-clinic",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Systeme de gestion de cabinet dentaire - Sahed Dental Clinic",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "dev:demo": "node scripts/demo-env.mjs next dev -p 3000",
+    "build": "prisma generate --schema database/prisma/schema.prisma && next build",
+    "start": "next start -p 3000",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "prisma generate --schema database/prisma/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema database/prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema database/prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --force --schema database/prisma/schema.prisma",
+    "db:seed": "tsx database/seed.ts",
+    "db:seed:demo": "node scripts/demo-env.mjs tsx database/seed-demo.ts",
+    "db:demo:start": "node scripts/demo-db.mjs start",
+    "db:demo:stop": "node scripts/demo-db.mjs stop",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "backup:postgres": "node database/scripts/backup-postgres.mjs",
+    "corbeille:purger": "node database/scripts/purge-corbeille.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "6.1.0",
+    "argon2": "0.41.1",
+    "date-fns": "4.1.0",
+    "file-type": "19.6.0",
+    "jose": "5.9.6",
+    "next": "15.5.25",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-is": "19.1.0",
+    "recharts": "2.15.3",
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.5",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.25",
+    "prettier": "3.4.2",
+    "prisma": "6.1.0",
+    "tsx": "4.20.3",
+    "typescript": "5.7.3",
+    "vitest": "2.1.9"
+  }
+}

@@ -1,0 +1,746 @@
+// =============================================================================
+//  SAHED DENTAL CLINIC — SCHEMA PRISMA (PRODUCTION)
+// =============================================================================
+//
+//  ATTENTION — LECTURE OBLIGATOIRE
+//
+//  Ce schema est concu POUR POSTGRESQL. PostgreSQL est la SEULE source de verite,
+//  en developpement comme en production.
+//
+//  NOTE D'ARCHITECTURE
+//    Une variante SQLite locale existait pour executer l'application sur une
+//    machine depourvue de PostgreSQL. Elle a ete RETIREE : SQLite ne supporte ni
+//    les enums natifs ni la recherche insensible a la casse (`mode:
+//    'insensitive'`), ce qui faisait diverger le comportement observe du
+//    comportement de production. Cibler PostgreSQL uniquement garantit que ce
+//    qui est verifie est exactement ce qui sera execute.
+//
+//  Contraintes propres a PostgreSQL (index partiels, CHECK, trigram, unicite
+//  insensible a la casse) : elles vivent dans la migration
+//  `database/prisma/migrations/20250101000001_postgresql_integrity/`.
+//  Voir `docs/DATABASE.md` et `docs/POSTGRESQL-VERIFICATION.md`.
+//
+//  REGLE METIER CENTRALE (§8 de la specification)
+//
+//    Patient 1 ── n Treatment 1 ── n TreatmentVisit 1 ── n Payment
+//
+//  Un patient a un nombre illimite de traitements historiques.
+//  « Reste a payer » n'est JAMAIS stocke : il est toujours calcule a partir
+//  de la somme des paiements valides.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+//  UTILISATEURS & SESSIONS
+// -----------------------------------------------------------------------------
+
+/// Le medecin (et, plus tard, d'eventuels roles supplementaires).
+/// V1 n'expose que le role MEDECIN. L'enumeration existe des maintenant pour
+/// que la couche d'autorisation n'ait pas a etre reconstruite plus tard.
+enum UserRole {
+  MEDECIN
+  /// Reserve pour une evolution future — non active en V1.
+  ASSISTANT
+  ADMINISTRATEUR
+}
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  email       String   @unique
+  displayName String
+  role        UserRole @default(MEDECIN)
+
+  /// Empreinte Argon2id. Jamais exposee, jamais renvoyee par l'API.
+  passwordHash String
+
+  isActive Boolean @default(true)
+
+  /// Compteur d'echecs consecutifs — base de la protection anti-force brute.
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime  @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions          Session[]
+  activityLogs      ActivityLog[]
+  createdPayments   Payment[]             @relation("PaymentCreatedBy")
+  correctedPayments PaymentCorrection[]   @relation("CorrectionCreatedBy")
+  medicalRecords    MedicalRecord[]       @relation("MedicalRecordAuthor")
+  prescriptions     Prescription[]        @relation("PrescriptionAuthor")
+  odontogram        OdontogramEntry[]     @relation("OdontogramAuthor")
+  documents         Document[]            @relation("DocumentAuthor")
+  reschedules       AppointmentReschedule[] @relation("RescheduleChangedBy")
+  appointments      Appointment[]
+  trashEntries      TrashEntry[]          @relation("TrashDeletedBy")
+  passwordResets    PasswordResetToken[]
+
+  @@map("users")
+}
+
+/// Session serveur. Le cookie ne contient qu'un jeton opaque ; le secret de
+/// session vit uniquement en base, sous forme d'empreinte SHA-256.
+model Session {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 du jeton de session. Le jeton en clair n'est jamais stocke.
+  tokenHash String @unique
+
+  /// SHA-256 du jeton CSRF associe a la session.
+  csrfTokenHash String
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Journal des tentatives de connexion — sert au rate limiting et a l'audit.
+model LoginAttempt {
+  id         String   @id @default(uuid()) @db.Uuid
+  email      String
+  ipAddress  String
+  successful Boolean  @default(false)
+
+  /// Raison technique uniquement, conservee cote serveur. Le message renvoye a
+  /// l'interface reste generique (§6).
+  failureReason String?
+  createdAt     DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("login_attempts")
+}
+
+/// Jeton de reinitialisation de mot de passe — courte duree de vie, usage unique.
+model PasswordResetToken {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 du jeton. Le jeton en clair n'est transmis qu'une seule fois.
+  tokenHash String @unique
+
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// -----------------------------------------------------------------------------
+//  PATIENTS
+// -----------------------------------------------------------------------------
+//  L'identifiant interne (UUID) n'est JAMAIS affiche dans l'interface (§48).
+//  Les patients sont recherches par Nom, Prenom et Telephone (§7).
+
+enum Sexe {
+  MASCULIN
+  FEMININ
+  NON_PRECISE
+}
+
+model Patient {
+  id String @id @default(uuid()) @db.Uuid
+
+  nom    String
+  prenom String
+
+  /// Age en annees revolues, saisi au cabinet.
+  ///
+  ///  POURQUOI UNE COLONNE DEDIEE
+  ///    Le medecin enregistre l'age, pas une date de naissance : la date de
+  ///    naissance n'est pas un champ du formulaire. Stocker l'age permet de
+  ///    creer et de modifier un patient sans exiger une date de naissance.
+  ///
+  ///  `dateNaissance` est CONSERVEE : les patients deja enregistres la
+  ///    possedent, et elle reste la donnee la plus precise lorsqu'elle est
+  ///    connue. L'age saisi prime pour l'affichage ; a defaut, l'age est
+  ///    calcule depuis la date de naissance (voir `lib/age`).
+  age Int?
+
+  dateNaissance DateTime?
+  sexe          Sexe    @default(NON_PRECISE)
+
+  telephone           String
+  telephoneSecondaire String?
+
+  adresse String?
+  email   String?
+
+  allergies           String?
+  antecedentsMedicaux String?
+  medicamentsActuels  String?
+  contactUrgence      String?
+  notesGenerales      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments   Appointment[]
+  treatments     Treatment[]
+  payments       Payment[]
+  medicalRecords MedicalRecord[]
+  prescriptions  Prescription[]
+  odontogram     OdontogramEntry[]
+  documents      Document[]
+
+  @@index([nom, prenom])
+  @@index([prenom, nom])
+  @@index([telephone])
+  @@index([createdAt])
+  @@map("patients")
+}
+
+// -----------------------------------------------------------------------------
+//  TRAITEMENTS & VISITES  (Patient ── n Treatment ── n TreatmentVisit)
+// -----------------------------------------------------------------------------
+
+enum StatutTraitement {
+  PLANIFIE
+  EN_COURS
+  TERMINE
+  ANNULE
+}
+
+model Treatment {
+  id String @id @default(uuid()) @db.Uuid
+
+  patientId String  @db.Uuid
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  typeTraitement String
+
+  /// Dents au format FDI, stockees en liste JSON (ex. ["36","37"]).
+  /// Regroupees par 2 chiffres, denture permanente 11..48 et temporaire 51..85.
+  dents String @default("[]")
+
+  diagnostic  String?
+  description String?
+
+  /// Prix total en CENTIMES. Les montants ne sont jamais stockes en flottant.
+  prixTotalCentimes Int
+
+  statut StatutTraitement @default(PLANIFIE)
+
+  dateDebut DateTime?
+  dateFin   DateTime?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  visits         TreatmentVisit[]
+  payments       Payment[]
+  appointments   Appointment[]
+  prescriptions  Prescription[]
+  odontogram     OdontogramEntry[]
+  medicalRecords MedicalRecord[]
+
+  /// « Reste a payer » et « montant paye » ne figurent volontairement PAS ici :
+  /// ils sont calcules depuis les paiements valides (§12, §17).
+  @@index([patientId, statut])
+  @@index([patientId, dateDebut])
+  @@index([statut])
+  @@map("treatments")
+}
+
+/// Une visite = une seance. Un traitement peut comporter plusieurs visites.
+/// Exemple : une devitalisation = 1 traitement / 3 visites (§13).
+model TreatmentVisit {
+  id String @id @default(uuid()) @db.Uuid
+
+  treatmentId String    @db.Uuid
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+
+  /// Numero de seance (1, 2, 3...) pour l'affichage chronologique.
+  numeroSeance Int
+  dateDebut    DateTime
+  dateFin      DateTime?
+
+  notes               String?
+  proceduresRealisees String?
+
+  /// Rendez-vous associe, lorsqu'une visite provient d'un rendez-vous.
+  appointmentId String?      @unique @db.Uuid
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@unique([treatmentId, numeroSeance])
+  @@index([treatmentId, dateDebut])
+  @@map("treatment_visits")
+}
+
+// -----------------------------------------------------------------------------
+//  RENDEZ-VOUS & REPROGRAMMATION
+// -----------------------------------------------------------------------------
+
+enum StatutRendezVous {
+  PLANIFIE
+  CONFIRME
+  EN_ATTENTE
+  EN_COURS
+  TERMINE
+  ANNULE
+  ABSENT
+  REPROGRAMME
+}
+
+model Appointment {
+  id String @id @default(uuid()) @db.Uuid
+
+  patientId String  @db.Uuid
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  /// Praticien. V1 = un seul medecin ; la colonne existe pour un futur cabinet
+  /// a plusieurs praticiens sans reconstruire le modele.
+  praticienId String? @db.Uuid
+  praticien   User?   @relation(fields: [praticienId], references: [id], onDelete: SetNull)
+
+  treatmentId String?    @db.Uuid
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+
+  dateDebut DateTime
+  dateFin   DateTime
+
+  dents String @default("[]")
+
+  motif String?
+  notes String?
+
+  /// Cle d'idempotence du nouveau formulaire de rendez-vous.
+  submissionKey String? @unique
+
+  statut StatutRendezVous @default(PLANIFIE)
+
+  /// Motif d'annulation / d'absence, conserve pour l'historique.
+  motifStatut String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  visit      TreatmentVisit?
+  reschedules AppointmentReschedule[]
+
+  @@index([dateDebut])
+  @@index([patientId, dateDebut])
+  @@index([statut, dateDebut])
+  @@index([treatmentId])
+  @@map("appointments")
+}
+
+/// Historique de reprogrammation. Chaque reprogrammation AJOUTE une ligne ;
+/// l'historique precedent n'est jamais ecrase (§15, §11).
+model AppointmentReschedule {
+  id String @id @default(uuid()) @db.Uuid
+
+  appointmentId String      @db.Uuid
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  ancienneDateDebut DateTime
+  ancienneDateFin   DateTime
+  nouvelleDateDebut DateTime
+  nouvelleDateFin   DateTime
+
+  motif String?
+
+  /// Qui a effectue le changement, et quand.
+  modifieParId String? @db.Uuid
+  modifiePar   User?   @relation("RescheduleChangedBy", fields: [modifieParId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([appointmentId, createdAt])
+  @@map("appointment_reschedules")
+}
+
+// -----------------------------------------------------------------------------
+//  PAIEMENTS — evenements financiers historiques
+// -----------------------------------------------------------------------------
+//  Un paiement n'est JAMAIS modifie ni supprime silencieusement.
+//  Toute correction passe par PaymentCorrection (annulation / contre-passation).
+
+enum MethodePaiement {
+  ESPECES
+  CARTE
+  VIREMENT
+  AUTRE
+}
+
+enum StatutPaiement {
+  /// Paiement valide : compte dans les totaux.
+  VALIDE
+  /// Annule par contre-passation : exclu des totaux, conserve pour l'audit.
+  ANNULE
+}
+
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+
+  patientId String  @db.Uuid
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  treatmentId String    @db.Uuid
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Restrict)
+
+  /// Visite concernee, lorsqu'elle est connue (§13, §16).
+  treatmentVisitId String?         @db.Uuid
+  treatmentVisit   TreatmentVisit? @relation(fields: [treatmentVisitId], references: [id], onDelete: SetNull)
+
+  /// Montant en centimes. Toujours strictement positif (verifie cote serveur).
+  montantCentimes Int
+
+  datePaiement DateTime
+
+  /// Methode d'encaissement. Conservee en base pour l'architecture existante,
+  /// mais NON exposee dans l'interface (§16). Une valeur par defaut permet de
+  /// creer un paiement sans que le client ait a la fournir : aucune migration
+  /// destructrice, le champ n'est simplement plus demande.
+  methode MethodePaiement @default(ESPECES)
+  statut  StatutPaiement  @default(VALIDE)
+
+  notes String?
+
+  /// Cle d'idempotence fournie par le client : empeche la double soumission
+  /// d'un meme paiement (§17). Unique en base.
+  idempotencyKey String @unique
+
+  /// Renseigne lorsque le paiement resulte d'une correction (contre-passation).
+  sourceCorrectionId String? @unique @db.Uuid
+
+  createdById String @db.Uuid
+  createdBy   User   @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  corrections PaymentCorrection[]
+
+  @@index([patientId, datePaiement])
+  @@index([treatmentId, statut])
+  @@index([datePaiement, statut])
+  @@index([statut])
+  @@map("payments")
+}
+
+enum TypeCorrectionPaiement {
+  /// Le paiement devient nul : une contre-passation de signe oppose est creee.
+  ANNULATION
+  /// Correction de montant : le paiement est annule et un nouveau est cree.
+  CORRECTION_MONTANT
+  /// Correction de la methode ou de la date uniquement.
+  CORRECTION_ATTRIBUT
+}
+
+model PaymentCorrection {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Paiement d'origine corrige.
+  paymentId String  @db.Uuid
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  type TypeCorrectionPaiement
+
+  motif String
+
+  /// Valeurs avant correction, conservees pour l'audit.
+  ancienMontantCentimes Int
+  ancienneMethode       MethodePaiement
+  ancienneDate          DateTime
+
+  nouveauMontantCentimes Int?
+  nouvelleMethode        MethodePaiement?
+  nouvelleDate           DateTime?
+
+  createdById String @db.Uuid
+  createdBy   User   @relation("CorrectionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentId, createdAt])
+  @@map("payment_corrections")
+}
+
+// -----------------------------------------------------------------------------
+//  DOSSIER MEDICAL — entrees historiques, jamais un champ unique ecrasable (§19)
+// -----------------------------------------------------------------------------
+
+model MedicalRecord {
+  id String @id @default(uuid()) @db.Uuid
+
+  patientId String  @db.Uuid
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  treatmentId String?    @db.Uuid
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+
+  date DateTime
+
+  motifPlainte      String?
+  examen            String?
+  diagnostic        String?
+  traitementRealise String?
+  observations      String?
+  recommandations   String?
+  dateSuivi         DateTime?
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("MedicalRecordAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId, date])
+  @@map("medical_records")
+}
+
+// -----------------------------------------------------------------------------
+//  ORDONNANCES — numerique uniquement, AUCUN PDF (§21, §45)
+// -----------------------------------------------------------------------------
+
+model Prescription {
+  id String @id @default(uuid()) @db.Uuid
+
+  patientId String  @db.Uuid
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  treatmentId String?    @db.Uuid
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+
+  date DateTime
+
+  notes String?
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("PrescriptionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items PrescriptionItem[]
+
+  @@index([patientId, date])
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id String @id @default(uuid()) @db.Uuid
+
+  prescriptionId String       @db.Uuid
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  medicament   String
+  dosage       String
+  frequence    String
+  duree        String
+  instructions String?
+  notes        String?
+
+  position Int @default(0)
+
+  @@index([prescriptionId, position])
+  @@map("prescription_items")
+}
+
+// -----------------------------------------------------------------------------
+//  ODONTOGRAMME FDI — historique par dent, jamais ecrase (§20)
+// -----------------------------------------------------------------------------
+
+enum EtatDent {
+  SAINE
+  CARIE
+  OBTUREE
+  ABSENTE
+  COURONNE
+  DEVITALISEE
+  EXTRACTION_PREVUE
+  IMPLANT
+  AUTRE
+}
+
+/// Chaque changement d'etat d'une dent AJOUTE une entree.
+/// L'etat courant d'une dent = la derniere entree par date.
+model OdontogramEntry {
+  id String @id @default(uuid()) @db.Uuid
+
+  patientId String  @db.Uuid
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  treatmentId String?    @db.Uuid
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+
+  /// Identifiant FDI a deux chiffres : 11..18, 21..28, 31..38, 41..48,
+  /// ainsi que 51..55, 61..65, 71..75, 81..85 pour la denture temporaire.
+  numeroDent String
+
+  etat EtatDent
+
+  commentaire String?
+  date        DateTime
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("OdontogramAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([patientId, numeroDent, date])
+  @@map("odontogram_entries")
+}
+
+// -----------------------------------------------------------------------------
+//  DOCUMENTS — stockage prive, aucune URL publique previsible (§22)
+// -----------------------------------------------------------------------------
+
+model Document {
+  id String @id @default(uuid()) @db.Uuid
+
+  patientId String  @db.Uuid
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  /// Nom de fichier d'origine assaini, affiche au medecin.
+  nomOriginal String
+
+  /// Chemin de stockage interne (hors racine web), jamais expose.
+  cheminStockage String
+
+  mimeType     String
+  tailleOctets Int
+
+  /// SHA-256 du contenu — detection des doublons et verification d'integrite.
+  checksumSha256 String
+
+  categorie   String?
+  description String?
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("DocumentAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId, createdAt])
+  @@map("documents")
+}
+
+// -----------------------------------------------------------------------------
+//  CORBEILLE — EXACTEMENT 24 HEURES  (§23)
+// -----------------------------------------------------------------------------
+
+enum TypeEntiteSupprimable {
+  PATIENT
+  RENDEZ_VOUS
+  TRAITEMENT
+  VISITE_TRAITEMENT
+  PAIEMENT
+  DOSSIER_MEDICAL
+  ORDONNANCE
+  DOCUMENT
+  ENTREE_ODONTOGRAMME
+}
+
+model TrashEntry {
+  id String @id @default(uuid()) @db.Uuid
+
+  entityType TypeEntiteSupprimable
+
+  /// Identifiant interne de l'entite supprimee (UUID). Jamais affiche.
+  entityId String @db.Uuid
+
+  /// Description lisible affichee dans la Corbeille.
+  description String
+
+  /// Snapshot JSON des champs necessaires a la restauration.
+  snapshot String
+
+  supprimeParId String? @db.Uuid
+  supprimePar   User?   @relation("TrashDeletedBy", fields: [supprimeParId], references: [id], onDelete: SetNull)
+
+  supprimeLe DateTime @default(now())
+
+  /// Date limite de restauration = supprimeLe + 24 heures, EXACTEMENT.
+  /// La fenetre de 24 h est une constante du domaine, non configurable.
+  expireLe DateTime
+
+  restaureLe                  DateTime?
+  restaureParId               String?   @db.Uuid
+  supprimeDefinitivementLe    DateTime?
+  supprimeDefinitivementParId String?   @db.Uuid
+
+  @@unique([entityType, entityId])
+  @@index([expireLe])
+  @@index([supprimeLe])
+  @@index([restaureLe])
+  @@map("trash_entries")
+}
+
+// -----------------------------------------------------------------------------
+//  JOURNAL D'ACTIVITE (§24)
+// -----------------------------------------------------------------------------
+
+model ActivityLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  action String
+
+  userId String? @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  /// Email conserve meme si l'utilisateur est supprime plus tard.
+  userEmail String?
+
+  entityType String?
+  entityId   String? @db.Uuid
+
+  /// Metadonnees NON SENSIBLES uniquement (jamais de mot de passe, de hash,
+  /// de secret de session ni de detail medical inutile — §24).
+  metadata String?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@map("activity_logs")
+}
+
+// -----------------------------------------------------------------------------
+//  PARAMETRES (§28) — cle/valeur, aucune donnee technique sensible
+// -----------------------------------------------------------------------------
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

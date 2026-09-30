@@ -1,0 +1,363 @@
+/* =============================================================================
+ *  POLICES
+ * =============================================================================
+ *
+ *  BOOK ANTIQUA porte toute l'application. C'est une fonte LICENCIEE, absente du
+ *  catalogue Google Fonts : `next/font` ne peut donc pas la rapatrier.
+ *
+ *  Elle n'est PAS auto-hebergee ici, et c'est un choix assume. Un fichier
+ *  `woff2` avait ete produit puis servi depuis `public/polices`, mais le
+ *  navigateur le REJETAIT : « Failed to convert WOFF 2.0 font to SFNT ». Le
+ *  fichier a donc ete retire, car il n'apportait rien — Book Antiqua est
+ *  INSTALLEE sur les postes Windows et s'y resout toute seule.
+ *
+ *  La pile ci-dessous cite donc Book Antiqua en PREMIER (le navigateur la prend
+ *  dans le systeme), puis Palatino, qui lui est metriquement proche et est livre
+ *  avec Windows comme avec macOS. Ce repli evite qu'un poste depourvu de Book
+ *  Antiqua n'affiche brutalement une fonte sans rapport, ce qui decalerait la
+ *  mise en page.
+ *
+ *  La salutation « Bonjour Dr Sahed » est une exception : son jeton prefere
+ *  Brush Script MT et conserve des fontes manuscrites en repli.
+ * ========================================================================== */
+
+/* =============================================================================
+ *  JETONS DE DESIGN — SAHED DENTAL CLINIC
+ * =============================================================================
+ *
+ *  Deux themes, concus separement (§5) :
+ *    - Theme clair : fond bleu ciel doux, surfaces blanches, texte bleu marine.
+ *    - Theme sombre : fond bleu marine profond, texte blanc doux.
+ *
+ *  Le mode sombre n'est PAS une inversion automatique du mode clair : les
+ *  surfaces, les bordures et les accents ont chacun ete choisis pour rester
+ *  lisibles et professionnels dans leur contexte.
+ *
+ *  Le theme par defaut est le mode SOMBRE (identite « logiciel medical »),
+ *  bascule via l'attribut `data-theme` sur `<html>`.
+ *
+ *  --------------------------------------------------------------------------
+ *  HIERARCHIE DES SURFACES — LA CLE DE LA COHERENCE
+ *  --------------------------------------------------------------------------
+ *
+ *  Chaque theme dispose de QUATRE niveaux de surface, du plus profond au plus
+ *  proche de l'oeil :
+ *
+ *      --fond-page            fond general de l'application
+ *      --fond-surface         cartes et panneaux poses sur ce fond
+ *      --fond-surface-douce   zones internes (entetes de tableau, survols)
+ *      --fond-surface-eleve   surfaces flottantes (modales, infobulles)
+ *
+ *  Toute surface de l'interface doit ser a l'un de ces quatre jetons.
+ *  C'est ce qui garantit qu'un changement de theme reste coherent d'un bout a
+ *  l'autre : aucune couleur de surface n'est ecrite en dur dans un composant.
+ *
+ *  Les OMBRES suivent la meme logique : trois niveaux seulement, jamais plus,
+ *  et toujours portes par les jetons `--ombre-*`. Un composant ne compose jamais
+ *  sa propre ombre, sinon l'elevation cesse d'etre lisible d'une page a l'autre.
+ * ========================================================================== */
+
+:root {
+  /* ── Typographie ─────────────────────────────────────────────────────────── */
+  /*
+   * UNE SEULE FAMILLE POUR TOUTE L'APPLICATION : Book Antiqua.
+   *
+   * Elle porte le texte courant ET les titres. Les deux jetons restent distincts
+   * parce que les composants les emploient deja (texte courant d'un cote, titres
+   * de l'autre) : on peut a nouveau les differencier un jour sans toucher aux
+   * composants.
+   *
+   * Ordre : Book Antiqua (resolue depuis le SYSTEME, elle n'est pas
+   * auto-hebergee — voir l'en-tete de ce fichier) -> repli metriquement proche
+   * (Palatino, livre avec Windows et macOS) -> serif generique. Le repli n'est
+   * jamais retire : la premiere peinture doit toujours avoir une fonte a
+   * utiliser, meme si Book Antiqua est absente du poste.
+   */
+  --police-titre: 'Book Antiqua', Palatino, 'Palatino Linotype', 'URW Palladio L', Georgia,
+    'Times New Roman', 'Liberation Serif', serif;
+  --police-texte: 'Book Antiqua', Palatino, 'Palatino Linotype', 'URW Palladio L', Georgia,
+    'Times New Roman', 'Liberation Serif', serif;
+  /*
+   * Fonte de la salutation. Elle ne sert QU'AU texte « Bonjour Dr Sahed ».
+   *
+   * `Basic Math Italic` est demandee EN PREMIER, avec le nom de famille
+   * `Basic Math` juste apres : certains systemes ne livrent la variante qu'a
+   * travers le nom de famille, et non a travers le nom complet.
+   *
+   * ATTENTION — CETTE FONTE N'EST PAS PRESENTE SUR TOUS LES POSTES.
+   *
+   *   Mesure sur le poste de developpement (largeur du texte comparee a celle
+   *   d'une fonte fantaisiste : une largeur identique signifie « non resolue ») :
+   *
+   *     'Basic Math Italic' .... non resolue
+   *     'Basic Math' ........... non resolue
+   *     'Cambria Math' ......... resolue
+   *
+   *   Sans repli, la salutation tomberait sur la fonte generique du navigateur :
+   *   aucune garantie d'italic, ni de rendu identique ailleurs. `Cambria Math` est
+   *   donc citee immediatement apres — meme famille, presente sur le poste cible,
+   *   et c'est elle qui peint reellement le texte la ou `Basic Math` manque.
+   *
+   * Les fontes suivantes ne servent qu'a garantir un rendu metriquement proche
+   * sur un poste qui n'aurait ni l'une ni l'autre. La cursive Brush Script MT a
+   * ete REMPLACEE par la mathématique italique.
+   */
+  --police-salutation: 'Basic Math Italic', 'Basic Math', 'Cambria Math', 'Cambria',
+    'Palatino Linotype', 'URW Palladio L', Georgia, 'Times New Roman', serif;
+  --police-mono: 'Cascadia Mono', 'SF Mono', 'Consolas', 'Liberation Mono', monospace;
+
+  --taille-base: 0.9375rem; /* 15px — densite lisible pour un logiciel de gestion */
+  --taille-petite: 0.8125rem;
+  --taille-tres-petite: 0.75rem;
+  --taille-titre-section: 1.125rem;
+
+  /* ── Espacements ─────────────────────────────────────────────────────────── */
+  --espace-1: 0.25rem;
+  --espace-2: 0.5rem;
+  --espace-3: 0.75rem;
+  --espace-4: 1rem;
+  --espace-5: 1.5rem;
+  --espace-6: 2rem;
+  --espace-7: 2.5rem;
+  --espace-8: 3rem;
+
+  /* ── Rayons — sobres, jamais de cartes tres arrondies ────────────────────── */
+  --rayon-petit: 4px;
+  --rayon-moyen: 6px;
+  --rayon-grand: 8px;
+  --rayon-rond: 999px;
+
+  /* ── Transitions retenues ────────────────────────────────────────────────── */
+  --transition-rapide: 120ms ease;
+  --transition-normale: 200ms ease;
+  /* Reservee aux ombres : une elevation qui apparait doit etre plus lente que
+     la couleur, sinon le survol « saute » au lieu de se poser. */
+  --transition-ombre: 180ms ease;
+
+  /* ── Profondeur ──────────────────────────────────────────────────────────── */
+  --z-dessous: 1;
+  /* Le rail flotte au-dessus du contenu. La grille lui reserve sa colonne, mais
+     il doit passer devant les elements qui defilent dessous. */
+  --z-rail: 30;
+  --z-dessus: 50;
+  --z-modale: 100;
+  --z-notification: 200;
+
+  /* ── Statuts — sobres, non satures (§5) ──────────────────────────────────── */
+  /* Ces valeurs sont partagees par les deux themes : elles portent un sens
+     (succes, avertissement, erreur) et doivent rester reconnaissables. */
+
+  --police-defaut: var(--police-texte);
+
+  /* ── Rail de navigation ──────────────────────────────────────────────────
+   *  `--rail-place` est la place RESERVEE au rail dans la grille de la
+   *  coquille. Le rail lui-meme est plus etroit (environ 3.9 rem) : l'ecart
+   *  menage l'espace ou il flotte, detache du contenu.
+   *
+   *  Elle remplace l'ancienne `--largeur-sidebar` (15 rem) : le contenu gagne
+   *  donc pres de 10 rem de largeur utile.
+   */
+  --rail-place: 5.5rem;
+  --rail-place-tablette: 4.5rem;
+}
+
+/* =============================================================================
+ *  THEME SOMBRE (par defaut) — bleu marine profond
+ * ========================================================================== */
+
+:root,
+[data-theme='sombre'] {
+  color-scheme: dark;
+
+  /* ── Fonds — quatre niveaux distincts, jamais un seul aplat ─────────────── */
+  --fond-page: #0e1727; /* bleu nuit profond, le plus en retrait */
+  --fond-surface: #17253c; /* cartes : nettement plus clair que la page */
+  --fond-surface-douce: #1d2e49; /* zones internes, survols, entetes de tableau */
+  --fond-surface-eleve: #22344f; /* surfaces flottantes : modales, infobulles */
+  --fond-entete: #141f34;
+  --fond-sidebar: #131f34; /* rail : entre la page et les cartes */
+  --fond-champ: #101c30; /* creuse : un champ se lit comme un creux */
+
+  /* Bordures — visibles mais jamais dures. La bordure sert a DETACHER la
+     surface du fond, elle ne doit pas cerner l'element d'un trait noir. */
+  --bordure: #2a3d5e;
+  --bordure-douce: #22334f;
+  --bordure-forte: #3c5478;
+  --bordure-champ: #31476b;
+  --bordure-focus: #5b9ae8;
+
+  /* Textes — trois niveaux, tous lisibles sur les quatre surfaces ci-dessus. */
+  --texte-principal: #edf3fc; /* blanc doux, jamais blanc pur */
+  --texte-secondaire: #b3c4db; /* bleu-gris lisible */
+  /*
+   * Legerement plus clair qu'un simple gris de milieu : le texte tertiaire doit
+   * rester au-dessus de 4.5:1 sur la surface de SURVOL (`--survol`), qui est la
+   * plus claire du theme sombre. C'est ce couple qui contraint la valeur.
+   */
+  --texte-tertiaire: #93a5bf;
+  --texte-inverse: #0e1727;
+
+  /* Accent — bleu medical professionnel */
+  --accent: #5b9ae8;
+  --accent-survol: #77adee;
+  --accent-actif: #4a86d2;
+  --accent-doux: #1d3b60;
+  /*
+   * LIBELLE SUR L'ACCENT.
+   *
+   * Sur ce bleu, un blanc pur ne donne que 2.9:1 — sous le seuil de 4.5:1, donc
+   * insuffisant pour un libelle de bouton. On emploie un bleu tres sombre, qui
+   * monte a 6.1:1 tout en restant dans la palette (et non un noir neutre, qui
+   * casserait la teinte).
+   */
+  --accent-texte: #0a1626;
+
+  /* Surfaces d'interaction — un seul jeu pour tout le logiciel, afin que le
+     survol se comporte pareil sur un bouton, une ligne de tableau ou un onglet. */
+  --survol: #233650;
+  --survol-fort: #2b415f;
+  --actif: #1d3b60;
+
+  /* Statuts */
+  --succes: #46ab74;
+  --succes-doux: #17392a;
+  --succes-texte: #86d8a7;
+
+  --avertissement: #d8a44a;
+  --avertissement-doux: #3d3016;
+  --avertissement-texte: #efc980;
+
+  --erreur: #d9615a;
+  --erreur-doux: #3f1d1b;
+  --erreur-texte: #f39a95;
+
+  --information: #5b9ae8;
+  --information-doux: #1d3b60;
+  --information-texte: #a6cbf3;
+
+  /* Focus */
+  --focus-anneau: #77adee;
+
+  /* ── Ombres — trois niveaux, discrets et naturels ─────────────────────────
+   *  Sur fond sombre, une ombre NOIRE pure disparaitrait : l'elevation est donc
+   *  portee par un noir bleute legerement plus opaque que dans le theme clair,
+   *  et completee par la bordure. Les valeurs restent faibles : on cherche une
+   *  elevation lisible, pas un halo.
+   */
+  --ombre-petite: 0 1px 3px rgba(4, 9, 18, 0.3), 0 1px 2px rgba(4, 9, 18, 0.18);
+  --ombre-moyenne: 0 4px 14px rgba(4, 9, 18, 0.34), 0 1px 3px rgba(4, 9, 18, 0.2);
+  --ombre-grande: 0 12px 30px rgba(4, 9, 18, 0.38), 0 2px 6px rgba(4, 9, 18, 0.2);
+  /* Le rail flotte plus haut que le contenu : son ombre est un peu plus portee. */
+  --ombre-rail: 0 6px 22px rgba(4, 9, 18, 0.4), 0 1px 3px rgba(4, 9, 18, 0.24);
+  /* Reflet tres leger sur le bord superieur des surfaces elevees. */
+  --liseret-haut: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* Voile des modales */
+  --voile-modale: rgba(5, 10, 19, 0.72);
+
+  /* Odontogramme — code couleur des etats des dents */
+  --dent-saine: #46ab74;
+  --dent-carie: #d9615a;
+  --dent-obturee: #5b9ae8;
+  --dent-absente: #5c6b82;
+  --dent-couronne: #d8a44a;
+  --dent-devitalisee: #a67ddd;
+  --dent-extraction: #dd8552;
+  --dent-implant: #4aa8dd;
+  --dent-autre: #8b9db8;
+}
+
+/* =============================================================================
+ *  THEME CLAIR — bleu ciel doux, surfaces blanches, texte marine
+ * ========================================================================== */
+
+[data-theme='clair'] {
+  color-scheme: light;
+
+  /* ── Fonds — le bleu ciel porte la page, le blanc reserve aux surfaces ────
+   *  Les cartes restent blanches et les zones internes reprennent des bleus
+   *  tres pales : la page gagne une identite baby blue sans perdre sa clarte.
+   */
+  --fond-page: #e6f3ff;
+  --fond-surface: #ffffff;
+  --fond-surface-douce: #f1f8ff;
+  --fond-surface-eleve: #ffffff;
+  --fond-entete: #fafdff;
+  --fond-sidebar: #d9edff; /* rail bleu ciel, distinct des cartes blanches */
+  --fond-champ: #ffffff;
+
+  /* Bordures */
+  --bordure: #cfe2f3;
+  --bordure-douce: #deedfa;
+  --bordure-forte: #aacbe7;
+  --bordure-champ: #bfd8ee;
+  --bordure-focus: #2563a8;
+
+  /* Textes */
+  --texte-principal: #152238;
+  --texte-secondaire: #47586f;
+  /*
+   * Le texte tertiaire est le plus clair des trois, mais il reste un texte
+   * LISIBLE : c'est lui qui porte les libelles d'en-tete de tableau, les dates
+   * secondaires et les libelles d'aide. Une valeur plus pale (l'ancien #6d7f97)
+   * tombait a 4.09:1 sur les cartes blanches et 3.67:1 sur le fond de page —
+   * sous le seuil de 4.5:1, donc inconfortable a lire.
+   */
+  --texte-tertiaire: #5c6d84;
+  --texte-inverse: #ffffff;
+
+  /* Accent */
+  --accent: #2563a8;
+  --accent-survol: #1d4f8a;
+  --accent-actif: #17406f;
+  --accent-doux: #e2ecf9;
+  --accent-texte: #ffffff;
+
+  /* Surfaces d'interaction */
+  --survol: #e9f5ff;
+  --survol-fort: #dcedfb;
+  --actif: #d7ebfc;
+
+  /* Statuts — plus sombres pour un contraste suffisant sur fond blanc */
+  --succes: #1f7a4d;
+  --succes-doux: #e4f4ea;
+  --succes-texte: #14603b;
+
+  --avertissement: #9a6b1c;
+  --avertissement-doux: #fbf1dc;
+  --avertissement-texte: #7a5312;
+
+  --erreur: #b03a34;
+  --erreur-doux: #fbe8e6;
+  --erreur-texte: #8c2e28;
+
+  --information: #2563a8;
+  --information-doux: #e2ecf9;
+  --information-texte: #1d4f8a;
+
+  --focus-anneau: #2563a8;
+
+  /* ── Ombres — teintees en bleu marine, jamais en noir pur ────────────────
+   *  Une ombre noire sur fond clair parait sale. Les valeurs sont faibles et
+   *  la portee courte : on veut detacher la carte du fond, pas la faire léviter.
+   */
+  --ombre-petite: 0 1px 3px rgba(21, 34, 56, 0.06), 0 1px 2px rgba(21, 34, 56, 0.035);
+  --ombre-moyenne: 0 5px 14px rgba(21, 34, 56, 0.075), 0 1px 3px rgba(21, 34, 56, 0.04);
+  --ombre-grande: 0 12px 28px rgba(21, 34, 56, 0.11), 0 2px 6px rgba(21, 34, 56, 0.045);
+  --ombre-rail: 0 5px 18px rgba(21, 34, 56, 0.11), 0 1px 3px rgba(21, 34, 56, 0.05);
+  --liseret-haut: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  --voile-modale: rgba(21, 34, 56, 0.42);
+
+  /* Odontogramme */
+  --dent-saine: #1f7a4d;
+  --dent-carie: #b03a34;
+  --dent-obturee: #2563a8;
+  --dent-absente: #8394ab;
+  --dent-couronne: #9a6b1c;
+  --dent-devitalisee: #7a4fb0;
+  --dent-extraction: #b0642a;
+  --dent-implant: #2a7fa8;
+  --dent-autre: #5c6d84;
+}
+

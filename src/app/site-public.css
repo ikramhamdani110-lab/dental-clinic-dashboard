@@ -1,0 +1,481 @@
+/* =============================================================================
+ *  SAHED DENTAL CLINIC — SITE PUBLIC
+ * =============================================================================
+ *
+ *  Le site public et le tableau de bord prive partagent les jetons de design
+ *  (couleurs, typographie, espacements) mais PAS la mise en page : le site
+ *  public est plus aere, avec une navigation en haut.
+ *
+ *  Aucune information patient, aucun tarif, aucun espace de connexion patient :
+ *  le site public ne fait que presenter le cabinet et ses coordonnees (§3, §46).
+ * ========================================================================== */
+
+/* ── En-tete public ────────────────────────────────────────────────────────── */
+
+.entete-public {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-dessus);
+  background-color: var(--fond-entete);
+  border-bottom: 1px solid var(--bordure);
+}
+
+.entete-public-contenu {
+  display: flex;
+  align-items: center;
+  gap: var(--espace-4);
+  min-height: 4rem;
+}
+
+.entete-public-marque {
+  display: flex;
+  align-items: center;
+  gap: var(--espace-3);
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.entete-public-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-texte);
+  background-color: var(--accent);
+  border-radius: var(--rayon-moyen);
+}
+
+.navigation-publique {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--espace-1);
+}
+
+.navigation-publique-lien {
+  padding: 0.45rem 0.7rem;
+  font-size: var(--taille-petite);
+  font-weight: 500;
+  color: var(--texte-secondaire);
+  border-radius: var(--rayon-moyen);
+  transition:
+    background-color var(--transition-rapide),
+    color var(--transition-rapide);
+}
+
+.navigation-publique-lien:hover {
+  background-color: var(--fond-surface-douce);
+  color: var(--texte-principal);
+  text-decoration: none;
+}
+
+.navigation-publique-lien[aria-current='page'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.bouton-menu-public {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-left: auto;
+  color: var(--texte-secondaire);
+  border-radius: var(--rayon-moyen);
+}
+
+.bouton-menu-public:hover {
+  background-color: var(--fond-surface-douce);
+}
+
+/* ── Accueil : section d'introduction ──────────────────────────────────────── */
+
+.hero {
+  padding: var(--espace-8) 0;
+  background: linear-gradient(180deg, var(--fond-surface-douce) 0%, var(--fond-page) 100%);
+  border-bottom: 1px solid var(--bordure);
+}
+
+.hero-grille {
+  display: grid;
+  gap: var(--espace-6);
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+
+@media (min-width: 56rem) {
+  .hero-grille {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+}
+
+.hero-titre {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--texte-principal);
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 40rem) {
+  .hero-titre {
+    font-size: 2.5rem;
+  }
+}
+
+.hero-sous-titre {
+  margin-top: var(--espace-2);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.hero-texte {
+  margin-top: var(--espace-4);
+  font-size: 1rem;
+  color: var(--texte-secondaire);
+  max-width: 38rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-3);
+  margin-top: var(--espace-5);
+}
+
+.hero-panneau {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-3);
+  padding: var(--espace-5);
+  background-color: var(--fond-surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-grand);
+  box-shadow: var(--ombre-moyenne);
+}
+
+.hero-panneau-titre {
+  font-size: var(--taille-base);
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.hero-panneau-ligne {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--espace-3);
+  padding: var(--espace-2) 0;
+  border-bottom: 1px solid var(--bordure);
+  font-size: var(--taille-petite);
+}
+
+.hero-panneau-ligne:last-child {
+  border-bottom: none;
+}
+
+.hero-panneau-jour {
+  color: var(--texte-secondaire);
+}
+
+.hero-panneau-heure {
+  color: var(--texte-principal);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* ── Sections publiques ────────────────────────────────────────────────────── */
+
+.section-publique {
+  padding: var(--espace-8) 0;
+}
+
+.section-publique-alternee {
+  background-color: var(--fond-surface-douce);
+}
+
+.section-publique-entete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+  margin-bottom: var(--espace-6);
+  max-width: 44rem;
+}
+
+.section-publique-titre {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  letter-spacing: -0.01em;
+}
+
+.section-publique-intro {
+  font-size: 1rem;
+  color: var(--texte-secondaire);
+}
+
+.grille-cartes {
+  display: grid;
+  gap: var(--espace-4);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.carte-publique {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+  padding: var(--espace-5);
+  background-color: var(--fond-surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-grand);
+  box-shadow: var(--ombre-petite), var(--liseret-haut);
+  transition:
+    border-color var(--transition-rapide),
+    box-shadow var(--transition-rapide);
+}
+
+.carte-publique:hover {
+  border-color: var(--bordure-forte);
+  box-shadow: var(--ombre-moyenne), var(--liseret-haut);
+}
+
+.carte-publique-titre {
+  font-size: var(--taille-base);
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.carte-publique-texte {
+  font-size: var(--taille-petite);
+  color: var(--texte-secondaire);
+}
+
+.carte-publique-marque {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: var(--espace-2);
+  color: var(--accent);
+  background-color: var(--accent-doux);
+  border-radius: var(--rayon-moyen);
+  font-size: var(--taille-petite);
+  font-weight: 700;
+}
+
+/* ── Horaires ──────────────────────────────────────────────────────────────── */
+
+.tableau-horaires {
+  width: 100%;
+  max-width: 30rem;
+  border-collapse: collapse;
+}
+
+.tableau-horaires th,
+.tableau-horaires td {
+  padding: var(--espace-3) var(--espace-4);
+  text-align: left;
+  border-bottom: 1px solid var(--bordure);
+  font-size: var(--taille-base);
+}
+
+.tableau-horaires th {
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.tableau-horaires td {
+  text-align: right;
+  color: var(--texte-secondaire);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableau-horaires tr:last-child th,
+.tableau-horaires tr:last-child td {
+  border-bottom: none;
+}
+
+.horaires-ferme {
+  color: var(--texte-tertiaire);
+  font-style: italic;
+}
+
+/* ── Contact ───────────────────────────────────────────────────────────────── */
+
+.grille-contact {
+  display: grid;
+  gap: var(--espace-5);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.bloc-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+  padding: var(--espace-5);
+  background-color: var(--fond-surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-grand);
+}
+
+.bloc-contact-titre {
+  font-size: var(--taille-petite);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texte-tertiaire);
+}
+
+.bloc-contact-valeur {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--texte-principal);
+}
+
+.bloc-contact-valeur a {
+  color: var(--texte-principal);
+}
+
+.bloc-contact-valeur a:hover {
+  color: var(--accent);
+}
+
+/* ── Bandeau d'appel a l'action ────────────────────────────────────────────── */
+
+.bandeau-cta {
+  padding: var(--espace-6) 0;
+  background-color: var(--accent-doux);
+  border-top: 1px solid var(--bordure);
+  border-bottom: 1px solid var(--bordure);
+}
+
+.bandeau-cta-contenu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-4);
+}
+
+.bandeau-cta-titre {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.bandeau-cta-texte {
+  font-size: var(--taille-base);
+  color: var(--texte-secondaire);
+}
+
+/* ── Pied de page public ───────────────────────────────────────────────────── */
+
+.pied-public {
+  padding: var(--espace-6) 0;
+  background-color: var(--fond-sidebar);
+  color: var(--texte-secondaire);
+}
+
+.pied-public-grille {
+  display: grid;
+  gap: var(--espace-5);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.pied-public-titre {
+  font-size: var(--taille-petite);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texte-tertiaire);
+  margin-bottom: var(--espace-2);
+}
+
+.pied-public-liste {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-1);
+  font-size: var(--taille-petite);
+}
+
+.pied-public-liste a {
+  color: var(--texte-secondaire);
+}
+
+.pied-public-liste a:hover {
+  color: var(--texte-principal);
+}
+
+.pied-public-bas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-3);
+  margin-top: var(--espace-6);
+  padding-top: var(--espace-4);
+  border-top: 1px solid var(--bordure);
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+}
+
+.pied-public-bas a {
+  color: var(--texte-tertiaire);
+}
+
+/* ── Page legale / texte long ──────────────────────────────────────────────── */
+
+.texte-long {
+  max-width: 46rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-4);
+}
+
+.texte-long h2 {
+  font-size: 1.2rem;
+  margin-top: var(--espace-4);
+}
+
+.texte-long p,
+.texte-long li {
+  color: var(--texte-secondaire);
+}
+
+/* ── Responsive : menu public repliable ────────────────────────────────────── */
+
+@media (max-width: 56rem) {
+  .bouton-menu-public {
+    display: inline-flex;
+  }
+
+  .navigation-publique {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--espace-1);
+    padding: var(--espace-3);
+    background-color: var(--fond-surface-eleve);
+    border-bottom: 1px solid var(--bordure);
+    box-shadow: var(--ombre-moyenne);
+  }
+
+  .navigation-publique[data-ouvert='false'] {
+    display: none;
+  }
+
+  .navigation-publique-lien {
+    padding: var(--espace-3);
+  }
+}

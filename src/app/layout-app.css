@@ -1,0 +1,984 @@
+/* =============================================================================
+ *  SAHED DENTAL CLINIC — STRUCTURE DE L'APPLICATION
+ * =============================================================================
+ *
+ *  Disposition de l'espace prive :
+ *
+ *      [ rail flottant ]   [ contenu ]
+ *
+ *  Il n'y a plus ni barre laterale large, ni bande horizontale pleine largeur :
+ *  le rail occupe une colonne etroite, et le contenu dispose de toute la largeur
+ *  restante.
+ *
+ *  Deux consequences du choix du rail flottant, a garder en tete :
+ *
+ *   1. Le rail est en `position: fixed` : il ne participe donc PAS a la grille
+ *      du contenu. C'est la colonne de gauche de la grille qui reserve sa place.
+ *      Le contenu n'est ainsi jamais recouvert.
+ *
+ *   2. Le libelle revele au survol est en `position: absolute` : il sort du flux
+ *      et ne peut donc ni elargir le rail ni pousser la mise en page. Sans cela,
+ *      afficher un libelle provoquerait un debordement horizontal.
+ * ========================================================================== */
+
+/* ── Coquille generale ─────────────────────────────────────────────────────── */
+
+.coquille {
+  /* La colonne de gauche n'existe QUE pour reserver la place du rail fixe. */
+  display: grid;
+  /* `minmax(0, 1fr)` est indispensable : sans lui, un tableau large ferait
+     deborder la colonne de contenu (defilement horizontal). */
+  grid-template-columns: var(--rail-place) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+/* ── Contenu principal ─────────────────────────────────────────────────────── */
+
+/*
+ * LE FOND DE PAGE EST LE NIVEAU LE PLUS PROFOND DE LA HIERARCHIE.
+ *
+ * C'est lui qui doit se distinguer des cartes : dans le theme clair, un bleu-gris
+ * tres clair sous des cartes blanches ; dans le theme sombre, un bleu nuit sous
+ * des cartes nettement plus claires. Sans cet ecart, les cartes n'auraient plus
+ * rien sur quoi se detacher et l'interface paraitrait plate.
+ */
+.contenu-principal {
+  grid-column: 2;
+  min-width: 0; /* autorise les enfants larges (tableaux) a se contracter */
+  padding: var(--espace-6) var(--espace-6) var(--espace-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-5);
+  background-color: var(--fond-page);
+}
+
+.contenu-principal:focus {
+  outline: none;
+}
+
+/* =============================================================================
+ *  RAIL DE NAVIGATION
+ * ========================================================================== */
+
+/*
+ * LE RAIL FLOTTE.
+ *
+ * Son elevation est legerement plus marquee que celle des cartes : c'est le seul
+ * element fixe de l'interface, et il doit se lire comme pose AU-DESSUS du
+ * contenu qui defile dessous. L'ombre reste courte et naturelle ; le lisere
+ * interieur clair marque le bord superieur, comme sur une surface en relief.
+ */
+.rail {
+  position: fixed;
+  /* Centre verticalement, avec un debattement borne : sur un ecran court, le
+     rail ne doit pas coller aux bords. */
+  top: 50%;
+  left: var(--espace-4);
+  transform: translateY(-50%);
+
+  z-index: var(--z-rail);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espace-2);
+
+  padding: var(--espace-3) var(--espace-2);
+
+  /* Rectangle arrondi etroit : la largeur d'une icone plus le rembourrage. */
+  width: fit-content;
+  border-radius: 1.25rem;
+
+  background-color: var(--fond-sidebar);
+  border: 1px solid var(--bordure);
+  box-shadow: var(--ombre-rail), var(--liseret-haut);
+
+  /* Les libelles absolus doivent pouvoir sortir du rail. */
+  overflow: visible;
+}
+
+/* Ecran tres court : le rail defile au lieu de sortir de l'ecran. */
+@media (max-height: 34rem) {
+  .rail {
+    top: var(--espace-4);
+    transform: none;
+    max-height: calc(100vh - var(--espace-6));
+    overflow-y: auto;
+  }
+}
+
+/*
+ * UN ELEMENT DU RAIL.
+ *
+ * Le survol pose un fond tres discret (`--survol`), qui est ici la version
+ * sombre du jeton puisque le rail redefinit ses variables. Ce fond est ce qui
+ * rend le rail VIVANT dans les deux themes : sans lui, seul un changement de
+ * couleur d'icone signalait le survol, ce qui se lisait mal sur une surface
+ * marine.
+ * L'etat COURANT, lui, reste porte par la couleur d'accent et le trait
+ * horizontal : aucune forme supplementaire, conformement au choix initial.
+ */
+.rail-item {
+  position: relative; /* ancre le libelle absolu */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.875rem;
+
+  color: var(--texte-secondaire);
+  background-color: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+
+  /*
+   * AUCUN SOULIGNEMENT DE TEXTE — LE DOUBLE TRAIT.
+   *
+   *  `globals.css` pose `a:hover { text-decoration: underline }` sur TOUS les
+   *  liens. Ce soulignement n'est presque jamais visible dans le rail : les trois
+   *  entrees de navigation ne contiennent qu'une ICONE, et une image SVG ne se
+   *  souligne pas. La MARQUE « DS », elle, est un TEXTE : elle héritait donc du
+   *  soulignement au survol, et l'on obtenait sous l'icone DEUX traits
+   *  horizontaux distincts —
+   *
+   *      1. le soulignement du texte, a 2 px sous le « DS »  ;
+   *      2. le repere d'etat `.rail-soulignement`, quelques pixels plus bas.
+   *
+   *  Mesure au survol, section active : texte 305→318, soulignement ~318→320,
+   *  repere d'etat 326→328. Deux lignes visibles, espacees de 6 px, pour un
+   *  rail qui n'en doit montrer qu'une.
+   *
+   * Le repere d'etat est une FRISE PEINTE, pas du texte : il doit rester le
+    *  seul trait visible.
+    *
+    *  La neutralisation est posee sur `a.rail-item` (et sa variante `:hover`)
+    *  volontairement PLUS SPECIFIQUE que le `a:hover` generique pose dans
+    *  `globals.css` : ce dernier vaut 0,1,1, et une simple classe `.rail-item`
+    *  (0,1,0) perdait la cascade, laissant le soulignement intact.
+    */
+   text-decoration: none;
+
+  transition:
+    background-color var(--transition-rapide),
+    color var(--transition-rapide),
+    border-color var(--transition-rapide);
+}
+
+/*
+ * Neutralisation EFFECTIVE du soulignement de lien.
+ *
+ * Ces selecteurs montent volontairement au-dessus du `a:hover` generique
+ * (0,1,1) de `globals.css` : `a.rail-item:hover` vaut 0,2,1. Sans cette
+ * precision, le soulignement restait — et le rail affichait deux traits.
+ */
+a.rail-item,
+a.rail-item:hover,
+a.rail-item:focus,
+.rail-item,
+.rail-item:hover,
+.rail-item:focus {
+  text-decoration: none;
+}
+
+/*
+ * Le soulignement se propage aux descendants : la neutraliser sur la boite
+ * suffirait, mais on la repete sur les deux enfants pour que le resultat ne
+ * depended pas de la portee de la decoration, et qu'un texte ajoute plus tard
+ * dans le rail ne reintroduise pas le trait.
+ */
+.rail-marque-texte,
+.rail-soulignement,
+.rail-libelle {
+  text-decoration: none;
+}
+
+.rail-item:hover {
+  color: var(--texte-principal);
+  background-color: transparent;
+}
+
+/*
+ * ETAT ACTIF : la couleur d'accent, un fond tres legerement pose et le trait
+ * horizontal.
+ *
+ * Le fond de l'etat actif est volontairement TRES discret : il sert seulement a
+ * donner du corps au repere, sans redevenir le « carre » qui entourait l'icone.
+ * C'est le trait horizontal qui reste le signal principal.
+ */
+.rail-item[aria-current='page'] {
+  color: var(--accent-survol);
+  background-color: transparent;
+}
+
+/*
+ * FOCUS.
+ *
+ * DEUX selecteurs, pour deux roles distincts :
+ *
+ *   - l'ANNEAU visible est pose sur `:focus-visible`. Le navigateur ne l'active
+ *     que pour un vrai parcours clavier, ce qui evite de laisser un contour
+ *     apres un simple clic souris ;
+ *
+ *   - le LIBELLE se revele sur `:focus` (tout focus, quelle qu'en soit
+ *     l'origine). C'est indispensable : Chromium ne pose PAS `:focus-visible`
+ *     pour un focus programme, et l'exigence est que le rail reste lisible sans
+ *     survol.
+ *
+ * Le FOND de survol est conserve au focus : c'est ce qui rend le focus clavier
+ * reperable au meme titre que le survol souris. Seule la FORME (le « carre »)
+ * reste exclue : le fond est celui du survol, arrondi comme l'element.
+ */
+.rail-item:hover,
+.rail-item:focus {
+  color: var(--texte-principal);
+  background-color: transparent;
+  border-color: transparent;
+}
+
+/*
+ * L'anneau de focus clavier est INTERNE (`inset`) : pose a l'exterieur, il se
+ * confondait avec le bord du rail et paraissait decouper un cadre autour de
+ * l'icone. Rentrant dans la surface, il reste un repere de navigation lisible
+ * sans jamais ressembler a une boite.
+ */
+.rail-item:focus-visible {
+  outline: none;
+  border-radius: 0.875rem;
+}
+
+.rail-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rail-bouton {
+  font: inherit;
+}
+
+/* ── Icones ────────────────────────────────────────────────────────────────── */
+
+.rail-icone {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* ── Marque « DS » (monogramme du cabinet) ────────────────────────────────── */
+
+/*
+ * La marque remplace l'ancienne icone de tableau de bord. Elle est composee en
+ * capitales espacees : c'est ce qui lui donne un air de repere de marque plutot
+ * que de libelle. Taille volontairement contenue pour tenir dans la largeur du
+ * rail. La famille est celle du jeton de titre (Book Antiqua) : elle n'est pas
+ * repetee ici, elle viennent du jeton herite.
+ *
+ * ATTENTION — CES PROPRIETES S'HERITENT.
+ *
+ *   L'interlettrage ci-dessous ne doit s'appliquer QU'AU monogramme « DS ».
+ *   Il est donc pose sur `.rail-marque-texte` (le seul element « DS »), et non
+ *   sur le conteneur : sinon il etait herite par `.rail-libelle`, elargissait
+ *   la mesure du libelle et le faisait passer sur DEUX LIGNES.
+ *
+ *   Le libelle garde ainsi, a la lettre, la meme typographie que celle des
+ *   trois entrees de navigation du rail.
+ */
+.rail-marque {
+  font-weight: 700;
+}
+
+.rail-marque-texte {
+  font-size: 0.8125rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  /* Chiffres et capitales de meme largeur : les deux lettres restent alignees
+     quel que soit le contexte d'affichage. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Petit soulignement clair (survol / focus) ─────────────────────────────── */
+
+/*
+ * Trait court et clair sous l'icone. En position ABSOLUE : il ne participe pas
+ * a la mise en page, donc il ne decale ni l'icone ni le rail, et il ne peut pas
+ * provoquer de debordement. Il s'etire legerement (scaleX) en apparaissant,
+ * ce qui donne le mouvement sans animation lourde.
+ */
+.rail-soulignement {
+  position: absolute;
+  bottom: 0.3rem;
+  left: 50%;
+  width: 0.875rem;
+  height: 2px;
+  border-radius: 2px;
+  background-color: var(--texte-principal);
+
+  opacity: 0;
+  transform: translateX(-50%) scaleX(0.4);
+  transform-origin: center;
+
+  transition:
+    opacity var(--transition-rapide),
+    transform var(--transition-rapide);
+
+  pointer-events: none;
+}
+
+.rail-item:hover .rail-soulignement,
+.rail-item:focus .rail-soulignement {
+  opacity: 0.55;
+  transform: translateX(-50%) scaleX(1);
+}
+
+/*
+ * Section COURANTE : le trait est visible en permanence, un peu plus marque
+ * que le trait de survol. C'est l'indication « vous etes ici », discrete, qui
+ * remplace tout aplat ou halo.
+ */
+.rail-item[aria-current='page'] .rail-soulignement {
+  opacity: 0.9;
+  transform: translateX(-50%) scaleX(1);
+  background-color: var(--accent);
+}
+
+/*
+ * SURVOL DE LA SECTION COURANTE : LE MEME TRAIT, RIEN DE PLUS.
+ *
+ * Sans cette regle, survoler l'icone de la page courante rejouait la transition
+ * de survol PAR-DESSUS le trait d'etat : le trait passait de son opacite
+ * d'etat a celle du survol, et sa couleur d'accent pouvait perdre un instant
+ * contre la couleur de texte. Le repere clignotait, ce qui se lisait comme un
+ * second indicateur.
+ *
+ * On fige donc explicitement le trait d'etat lorsqu'il est deja affiche : meme
+ * opacite, meme couleur, meme longueur. Survoler la section active ne change
+ * donc RIEN au trait — il n'y a jamais deux lignes, ni une ligne qui bouge.
+ */
+.rail-item[aria-current='page']:hover .rail-soulignement,
+.rail-item[aria-current='page']:focus .rail-soulignement {
+  opacity: 0.9;
+  transform: translateX(-50%) scaleX(1);
+  background-color: var(--accent);
+}
+
+/* ── Libelles reveles au survol / au focus ─────────────────────────────────── */
+
+/*
+ * Le libelle est TOUJOURS dans le DOM (donc traduit), mais invisible et retire
+ * du flux. Il n'apparait que pour l'element survole ou focalise : le rail
+ * lui-meme ne s'elargit jamais.
+ *
+ * ATTENTION — CENTRAGE VERTICAL SUR L'ICONE.
+ *
+ *   La boite est centree sur la hauteur de l'element (`top: 50%` +
+ *   `translate(...)`), donc son texte reste sur la meme ligne que l'icone.
+ *   C'est le point a ne pas casser : une boite ancrée a un COIN et pendue sous
+ *   le bord superieur laissait le libelle partir sous l'icone, ou le defaut en
+ *   « deux lignes » se lisait comme une SECONDE etiquette empilee sous la
+ *   premiere. Le centrage vertical garantit donc une seule ligne, au meme
+ *   niveau que l'icone, exactement comme les autres entrees du rail.
+ *
+ *   ANCRAGE — POURQUOI `left` ET NON `right`.
+ *
+ *   `right: calc(-100% - 0.5rem`) faisait pousser le libelle vers la GAUCHE du
+ *   bord droit de l'element : la boite, de largeur `max-content`, s'etendait donc
+ *   vers l'INTERIEUR de l'ecran, en direction du bord oppose. Sur un ecran large
+ *   cela restait dans la fenetre par chance — a 1440 px le libelle le plus long
+ *   (« Tableau de bord ») s'achevait a 4 px du bord gauche, sans marge. Des que
+ *   l'ecran se retrecit, la meme boite sortait : mesure a 768, 820 et 1024 px, son
+ *   bord gauche tombait a -12 px, donc les premieres lettres du libelle etaient
+ *   COUPEES par le bord de la fenetre.
+ *
+ *   `left: calc(100% + 0.5rem)` ancre desormais le bord GAUCHE de la boite a
+ *   0,5 rem du bord droit de l'element. Le libelle s'ouvre donc du bon cote — il
+ *   pointe toujours vers le contenu qu'il decrit — et sa largeur n'a plus aucune
+ *   incidence sur sa position : un libelle long comme un libelle court restent
+ *   entierement visibles, quelle que soit la largeur de l'ecran.
+ */
+.rail-libelle {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 0.5rem);
+  right: auto;
+
+  /* Debut de l'animation : colle a l'icone, mais deja centre verticalement. */
+  transform: translate(0, -50%);
+
+  opacity: 0;
+  pointer-events: none;
+
+  /*
+   * GARANTIE DE NON-RETOUR A LA LIGNE.
+   *
+   * `white-space: nowrap` suffit en pratique, mais il ne protege pas d'une
+   * largeur de boite insuffisante : si un interlettrage ou une variante
+   * numerique heritee elargit la mesure du texte au-dela de `fit-content`, la
+   * boite se dimensionne sur la largeur MINIMALE et le libelle se coupe sur
+   * deux lignes. `width: max-content` force la boite a prendre la largeur
+   * INTRINSÈQUE de la ligne complete : le libelle « Tableau de bord » tient donc
+   * toujours sur UNE seule ligne, quel que soit l'heritage.
+   */
+  width: max-content;
+  max-width: none;
+  /* `nowrap` + `max-content` suffisent en pratique ; ces deux declarations le
+     rendent INDEPENDANT de la boite du parent, donc impossible a faire replier
+     par une largeur heritee. Un libelle = une ligne, dans tous les cas. */
+  white-space: nowrap;
+  text-wrap: nowrap;
+  font-size: var(--taille-petite);
+  font-weight: 500;
+  /* L'interlettrage et la variante numerique sont explicitement neutralises :
+     le libelle du rail ne doit JAMAIS heriter du style de la marque « DS ». */
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  line-height: 1;
+
+  padding: 0.4375rem 0.6875rem;
+  border-radius: 0.5rem;
+
+  color: var(--texte-principal);
+  background-color: var(--fond-surface-eleve);
+  border: 1px solid var(--bordure);
+  /* L'infobulle du rail flotte au-dessus du contenu : elle doit porter une ombre
+     pour ne pas se confondre avec la page qu'elle recouvre. */
+  box-shadow: var(--ombre-moyenne);
+
+  transition:
+    opacity var(--transition-rapide),
+    transform var(--transition-rapide);
+
+  z-index: 1;
+}
+
+.rail-item:hover .rail-libelle,
+.rail-item:focus .rail-libelle {
+  opacity: 1;
+  /* Fin de l'animation : le libelle a glisse vers la droite, en place. */
+  transform: translate(0.4rem, -50%);
+}
+
+/*
+ * LE TEXTE DU LIBELLE NE SE REPLIE JAMAIS.
+ *
+ * `white-space` et `text-wrap` sont poses sur le CONTENU de la boite — un
+ * enchainement de TEXTE anonyme — et non sur la boite elle-meme. C'est une
+ * distinction qui compte : `text-wrap: nowrap` sur l'element ne traverse pas
+ * une boite generee pour un enfant, alors que la valeur heritee par le texte,
+ * elle, est TOUJOURS respectee. Le libelle « Tableau de bord », le plus long du
+ * rail, tient donc sur UNE SEULE LIGNE sans dependre de la largeur disponible.
+ *
+ * C'est la garantie finale contre l'affichage en DEUX LIGNES : la boite garde
+ * sa largeur `max-content`, et son contenu refuse de se replier.
+ */
+.rail-libelle::first-line {
+  white-space: nowrap;
+  text-wrap: nowrap;
+}
+
+/* ── Separateurs et liste ──────────────────────────────────────────────────── */
+
+.rail-separateur {
+  display: block;
+  width: 1.5rem;
+  height: 1px;
+  background-color: var(--bordure);
+  margin: var(--espace-1) 0;
+  /* Un separateur ne doit pas etre plus lumineux que les elements qu'il separe. */
+  opacity: 0.8;
+}
+
+.rail-liste {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espace-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* =============================================================================
+ *  EN-TETE DE PAGE (dans le flux du contenu, plus de bande pleine largeur)
+ * ========================================================================== */
+
+.en-tete-page {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--espace-3);
+  margin-bottom: var(--espace-2);
+}
+
+.en-tete-page-identite {
+  min-width: 0;
+}
+
+.en-tete-page-titre {
+  font-size: 1.5rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--texte-principal);
+}
+
+/*
+ * SOUS-TITRE DE PAGE.
+ *
+ * Il porte le nom de l'utilisateur et son role : c'est du texte d'information,
+ * pas du texte decoratif. Il utilise donc le texte SECONDAIRE (lisible) et non
+ * le texte tertiaire, qui est reserve aux mentions les plus secondaires.
+ */
+.en-tete-page-utilisateur {
+  margin-top: var(--espace-1);
+  font-size: var(--taille-petite);
+  color: var(--texte-secondaire);
+}
+
+.en-tete-page-role {
+  color: var(--texte-tertiaire);
+}
+
+/* ── Titres internes encore utilises par certaines pages ───────────────────── */
+
+.entete-page-titre {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.entete-page-sous-titre {
+  font-size: var(--taille-petite);
+  color: var(--texte-tertiaire);
+}
+
+/* =============================================================================
+ *  SALUTATION DU TABLEAU DE BORD
+ * ========================================================================== */
+
+/*
+ * « Bonjour Dr Sahed » remplace l'ancien empilement de trois lignes.
+ *
+ * Elle est la SEULE portion de l'interface composee dans une CURSIVE : le jeton
+ * `--police-salutation` prefere Brush Script MT, avec des fontes manuscrites en
+ * repli. Le reste de l'application est en Book Antiqua.
+ *
+ * Deux ajustements accompagnent ce changement de fonte, et aucun autre :
+ *   - la taille est legerement augmentee. Une cursive parait plus petite que
+ *     Book Antiqua a taille egale ;
+ *   - l'interlettrage est ramene a zero. La valeur negative precedente etait
+ *     calibree pour une fonte sans empattement et tasserait une cursive.
+ *
+ * Le poids est renforce sans quitter le registre manuscrit. La hauteur de ligne
+ * et la reserve de hauteur (`min-height`) sont conservees :
+ * le texte qui se remplit lettre a lettre ne doit pas faire bouger le contenu
+ * en dessous.
+ */
+/*
+ * SALUTATION.
+ *
+ * Elle est peinte avec le texte principal, donc parfaitement lisible dans les
+ * deux themes. Le seul apport visuel est un lisere colore tres court sous le
+ * texte : un simple repere de marque, pas une decoration. Il disparait de
+ * lui-meme si la mise en page se resserre, car il est purement decoratif.
+ *
+ * TAILLE ET POIDS.
+ *
+ *   3.25rem au lieu de 2.6rem : la salutation gagne deux crans de taille pour
+ *   s'imposer comme le premier repere de l'ecran, sans pour autant devenir un
+ *   titre surdimensionne. Le reste de la mise en page n'est pas touche : la
+ *   reserve de hauteur suit la taille (`em`), donc le contenu en dessous ne
+ *   bouge pas.
+ *
+ *   Le poids est porte a 700 (gras). Brush Script MT n'a pas de graisse
+ *   « bold » reelle : le navigateur l'obtient par epaississement du trace.
+ *   `font-synthesis: weight` est donc demande EXPLICITEMENT — sans cette
+ *   declaration, un navigateur qui decide de ne pas synthetiser la graisse
+ *   ignorerait le `font-weight: 700` et la salutation resterait en maigre.
+ *   Le rendu reste sobre et lisible, sans deformer la cursive.
+  *
+  * ATTENTION — LA FAMILLE DOIT GAGNER LA CASCADE.
+  *
+  *   `globals.css` compose TOUS les titres en `--police-titre` via un selecteur
+  *   d'ELEMENT (`h1, h2, h3…`). Ce selecteur a une specificite de 0,0,1, alors
+  *   que la classe `.salutation` vaut 0,1,0 : le style de la salutation l'emporte
+  *   donc sur le titre generique, quel que soit l'ordre d'importation. C'est ce
+  *   qui garantit que la famille ci-dessous est bien celle qui PEINT le texte.
+  *
+  *   La classe porte en plus une regle `font-family` sur l'element lui-meme (et
+  *   non seulement un jeton herite) : le repli manuscrit reste donc applique aux
+  *   DEUX enfants de la salutation — le texte masque aux lecteurs d'ecran et le
+  *   texte visible de l'animation de frappe.
+  *
+  * La hauteur de ligne et la reserve de hauteur suivent la taille (`em`), donc
+  * le contenu en dessous ne bouge pas pendant la frappe.
+  */
+  /*
+   * SALUTATION — « Bonjour Dr Sahed ».
+   *
+   * La fonte est portee par `--police-salutation` (voir `theme.css`), qui cite
+   * « Basic Math Italic » puis, comme repli mesure, « Cambria Math » : la
+   * variante demandee n'etait pas resolue sur le poste, et une fonte generique
+   * aurait supprime l'italic.
+   *
+   * DEPLACEMENT VERS LA DROITE
+   *
+   *   `margin-left: 1.5rem` decale le texte de 24 px. C'est un `margin` et non un
+   *   `transform`, donc la boite de texte conserve exactement sa position dans
+   *   le flux : rien en dessous ne bouge, et la largeur reservee par le titre
+   *   reste celle du texte (`width: fit-content`).
+   *
+   *   La valeur est COMPENSEE sur petit ecran : la marge disparait sous 40 rem,
+   *   ou elle consommerait une part trop grande d'une largeur deja etroite. Le
+   *   decalage reste donc une fantaisie des ecrans larges, jamais une cause de
+   *   debordement sur telephone.
+   *
+   * POIDS VISUEL
+   *
+   *   La fonte mathématique n'embarque pas de graisse : `font-synthesis` ne peut
+   *   donc rien epaissir, et `font-weight: 700` resterait sans effet visible.
+   *   L'epiaisseur est donc obtenue par `-webkit-text-stroke`, qui epaissit le
+   *   TRACE sans changer de fonte ni de metrique : la largeur de la boite est
+   *   inchangee, donc la mise en page ne bouge pas.
+   *
+   * RESERVE DE HAUTEUR
+   *
+   *   `min-height: 1.2em` et `line-height: 1.2` sont conserves : la frappe ne doit
+   *   pas faire bouger le contenu en dessous. Comme la largeur suit
+   *   `fit-content`, le texte ne se coupe jamais et la salutation tient sur UNE
+   *   seule ligne quelle que soit la largeur d'ecran.
+   */
+  .salutation {
+    font-family: var(--police-salutation, 'Basic Math Italic', 'Basic Math', 'Cambria Math',
+        'Cambria', 'Palatino Linotype', Georgia, 'Times New Roman', serif);
+    font-synthesis: weight;
+    font-size: 3.25rem;
+    font-weight: 700;
+    font-style: italic;
+    -webkit-text-stroke: 0.35px currentColor;
+    letter-spacing: 0;
+    line-height: 1.2;
+    width: fit-content;
+    min-width: min-content;
+    margin-bottom: var(--espace-1);
+    /* Deplacement vers la droite — voir la note ci-dessus. */
+    margin-left: 1.5rem;
+    white-space: nowrap;
+    color: var(--texte-principal);
+    min-height: 1.2em;
+  }
+
+/*
+ * PORTION VISIBLE DE LA SALUTATION.
+ *
+ * Elle ne pose AUCUNE typographie : elle herite integralement de `.salutation`
+ * (famille Brush Script MT, gras, taille). C'est volontaire — c'est ce qui
+ * garantit que le texte reellement peint a l'ecran porte bien la cursive, et non
+ * un enfant qui aurait sa propre famille.
+ *
+ * Le passage en `inline-block` est ce qui rend le `white-space: nowrap` du titre
+ * OPERANT : une portion de texte en ligne se replierait a l'interieur de la
+ * ligne du parent, alors qu'une boite en ligne, elle, ne se coupe jamais et fait
+ * simplement grandir son parent. La salutation tient donc toujours sur une seule
+ * ligne.
+ */
+.salutation-texte {
+  display: inline-block;
+}
+
+.carte {
+  transition:
+    box-shadow var(--transition-ombre),
+    border-color var(--transition-rapide);
+}
+
+.carte:hover {
+  border-color: var(--bordure-forte);
+  box-shadow: var(--ombre-moyenne), var(--liseret-haut);
+}
+
+.statistique {
+  box-shadow: var(--ombre-moyenne), var(--liseret-haut);
+  transition:
+    box-shadow var(--transition-ombre),
+    transform var(--transition-ombre),
+    border-color var(--transition-rapide);
+}
+
+.statistique:hover {
+  box-shadow: var(--ombre-grande), var(--liseret-haut);
+  border-color: var(--bordure-forte);
+}
+
+.tableau-conteneur {
+  box-shadow: var(--ombre-petite), var(--liseret-haut);
+}
+
+.bouton {
+  transition:
+    background-color var(--transition-rapide),
+    border-color var(--transition-rapide),
+    color var(--transition-rapide),
+    box-shadow var(--transition-ombre),
+    transform var(--transition-rapide);
+}
+
+.bouton-principal,
+.bouton-secondaire,
+.bouton-danger-plein {
+  box-shadow: var(--ombre-petite), var(--liseret-haut);
+}
+
+.bouton-principal:hover:not(:disabled),
+.bouton-secondaire:hover:not(:disabled),
+.bouton-danger-plein:hover:not(:disabled) {
+  box-shadow: var(--ombre-moyenne), var(--liseret-haut);
+  transform: translateY(-1px);
+}
+
+.bouton-discret:hover:not(:disabled),
+.bouton-danger:hover:not(:disabled),
+.bouton-theme:hover,
+.bouton-fermer-modale:hover {
+  box-shadow: var(--ombre-petite);
+}
+
+.carte-publique {
+  box-shadow: var(--ombre-petite), var(--liseret-haut);
+}
+
+.carte-publique:hover {
+  box-shadow: var(--ombre-moyenne), var(--liseret-haut);
+}
+
+.tableau-bord-donnees .liste-compacte-titre,
+.tableau-bord-donnees .liste-compacte-detail,
+.tableau-bord-donnees .liste-compacte-heure,
+.tableau-bord-donnees .tableau tbody td,
+.tableau-bord-donnees .badge,
+.tableau-bord-donnees .statistique-detail,
+.tableau-bord-donnees .etat-vide-texte {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Curseur de frappe : fin trait qui pulse doucement pendant l'ecriture. */
+.salutation-curseur {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 0.12em;
+  vertical-align: -0.12em;
+  background-color: var(--accent);
+  animation: salutation-clignotement 1s steps(2, start) infinite;
+}
+
+@keyframes salutation-clignotement {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* Animations reduites : aucun clignotement. */
+@media (prefers-reduced-motion: reduce) {
+  .salutation-curseur {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+ *  RESPONSIVE
+ * ==========================================================================
+ *
+ *  Le rail RESTE un rail a toutes les largeurs : il ne redevient jamais une
+ *  barre pleine largeur ni une grande barre laterale. On reduit seulement la
+ *  place reservee et le rembourrage, pour que le contenu garde de la largeur.
+ */
+
+@media (max-width: 64rem) {
+  .coquille {
+    grid-template-columns: var(--rail-place-tablette) minmax(0, 1fr);
+  }
+
+  .rail {
+    left: var(--espace-2);
+    padding: var(--espace-2) var(--espace-1);
+  }
+
+  .contenu-principal {
+    padding: var(--espace-5) var(--espace-4) var(--espace-6);
+  }
+
+  /*
+   * LE RAIL RETRECIT, MAIS LE CONTENU DE SES CARTES PAS.
+   *
+   * La place reservee au rail passe de 5,5 a 4,5 rem : le rail gagne 1 rem de
+   * largeur pour le contenu. Ce gain ne doit pas se payer sur les CARTES.
+   *
+   * `min-width: 0` leur laisse autoriser le retour a la ligne du libelle et du
+   * montant, au lieu de les laisser deborder de la carte et, par cascade, de la
+   * page. Une carte d'indicateur qui refuse de se contracter est la cause
+   * habituelle des debordements horizontaux sur les grilles a colonnes fixes.
+   */
+  .statistique {
+    min-width: 0;
+  }
+
+  .statistique-etiquette,
+  .statistique-valeur,
+  .statistique-detail {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 40rem) {
+  /*
+   * LA SALUTATION S'ADAPTE AUX PETITS ECRANS.
+   *
+   * Elle tient sur UNE seule ligne, jamais sur deux : c'est une exigence de la
+   * maquette, et `white-space: nowrap` l'impose. Mais `nowrap` ne garantit pas
+   * que le texte TIENT : au-dela d'une certaine largeur, il deborde.
+   *
+   * Mesure a 375 px, avec la fonte mathématique et sa taille de bureau (52 px) :
+   * le texte mesure 408 px, donc il DEPASSait de 33 px et « Bonjour Dr Sahed »
+   * etait coupe en « Bonjour Dr Sah… ».
+   *
+   * La cause est la fonte elle-meme : la mathématique est nettement plus large
+   * que l'ancienne cursive a taille egale. La correction est donc une reduction
+   * de taille, proportionnelle a la largeur disponible, et non un retour a la
+   * ligne — la salutation doit rester sur une seule ligne.
+   *
+   *   52 px .... 408 px de large  (tient des 440 px de contenu et plus)
+   *   44 px .... 345 px            (tient des 375 px)
+   *   38 px .... 298 px            (tient des 320 px, telephone le plus etroit)
+   *
+   * `min-height` suit la taille (`em`), donc la reserve de hauteur — et la
+   * position de tout ce qui se trouve dessous — reste inchangee : la frappe ne
+   * declenche aucun saut de mise en page.
+   */
+  /*
+   * SELECTEUR VOLONTAIREMENT PLUS SPECIFIQUE.
+   *
+   * `.contenu-principal .salutation` vaut 0,2,0, contre 0,1,0 pour la regle de
+   * base. Ce n'est pas gratuit : `globals.css` redefinit lui aussi
+   * `.salutation` (pour que la cascade ne depende pas de l'ordre d'importation
+   * des feuilles), et cette feuille etant importee EN DERNIER, une regle de
+   * meme specificite l'emporterait. Le palier mobile doit donc passer devant,
+   * quel que soit l'ordre de chargement.
+   */
+  .contenu-principal .salutation {
+    /* Le decalage vers la droite est annule : il ne laisserait plus la place
+       necessaire au texte, et n'aurait plus d'effet lisible a cette largeur. */
+    margin-left: 0;
+    font-size: 2.75rem; /* 44 px */
+  }
+
+  /* Sous 400 px de fenetre, un cran de plus : le texte doit tenir entier. */
+  @media (max-width: 25rem) {
+    .contenu-principal .salutation {
+      font-size: 2.375rem; /* 38 px */
+    }
+  }
+
+  .coquille {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  /*
+   * Sur petit ecran, le rail passe EN HAUT et devient HORIZONTAL : il occupe
+   * une ligne de la grille plutot qu'une colonne fixe. Il ne recouvre donc
+   * jamais le contenu et ne reduit pas sa largeur.
+   *
+   * Le concept reste identique : icones, libelle au survol / au focus, etat
+   * actif. Seule l'orientation change.
+   */
+  .rail {
+    position: sticky;
+    top: var(--espace-2);
+    left: auto;
+    transform: none;
+
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.125rem;
+
+    /* `width: fit-content` + `max-width` : le rail se contracte si l'ecran est
+       etroit au lieu de deborder. C'est ce qui supprime le defilement
+       horizontal sur les mobiles de 320 px. */
+    width: fit-content;
+    max-width: calc(100vw - var(--espace-4));
+
+    margin: var(--espace-3) auto var(--espace-2);
+    padding: 0.25rem 0.375rem;
+
+    border-radius: 1rem;
+  }
+
+  /* Elements plus compacts : six symboles en ligne doivent tenir dans la largeur
+     d'un telephone, sinon la navigation deborderait de l'ecran. */
+  .rail-item {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+  }
+
+  .rail-icone {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .rail-marque-texte {
+    font-size: 0.75rem;
+  }
+
+  .rail-liste {
+    flex-direction: row;
+    gap: 0.125rem;
+  }
+
+  .rail-separateur {
+    width: 1px;
+    height: 1.25rem;
+    margin: 0 0.25rem;
+    flex-shrink: 0;
+  }
+
+  /*
+   * Le libelle s'affiche SOUS l'icone : dans un rail horizontal, un libelle a
+   * droite sortirait de l'ecran pour les derniers elements.
+   *
+   * La boite repasse ici en ancrage HAUT (`top: calc(100% + 0.5rem)`) : le
+   * centrage vertical de la regle de base est donc explicitement remplace, pas
+   * herite. La boite pend sous l'icone, recentree sur sa largeur (`left: 50%`,
+   * `translateX(-50%)`), et reste sur UNE seule ligne.
+   */
+  .rail-libelle {
+    left: 50%;
+    right: auto;
+    top: calc(100% + 0.5rem);
+    transform: translate(-50%, -0.3rem);
+  }
+
+  .rail-item:hover .rail-libelle,
+  .rail-item:focus .rail-libelle {
+    transform: translate(-50%, 0);
+  }
+
+  .contenu-principal {
+    grid-column: 1;
+    padding: var(--espace-4) var(--espace-4) var(--espace-6);
+  }
+
+  .en-tete-page {
+    align-items: flex-start;
+  }
+}
+
+/* Respecte la preference systeme « animations reduites ». */
+@media (prefers-reduced-motion: reduce) {
+  .rail-item,
+  .rail-libelle {
+    transition: none;
+  }
+}

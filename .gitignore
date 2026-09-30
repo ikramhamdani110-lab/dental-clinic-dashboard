@@ -1,0 +1,57 @@
+# Dependances
+node_modules/
+.pnp
+.pnp.js
+
+# Build Next.js
+.next/
+out/
+dist/
+build/
+next-env.d.ts
+
+# Artefacts locaux de travail (documents de developpement, fichiers temporaires)
+.local/
+
+# Fichiers de base de donnees eventuels — jamais versionnes
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Secrets — INTERDIT en Git (§41)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Environnement de DEMONSTRATION
+#
+# `.env.demo` ne contient AUCUN secret (ni mot de passe, ni cle de session) :
+# seule l'URL de la base de demonstration y figure, sur le port 5433, avec un
+# mot de passe de demonstration. Il est versionne pour que la demonstration soit
+# reproductible.
+#
+# En revanche le CLUSTER PostgreSQL de demonstration est un repertoire de
+# donnees complet : il ne doit JAMAIS etre versionne, exactement comme
+# `sahed_clinic`.
+.demo-pg/
+!.env.demo
+
+# Sauvegardes — contiennent des donnees medicales
+backups/
+*.dump
+*.sql.gz
+*.tar.gz
+
+# Documents patients stockes localement
+storage/
+documents-storage/
+
+# Outils
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.tsbuildinfo
+.eslintcache
+coverage/

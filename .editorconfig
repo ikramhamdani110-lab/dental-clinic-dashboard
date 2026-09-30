@@ -1,0 +1,53 @@
+# =============================================================================
+#  EDITORCONFIG — SAHED DENTAL CLINIC
+# =============================================================================
+#
+# Ce fichier n'est pas cosmetique : il protege l'application d'une regression
+# REELLE rencontree en production.
+#
+# LE PROBLEME
+#
+#   Un BOM (marque d'ordre des octets, EF BB BF) en tete d'une feuille de style
+#   est tolere SEUL. Mais `globals.css` assemble le theme par `@import`, et la
+#   feuille se retrouve CONCATENEE au milieu d'un bundle.
+#
+#   Chaque BOM supplementaire colle alors au selecteur suivant. Au troisieme,
+#   le selecteur devient « \uFEFF\uFEFF\uFEFF:root » — INVALIDE — et la regle
+#   ENTIERE est ignoree. Or ce bloc porte TOUS les jetons de conception :
+#   `--rail-place`, `--espace-*`, `--police-texte`, etc.
+#
+#   Consequence visible : la colonne du rail tombait a zero, le contenu passait
+#   SOUS le rail et tous les espacements disparaissaient — le tableau de bord
+#   semblait « empile et pousse a droite ».
+#
+# LA PROTECTION
+#
+#   `charset = utf-8` demande explicitement l'UTF-8 SANS BOM. Les editeurs qui
+#   respectent EditorConfig (VS Code, JetBrains, Sublime…) n'ajouteront donc
+#   plus le BOM en enregistrant un fichier CSS.
+# =============================================================================
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Les feuilles de style : c'est ICI que le BOM a casse la mise en page.
+[*.css]
+charset = utf-8
+
+# Les fichiers Markdown peuvent contenir des espaces significatifs (sauts en fin de ligne) : on ne les rogne pas.
+[*.md]
+trim_trailing_whitespace = false
+
+# Fichiers de configuration et de donnees : indentation explicite.
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.prisma]
+indent_size = 2

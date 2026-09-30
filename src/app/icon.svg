@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Sahed Dental">
+  <!--
+    ICONE DE L'APPLICATION — SAHED DENTAL CLINIC
+
+    Pourquoi ce fichier existe
+    --------------------------
+    Sans icone declaree, le navigateur demande de lui-meme `/favicon.ico` a
+    chaque visite. Le fichier n'existant pas, le serveur repond 404 et la console
+    du navigateur affiche « Failed to load resource … 404 » — un bruit qui n'a
+    pourtant aucune consequence sur l'application.
+
+    Ce n'est PAS une erreur a masquer : c'est une ressource REELLEMENT absente.
+    Next.js sert automatiquement tout fichier `icon.*` place dans `src/app`, et
+    declare lui-meme le <link rel="icon"> correspondant. Le 404 disparait donc
+    par la presence du fichier, sans suppression d'erreur ni exception.
+
+      Le dessin reprend le monogramme « DS » du rail et de la page de connexion,
+      dans le bleu d'accent de l'application. Aucune couleur nouvelle n'est
+      introduite : ce sont celles du theme.
+
+      ORDRE DES LETTRES : « DS », comme « Sahed Dental ». Le monogramme « SD »
+      Inverse les deux lettres et se lisait « SD » sur l'icone de l'onglet et sur
+      la page de connexion. C'est le rail et la page de connexion qui font foi.
+    -->
+  <rect width="32" height="32" rx="7" fill="#131f34" />
+  <text
+    x="16"
+    y="22"
+    text-anchor="middle"
+    font-family="Georgia, 'Book Antiqua', Palatino, serif"
+    font-size="14"
+    font-weight="700"
+    letter-spacing="0.5"
+    fill="#5b9ae8"
+  >DS</text>
+</svg>
