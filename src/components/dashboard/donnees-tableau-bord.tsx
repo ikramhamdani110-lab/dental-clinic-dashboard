@@ -21,7 +21,8 @@ import { TONS_STATUT_RENDEZ_VOUS } from '@/components/ui/badge-statut'
  *    2. Nouveaux patients     — premieres visites enregistrees aujourd'hui ;
  *    3. Patients du jour      — TOUTES les personnes venues au cabinet ;
  *    4. Paiements du jour     — argent REELLEMENT encaisse aujourd'hui ;
- *    5. Credit a recevoir     — montants encore dus par les patients.
+ *    5. Montants restant dus — montants encore dus par les patients, avec le
+ *       nombre de paiements qui les reductions.
  *
  *  Puis deux listes :
  *    - les rendez-vous d'AUJOURD'HUI, avec leur statut lisible ;
@@ -83,6 +84,8 @@ interface DonneesTableauBord {
   revenusJourCentimes: number
   nombrePaiementsJour: number
   totalRestantCentimes: number
+  /** Nombre total de paiements valides — meme population que le montant restant. */
+  nombrePaiementsTotal: number
   rendezVousCreesAujourdhui: RendezVousCreeAujourdhui[]
 }
 
@@ -144,7 +147,7 @@ export function DonneesTableauBord(): React.JSX.Element {
         <Statistique
           etiquette={t('tableauDeBord.creditARecevoir')}
           valeur={formaterMontant(donnees.totalRestantCentimes)}
-          detail={t('tableauDeBord.creditARecevoirAide')}
+          detail={`${donnees.nombrePaiementsTotal} ${t('tableauDeBord.nombrePaiementsAide')}`}
           attention={donnees.totalRestantCentimes > 0}
         />
       </section>
@@ -279,7 +282,10 @@ export function DonneesTableauBord(): React.JSX.Element {
 
 /**
  * Une boite d'indicateur.
- * `attention` met la valeur en evidence (credit a recevoir non nul).
+ * `attention` met la valeur en evidence (montants restant dus non nuls).
+ *
+ * `detail` est la ligne SECONDAIRE, sous le montant : plus petite et discrete,
+ * elle ne concurrence jamais la somme.
  */
 function Statistique({
   etiquette,
@@ -318,8 +324,9 @@ function Statistique({
  * L'etat affiche est donc celui stocke, traduit par la meme table que le reste
  * de l'application (`rendezVous.statuts`) : un seul vocabulaire sur tous les
  * ecrans. Les valeurs d'organisation historiques (`CONFIRME`, `EN_ATTENTE`,
- * `EN_COURS`, `ANNULE`) y trouvent une traduction, ce qui evite d'afficher un
- * code brut sur un rendez-vous ancien — et « ANNULE » se lit « Fait », conformement
+ * `EN_COURS`) y trouvent une traduction — « Confirme » n'existe plus comme
+ * statut visible (§2) et se lit « Planifie », ce qui evite d'afficher un code
+ * brut sur un rendez-vous ancien. « ANNULE » se lit « Fait », conformement
  * au vocabulaire demande.
  *
  * `dateFin` n'est plus consulte : c'est volontairement le parametre

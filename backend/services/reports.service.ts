@@ -5,6 +5,7 @@ import {
 } from '@backend/services/appointments.service'
 import { presencesDuJour } from '@backend/services/dashboard-metrics'
 import {
+  nombreTotalPaiements,
   revenusParAnnee,
   revenusParMethode,
   revenusParPeriode,
@@ -576,6 +577,11 @@ export interface TableauBordDonnees {
   nombrePaiementsJour: number
   revenusSemaineCentimes: number
   revenusMoisCentimes: number
+  /**
+   * Nombre TOTAL de paiements valides (toutes periodes), compte en base sur la
+   * meme population que `totalRestantCentimes`.
+   */
+  nombrePaiementsTotal: number
   totalRestantCentimes: number
   /**
    * Rendez-vous CREES AUJOURD'HUI, quel que soit leur date de rendez-vous.
@@ -637,6 +643,7 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     revenusSemaine,
     revenusMois,
     restant,
+    nombrePaiementsTotal,
     prochain,
     rendezVousCreesAujourdhui,
   ] = await Promise.all([
@@ -693,6 +700,8 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     totalEncaisse(semaine.debut, semaine.fin),
     totalEncaisse(mois.debut, mois.fin),
     totalRestantARecevoir(),
+    // meme population de paiements que le total restant, donc meme perimetre.
+    nombreTotalPaiements(),
     prisma.appointment.findMany({
       where: {
         dateDebut: { gt: aujourdhui.fin },
@@ -829,6 +838,7 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     nombrePaiementsJour: nbPaiementsJour,
     revenusSemaineCentimes: revenusSemaine,
     revenusMoisCentimes: revenusMois,
+    nombrePaiementsTotal,
     totalRestantCentimes: restant,
     prochainsRendezVous: prochain.map((rdv) => ({
       id: rdv.id,

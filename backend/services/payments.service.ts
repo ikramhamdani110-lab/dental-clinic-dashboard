@@ -548,6 +548,19 @@ export async function nombrePaiements(debut: Date, fin: Date): Promise<number> {
 }
 
 /**
+ * Nombre TOTAL de paiements valides, toutes periodes confondues.
+ *
+ * Meme population que `totalRestantARecevoir` (paiements `VALIDE`) : les deux
+ * indicateurs du tableau de bord « montants restant dus » et « nombre de
+ * paiements » portent donc sur le meme perimetre et ne peuvent pas diverger.
+ * Regle unique, appliquee en base par un `COUNT` : aucune ligne n'est chargee
+ * dans Node (§18, §35).
+ */
+export async function nombreTotalPaiements(): Promise<number> {
+  return prisma.payment.count({ where: { statut: 'VALIDE' } })
+}
+
+/**
  * Total restant a recevoir sur l'ensemble des traitements non annules.
  * Calcule = somme des prix - somme des paiements valides. En base uniquement.
  */

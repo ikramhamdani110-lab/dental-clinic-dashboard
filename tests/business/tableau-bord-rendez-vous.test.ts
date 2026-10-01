@@ -69,6 +69,7 @@ vi.mock('@backend/database/prisma', () => ({ prisma: fakePrisma }))
 vi.mock('@backend/services/payments.service', async () => ({
   totalEncaisse: vi.fn(async () => 0),
   totalRestantARecevoir: vi.fn(async () => 0),
+  nombreTotalPaiements: vi.fn(async () => 0),
   revenusParMois: vi.fn(async () => []),
   revenusParAnnee: vi.fn(async () => []),
   revenusParMethode: vi.fn(async () => []),

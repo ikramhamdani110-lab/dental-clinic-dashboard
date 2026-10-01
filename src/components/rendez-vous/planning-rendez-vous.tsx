@@ -62,10 +62,17 @@ type Vue = 'jour' | 'semaine' | 'mois'
  *
  * `TERMINE` est la valeur stockee qui porte ce libelle. Les autres valeurs de
  * l'enumeration de la base (`CONFIRME`, `EN_ATTENTE`, `EN_COURS`, `ANNULE`) sont
- * conservees : elles restent dans l'historique existant et ne sont simplement
- * plus selectables. Aucun changement de schema, d'enumeration ni de migration.
+ * conservees en base et dans l'historique : elles restent lisibles mais ne sont
+ * plus selectables, et « Confirme » ne fait plus partie du vocabulaire
+ * visible (§2). Aucun changement de schema, d'enumeration ni de migration.
+ *
+ * AUCUN CHANGEMENT AUTOMATIQUE : ni le tableau de bord, ni une tache de fond ne
+ * comparent la date du rendez-vous a l'instant present pour reecrire son
+ * statut. Le seul chemin vers « Fait », « Reprogramme » ou « Absent » est ce
+ * selecteur.
  */
 const OPTIONS_STATUT = [
+  { valeur: 'PLANIFIE', libelle: t('rendezVous.statuts.PLANIFIE') },
   { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
   { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
   { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
@@ -99,6 +106,18 @@ export function PlanningRendezVous(): React.JSX.Element {
   const notifications = useNotifications()
   /** Identifiant du rendez-vous en cours de mise a jour, pour desactiver sa ligne. */
   const [enCoursId, setEnCoursId] = useState<string | null>(null)
+
+  /**
+   * Rendez-vous en attente de CONFIRMATION DE SUPPRESSION.
+   *
+   * `null` = aucun dialogue ouvert. Renseigne, la ligne correspondante affiche un
+   * petit etat de confirmation en ligne (« Supprimer ce rendez-vous ? » /
+   * « Annuler » / « Supprimer ») : le premier clic NE SUPPRIME RIEN, il ouvre
+   * seulement la question. Rien n'est envoye au serveur avant le second clic.
+   */
+  const [aSupprimer, setASupprimer] = useState<string | null>(null)
+  /** Suppression effectivement en cours : desactive les deux boutons. */
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false)
 
   /**
    * Filtre de statut du planning.
@@ -190,6 +209,48 @@ export function PlanningRendezVous(): React.JSX.Element {
       }
     },
     // `charger` est stable : les bornes sont converties en chaines ISO.
+    [charger, notifications],
+  )
+
+  /**
+   * Supprime un rendez-vous — PAS au premier clic.
+   *
+   * Le premier clic passe seulement l'identifiant dans `aSupprimer` : la ligne
+   * bascule en Confirmation, rien n'est appele. Cette fonction n'est atteinte
+   * qu'APRÈS la reponse affirmative du medecin.
+   *
+   * L'API `DELETE /api/appointments/:id` applique la CORBEILLE existante
+   * (suppression logique, 24 h) : le rendez-vous disparait des listes — donc
+   * l'API le filtre des lors — sans detruire le patient, le traitement, le
+   * paiement ni l'historique financier (§23, §49). La suppression physique
+   * n'intervient qu'apres expiration, hors de ce parcours.
+   *
+   * La session authentifiee du medecin est verifiee COTE SERVEUR par la route
+   * privee : masquer le bouton n'est jamais la protection, l'API l'est.
+   */
+  const supprimerRendezVous = useCallback(
+    async (rendezVousId: string) => {
+      setSuppressionEnCours(true)
+      try {
+        await requeteApi(`/api/appointments/${rendezVousId}`, { methode: 'DELETE' })
+        // Retrait immediat de la liste, avant le rechargement complet.
+        setRendezVous((liste) => liste.filter((rdv) => rdv.id !== rendezVousId))
+        setASupprimer(null)
+        notifications.succes(t('rendezVous.supprimerReussie'))
+        await charger()
+        // Le tableau de bord et la fiche patient comptent les rendez-vous.
+        signalerModification('rendezVous')
+      } catch (cause) {
+        // Echec : le rendez-vous RESTE dans la liste, et le motif est dit.
+        notifications.erreur(
+          cause instanceof ApiError ? cause.message : messageErreur(cause),
+        )
+        setASupprimer(null)
+        await charger()
+      } finally {
+        setSuppressionEnCours(false)
+      }
+    },
     [charger, notifications],
   )
 
@@ -349,6 +410,61 @@ export function PlanningRendezVous(): React.JSX.Element {
                       >
                         {t('patients.fiche')}
                       </LienBouton>
+
+                      {/*
+                        * SUPPRESSION — en DEUX temps, jamais au premier clic.
+                        *
+                        * Le bouton « Supprimer » bascule la ligne en etat de
+                        * confirmation. Tant que le medecin n'a pas repondu,
+                        * aucune requete n'est envoyee : c'est « Annuler » ou
+                        * « Supprimer » qui decide. La confirmation SUPPRIME ne
+                        * ferme pas la ligne sans appel serveur : c'est elle qui
+                        * appelle `supprimerRendezVous`.
+                        */}
+                      {aSupprimer === rdv.id ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 'var(--espace-2)',
+                            marginLeft: 'var(--espace-2)',
+                          }}
+                        >
+                          <span className="statistique-detail">
+                            {t('confirmation.supprimerRendezVous')}
+                            <br />
+                            <span className="encadre-avertissement">
+                              {t('rendezVous.supprimerAide')}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            className="bouton bouton-secondaire"
+                            onClick={() => setASupprimer(null)}
+                            disabled={suppressionEnCours}
+                          >
+                            {t('commun.annuler')}
+                          </button>
+                          <button
+                            type="button"
+                            className="bouton bouton-danger-plein"
+                            onClick={() => void supprimerRendezVous(rdv.id)}
+                            disabled={suppressionEnCours}
+                          >
+                            {suppressionEnCours
+                              ? t('rendezVous.suppressionEnCours')
+                              : t('commun.supprimer')}
+                          </button>
+                        </span>
+                      ) : (
+                        <Bouton
+                          variante="discret"
+                          taille="petite"
+                          onClick={() => setASupprimer(rdv.id)}
+                        >
+                          {t('commun.supprimer')}
+                        </Bouton>
+                      )}
                     </td>
                   </tr>
                 ))}

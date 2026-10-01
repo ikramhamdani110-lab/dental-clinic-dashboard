@@ -192,6 +192,11 @@ export function Rapports(): React.JSX.Element {
    * ne re-rende pas le composant lors des mises à jour asynchrones du parent.
    */
   const handleAfficher = useCallback(() => {
+    // Garde-fou : des bornes absentes ou dans le desordre ne declenchent AUCUNE
+    // requete. Le serveur les refuserait de toute facon ; mieux vaut ne pas
+    // l'appeler, et laisser les champs libres pour corriger la saisie.
+    if (!du || !au) return
+    if (au < du) return
     setPeriodeAppliquee({ du, au })
   }, [du, au])
 
@@ -221,7 +226,11 @@ export function Rapports(): React.JSX.Element {
     return parametres.toString()
   }, [periode, periodeAppliquee])
 
-  /** Faux tant qu'une periode personnalisee n'est pas complete. */
+  /** Faux tant qu'une periode personnalisee n'est pas complete.
+   *
+   *  Le rapport ne part JAMAIS avec des bornes incompletes : la requete est
+   *  suspendue (`null`) tant que le medecin n'a pas saisi « Du » et « Au » ET
+   *  cliqué sur « Afficher » (cf. `SyntheseFinanciereCartes`). */
   const periodeExploitable = !(periode === 'personnalisee' && !periodeAppliquee)
 
   const synthese = useRequete<SyntheseFinanciere>(
@@ -259,6 +268,10 @@ export function Rapports(): React.JSX.Element {
         synthese={synthese.donnees}
         chargement={synthese.chargement}
         erreur={synthese.erreur}
+        /* `periodeExploitable` distingue « pas encore de requete possible » de
+         * « la requete a echoue ». Sans lui, choisir « Personnaliser » faisait
+         * tomber le composant dans le etat d'ERREUR (cf. `SyntheseFinanciereCartes`). */
+        enAttente={!periodeExploitable}
         onRecharger={synthese.recharger}
       />
 
@@ -410,11 +423,13 @@ function SyntheseFinanciereCartes({
   synthese,
   chargement,
   erreur,
+  enAttente = false,
   onRecharger,
 }: {
   synthese: SyntheseFinanciere | null
   chargement: boolean
   erreur: string | null
+  enAttente?: boolean
   onRecharger: () => void
 }): React.JSX.Element {
   if (chargement) {
@@ -422,6 +437,29 @@ function SyntheseFinanciereCartes({
       <div className="etat-vide">
         <span className="rotation" aria-hidden="true" />
         <p className="etat-vide-texte">{t('tableaux.chargement')}</p>
+      </div>
+    )
+  }
+
+  /*
+   * PERIODE PERSONNALISEE EN ATTENTE DE DATES — ce n'est PAS une erreur.
+   *
+   * ROOT CAUSE DU BUG « Une erreur interne est survenue » :
+   *   Choisir « Personnaliser » rendait `periodeExploitable` faux, donc aucune
+   *   requete n'etait emise (`useRequete(null)` remet `donnees` a null). Le
+   *   test ci-dessous `erreur || !synthese` ne distinguait pas « pas encore de
+   *   resultat » de « resultat en echec » : `donnees === null` suffisait a
+   *   afficher le cadre d'erreur et le bouton « Reessayer », alors que rien
+   *   n'avait echoue et qu'aucun rapport n'avait ete demande.
+   *
+   *   Le remede n'est pas de masquer le message mais de distinguer les deux
+   *   etats. Tant que « Du » et « Au » ne sont pas saisis, la page affiche une
+   *   consigne simple ; le rapport ne partira qu'au clic sur « Afficher ».
+   */
+  if (enAttente) {
+    return (
+      <div className="etat-vide">
+        <p className="etat-vide-texte">{t('rapports.periodeEnAttente')}</p>
       </div>
     )
   }
