@@ -1325,7 +1325,11 @@ textarea.champ-controle {
  * neutre — pour creer la profondeur sans effet.
  *
  * Pas de bordure : un contour, meme pale, redonnerait au composant son air de
- * carte SaaS. C'est l'ombre et le blanc qui creent l'angle.
+ * carte SaaS. C'est l'ombre et la surface qui creent l'angle.
+ *
+ * L'ombre est redefinie plus bas pour la page en mode sombre : sur un fond nuit,
+ * une ombre ardoise ne se voit plus, et c'est une FOYERE NOIRE tres elargie qui
+ * redonne la profondeur — le meme effet, sans lumiere coloree sous la carte.
  */
 .connexion-carte {
   position: relative;
@@ -1338,6 +1342,26 @@ textarea.champ-controle {
   box-shadow:
     0 1px 2px rgb(15 23 42 / 0.05),
     0 12px 32px -18px rgb(15 23 42 / 0.18);
+}
+
+/*
+ * LA PAGE EST TOUJOURS SOMBRE — adaptations de la carte.
+ *
+ * Selector `data-theme="sombre"` pose sur `.page-connexion` lui-meme : ces regles
+ * ne peuvent donc s'appliquer qu'ici. Elles ne touchent ni `.carte`, ni
+ * `.connexion-*` ailleurs, ni le tableau de bord.
+ */
+.page-connexion[data-theme='sombre'] .connexion-carte {
+  /*
+   * Sur fond nuit, l'ombre ne peut plus etre ardoise : elle serait invisible.
+   * Deux couches noires — un contact serre qui pose la carte, une diffusion large
+   * qui la detache du fond — plus un liseré HAUT tres discret, qui donne l'angle
+   * sans dessiner de bordure. Toujours aucun bleu : pas de halo, pas d'llumination.
+   */
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.35),
+    0 18px 44px -22px rgb(0 0 0 / 0.7),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
 
 /*

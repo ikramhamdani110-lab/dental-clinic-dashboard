@@ -19,6 +19,26 @@ import { FormulaireConnexion } from '@/components/auth/formulaire-connexion'
  * : la profondeur vient de l'ombre et de l'espace, pas d'un contour.
  *
  * L'atmosphere derriere reste tres discrete et n'intercepte aucun clic.
+ *
+ * ── TOUJOURS EN MODE SOMBRE ───────────────────────────────────────────────────
+ * Cette page est TOUJOURS rendue en theme sombre, quelle que soit la preference
+ * enregistree du medecin ou celle du systeme. On ne joue pas avec `localStorage`
+ * ni avec un script : l'attribut `data-theme="sombre"` est pose sur le `<main>`
+ * DE CETTE PAGE, dans le HTML rendu par le serveur, donc des le premier octet.
+ *
+ * Trois raisons a cette isolation :
+ *
+ *   - aucun FLASH : la feuille de style porte le theme sombre des le premier
+ *     rendu, la page n'apparait donc jamais claire avant de basculer ;
+ *   - aucun effet de bord : `<html>` n'est pas touche. Le `ThemeProvider` du
+ *     tableau de bord continue de lire et d'ecrire `data-theme` sur la racine, et
+ *     la bascule clair / sombre y fonctionne exactement comme avant ;
+ *   - le retour sur `/connexion` apres deconnexion retrouve la page sombre, quel
+ *     que soit le theme choisi dans l'application.
+ *
+ * Les jetons utilises (`--fond-page`, `--accent`, `--texte-principal`…) sont
+ * ceux du theme sombre deja definis dans `theme.css` : la page ne duplique
+ * aucune couleur, elle reutilise la palette existante.
  */
 export const metadata: Metadata = {
   title: t('auth.titreConnexion'),
@@ -27,7 +47,7 @@ export const metadata: Metadata = {
 
 export default function PageConnexion(): React.JSX.Element {
   return (
-    <main className="page-connexion">
+    <main className="page-connexion" data-theme="sombre">
       {/* Atmosphere : deux nappes tres floutees, tres basse opacite, immobiles. */}
       <div className="connexion-atmosphere" aria-hidden="true">
         <span className="connexion-lueur connexion-lueur--haute" />

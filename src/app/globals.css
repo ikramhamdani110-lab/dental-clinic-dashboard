@@ -51,6 +51,26 @@ html {
   background-color: var(--fond-page);
 }
 
+/*
+ * PAGE DE CONNEXION — LE DOCUMENT LUI-MEIGE EST SOMBRE.
+ *
+ * `<html>` et `<body>` heritent de la racine : si le medecin a choisi le theme
+ * clair, ils seraient clairs meme si `.page-connexion` (qui couvre deja toute la
+ * hauteur) est sombre. On ne le verrait pas, SAUF au rebond de defilement
+ * (overscroll) ou sur une page plus courte que la fenetre — ou un eclat clair
+ * trahirait que le fond n'est pas reellement sombre.
+ *
+ * `:has()` cible UNIQUEMENT quand la page de connexion est presente : le
+ * tableau de bord et toutes les autres pages gardent exactement leur fond, donc
+ * exactement leur comportement de theme. Aucun attribut, aucun JavaScript.
+ */
+html:has(.page-connexion[data-theme='sombre']),
+body:has(.page-connexion[data-theme='sombre']) {
+  background-color: #0e1727;
+  /* Rend aussi les controles natifs et la barre de defilement coherents. */
+  color-scheme: dark;
+}
+
 body {
   min-height: 100vh;
   font-family: var(--police-texte);
