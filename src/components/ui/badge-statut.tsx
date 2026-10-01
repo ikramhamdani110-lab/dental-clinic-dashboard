@@ -6,9 +6,9 @@ import { contenu, t } from '@content/index'
  * =============================================================================
  *
  *  Chaque statut est traduit en francais et associe a une couleur SOBRE :
- *    - vert   : etat positif ou finalise (Termine, Confirme, Valide)
+ *    - vert   : etat positif ou finalise (Termine, Valide) ;
  *    - bleu   : etat normal en cours (Planifie, En cours)
- *    - ambre  : etat a surveiller (En attente, Reprogramme)
+ *    - ambre  : etat a surveiller (Reprogramme) ;
  *    - rouge  : etat negatif (Annule, Absent)
  *
  *  Le libelle texte est TOUJOURS present (jamais seulement une couleur) : la
@@ -19,8 +19,13 @@ type TonBadge = 'neutre' | 'info' | 'succes' | 'avertissement' | 'erreur'
 
 export const TONS_STATUT_RENDEZ_VOUS: Record<string, TonBadge> = {
   PLANIFIE: 'info',
-  CONFIRME: 'succes',
-  EN_ATTENTE: 'avertissement',
+  // Les valeurs d'organisation historiques sont toutes illustrees par le meme
+  // bleu que PLANIFIE : « Confirme » se LIT « Planifie » (§2), donc il ne peut
+  // pas porter une couleur differente — sinon un rendez-vous historique au
+  // statut CONFIRME s'afficherait en vert alors que son libelle dit « Planifie ».
+  // UNE SEULE couleur pour l'etat « planifie », quel que soit le code stocke.
+  CONFIRME: 'info',
+  EN_ATTENTE: 'info',
   EN_COURS: 'info',
   TERMINE: 'succes',
   ANNULE: 'erreur',
