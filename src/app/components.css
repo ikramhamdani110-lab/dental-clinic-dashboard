@@ -1218,63 +1218,444 @@ textarea.champ-controle {
 }
 
 /* ── Connexion ─────────────────────────────────────────────────────────────── */
+/*
+ * Les regles de la page de connexion (`.page-connexion`, `.connexion-zone`,
+ * `.connexion-champ`, `.connexion-actions`…) sont definies plus bas, dans leur
+ * propre section, avec la composition sans carte.
+ */
+
+/* =============================================================================
+ *  PAGE DE CONNEXION — COMPOSITION SANS CARTE
+ * ==========================================================================
+ *
+ *  PRINCIPE
+ *
+ *  Il n'y a pas de carte. Le formulaire ne flotte pas dans une boite blanche
+ *  posée sur l'ecran : il EST la composition. Trois ingredients seulement —
+ *
+ *    1. une ATMOSPHERE : deux nappes de lueur tres basse opacite, floutees, qui
+ *       creusent une profondeur tres calme (aucune forme tracee, aucun cercle
+ *       visible, aucun degrade marque) ;
+ *    2. une ZONE DE LUMIERE : une nappe radiale posee derriere le contenu, sans
+ *       bordure ni ombre portee, pour que le formulaire semble ASSIS dans un
+ *       endroit eclaire ;
+ *    3. un CONTENU resserre : marque, titre, deux champs et un bouton.
+ *
+ *  Tous les decoratifs sont en `aria-hidden` et en `pointer-events: none` : ils
+ *  ne sont ni annonces, ni cliquables, ni focusables.
+ */
 
 .page-connexion {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: var(--espace-5);
+  min-height: 100dvh;
+  padding: clamp(1.5rem, 5vw, 4rem) var(--espace-5);
   background-color: var(--fond-page);
+  /* Laisse respirer la page sur les petits ecrans, evite le debordement. */
+  overflow-x: hidden;
 }
 
-.carte-connexion {
+/* ── 1. Atmosphere ─────────────────────────────────────────────────────────── */
+
+.connexion-atmosphere {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/*
+ * Chaque nappe est un degrade RADIAL tres elargi, dans un ton proche du fond
+ * (pas un autre accent), et floute. C'est ce qui produit une lueur d'ambiance
+ * plutôt qu'une forme : a 40 % d'echelle de difference avec le fond, on ne voit
+ * plus le bord, seulement une variation de lumiere.
+ *
+ * L'opacite reste tres basse (0.55 / 0.4) : la presence est perceptible, jamais
+ * spectaculaire. Aucune de ces nappes n'est animee — rien ne bouge en boucle.
+ */
+.connexion-lueur {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+}
+
+.connexion-lueur--haute {
+  /* Lumiere haute et centrale : le regard tombe naturellement sur le titre. */
+  top: -16%;
+  left: 50%;
+  width: min(68rem, 130vw);
+  height: min(42rem, 78vh);
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--accent) 30%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 42%,
+    transparent 70%
+  );
+}
+
+.connexion-lueur--basse {
+  /* Contre-jour doux en bas : evite que le bas de l'ecran soit un aplat mort. */
+  bottom: -22%;
+  left: 50%;
+  width: min(60rem, 140vw);
+  height: min(34rem, 66vh);
+  transform: translateX(-50%);
+  opacity: 0.5;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--bordure-focus) 22%, transparent) 0%,
+    transparent 66%
+  );
+}
+
+/* ── 2. La carte ───────────────────────────────────────────────────────────── */
+
+/*
+ * LA CARTE.
+ *
+ * Une surface claire, des coins legerement arrondis, et une ombre NEUTRE tres
+ * discrete qui la detache du fond floute. Aucune teinte bleue, aucun halo
+ * colore : une lueur sous la carte la ferait paraitre eclairee par-dessous.
+ * Deux couches suffisent — un contact serré et une diffusion large, en gris
+ * neutre — pour creer la profondeur sans effet.
+ *
+ * Pas de bordure : un contour, meme pale, redonnerait au composant son air de
+ * carte SaaS. C'est l'ombre et le blanc qui creent l'angle.
+ */
+.connexion-carte {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 24rem;
+  max-width: 25rem;
+  padding: var(--espace-6) clamp(1.5rem, 5vw, 2.25rem) var(--espace-6);
+  background-color: var(--fond-surface);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.05),
+    0 12px 32px -18px rgb(15 23 42 / 0.18);
 }
 
-.connexion-marque {
+/*
+ * LE TITRE.
+ *
+ * Le libelle fait 25 caracteres : on ne peut donc pas autoriser le retour a la
+ * ligne sans y reflechir. `white-space: nowrap` + une taille fluide bornee par
+ * `clamp()` garantissent une seule ligne sur toute la largeur de bureau, et le
+ * media query en bas autorise explicitement le retour en dessous.
+ */
+.connexion-titre {
+  margin: 0 0 var(--espace-6);
+  /* Sur cette page, une sans-serif : voir le commentaire sur le formulaire. */
+  font-family: 'Inter', 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system,
+    'Helvetica Neue', Arial, sans-serif;
+  font-size: clamp(1.2rem, 0.95rem + 1vw, 1.5rem);
+  /*
+   * 600, et non 700 : au-dessus, la graisse devient un bloc. `letter-spacing`
+   * negatif resserre les mots et garde le titre sur un seul tenant ; c'est ce
+   * couple — pas la taille — qui porte le caractere.
+   */
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.022em;
+  color: var(--texte-principal);
+  text-align: center;
+  text-wrap: balance;
+  white-space: nowrap;
+}
+
+/* ── Formulaire ───────────────────────────────────────────────────────────── */
+
+.connexion-formulaire {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--espace-2);
-  margin-bottom: var(--espace-5);
-  text-align: center;
+  gap: var(--espace-5);
+  /* Les libelles et la saisie suivent la meme famille que le titre. */
+  font-family: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system,
+    'Helvetica Neue', Arial, sans-serif;
 }
 
-.connexion-logo {
+.connexion-champs {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--accent-texte);
-  background-color: var(--accent);
-  border-radius: var(--rayon-grand);
+  flex-direction: column;
+  gap: var(--espace-5);
 }
 
-.connexion-titre {
-  font-size: 1.15rem;
-  font-weight: 600;
+/*
+ * LES CHAMPS — ÉTIQUETTE FLOTTANTE SUR LIGNE DE BASE.
+ *
+ * Le label VRAI de `ChampTexte` est repositionne en absolu : au repos il repose
+ * DANS le champ (comme un placeholder), puis il remonte des que le champ est
+ * focalise ou rempli. Aucune duplication, aucun `aria-hidden` : le label reste
+ * le seul libelle, correctement associe au controle.
+ *
+ * L'input garde son comportement natif — `type`, autocompletion, selection,
+ * correction — on ne touche qu'a sa mise en page. C'est ce qui garantit que
+ * l'autocompletion du navigateur continue de fonctionner.
+ */
+.connexion-champ {
+  position: relative;
+  /* Espace pour l'etiquette flottee, sans quoi elle chevaucherait le titre. */
+  padding-top: 0.5rem;
+}
+
+.connexion-champ .champ {
+  text-align: left;
+}
+
+.connexion-champ .champ-etiquette {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.6rem;
+  /*
+   * Le point de repos : l'etiquette est POSEE dans le champ, a la meme hauteur
+   * que le texte qu'elle remplacerait. Si elle etait un peu plus haute, on
+   * verrait les deux lignes a la fois.
+   */
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--texte-tertiaire);
+  pointer-events: none;
+  transform-origin: left top;
+  transition:
+    transform var(--transition-normale),
+    font-size var(--transition-normale),
+    color var(--transition-normale);
+}
+
+/*
+ * LE FLOTTEMENT.
+ *
+ * Deux déclencheurs, parce que l'experience demande deux comportements :
+ *
+ *   - `:focus-within` couvre « vide mais focalise » : l'etiquette monte des que
+ *     le curseur entre, SANS attendre la frappe ;
+ *   - `.connexion-champ--rempli` couvre « rempli mais non focalise » : l'etiquette
+ *     reste au-dessus de la valeur meme apres avoir quitte le champ, et
+ *     redescend seule quand le champ est vide de nouveau.
+ *
+ * `translateY(-1.35rem)` + une taille reduite : le mouvement est court et sans
+ * rebond (`var(--transition-normale)` est une courbe ease, pas un spring).
+ */
+.connexion-champ:focus-within .champ-etiquette,
+.connexion-champ--rempli .champ-etiquette {
+  transform: translateY(-1.3rem);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.connexion-champ .champ-controle {
+  padding: 0.5rem 0 0.6rem;
+  background-color: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bordure-champ);
+  border-radius: 0;
+  box-shadow: none;
   color: var(--texte-principal);
+  /* L'anneau de focus global (§50) est neutralise ici : le filet SOUS le champ
+   * est le seul indicateur, on verrait sinon un rectangle au survol clavier. */
+  outline: none;
+  outline-offset: 0;
+  appearance: none;
+  transition:
+    border-color var(--transition-normale),
+    border-bottom-width var(--transition-normale),
+    box-shadow var(--transition-normale);
 }
 
-.connexion-sous-titre {
-  font-size: var(--taille-petite);
-  color: var(--texte-tertiaire);
+.connexion-champ .champ-controle:hover:not(:disabled) {
+  border-bottom-color: var(--bordure-forte);
 }
 
-/* Ligne de securite sous le formulaire de connexion */
-.connexion-securite {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--espace-2);
-  margin-top: var(--espace-4);
+/*
+ * AUCUN RECTANGLE AU FOCUS.
+ *
+ * Le focus est porte par le SOLE filet horizontal : ni `outline`, ni `border`
+ * lateraux, ni `box-shadow` (le halo bleu du composant generique
+ * `.champ-controle:focus` dessinait precisement le rectangle recherche), ni
+ * fond. On passe meme la bordure du bas a 2px, ce qui rend le trait plus net
+ * sans l'epaissir en boite. `outline: none` est reecrit ici, et non uniquement
+ * sur `:focus-visible`, pour qu'un focus au clic comme au Tab soit identique.
+ */
+.connexion-champ .champ-controle:focus,
+.connexion-champ .champ-controle:focus-visible,
+.connexion-champ .champ-controle:not(:disabled):focus,
+.connexion-champ .champ-controle:not(:disabled):focus-visible {
+  outline: none;
+  outline-offset: 0;
+  background-color: transparent;
+  border-width: 0;
+  border-radius: 0;
+  border-bottom: 2px solid var(--accent);
+  box-shadow: none;
+}
+
+.connexion-champ .champ-controle:disabled {
+  background-color: transparent;
+}
+
+.connexion-champ .champ-obligatoire::after {
+  /* Le « * » d'obligation n'a pas sa place sur une etiquette qui flotte. */
+  display: none;
+}
+
+/*
+ * LE MESSAGE D'ERREUR.
+ *
+ * Il garde exactement son role (`role="alert"`), son texte et sa validation — on
+ * ne touche pas a la logique. Seule sa FORME change : posee en pleine largeur dans
+ * la carte, l'ancien fond rose dessinait un second rectangle, et deux boites
+ * dans une carte en font deux. On le ramene donc au meme langage que les champs :
+ * un filet d'erreur fin sous le texte, aucune bordure laterale.
+ */
+.connexion-erreur {
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--erreur) 34%, transparent);
+  border-radius: 0;
+  padding: 0 0 0.65rem;
+  background-color: transparent;
+  color: var(--erreur-texte);
   font-size: var(--taille-tres-petite);
-  color: var(--texte-tertiaire);
+  line-height: 1.45;
+  text-align: left;
+  animation: connexion-erreur-entree 220ms var(--transition-rapide) both;
+}
+
+@keyframes connexion-erreur-entree {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connexion-erreur {
+    animation: none;
+  }
+}
+
+.connexion-actions {
+  margin-top: var(--espace-2);
+}
+
+/*
+ * LE BOUTON — l'element interactif le plus fort de la page.
+ *
+ * Il garde exactement les couleurs du bouton `principal` deja utilisees partout
+ * (meme `--accent`, meme contraste de libelle) : la redesign ne cree donc pas
+ * une deuxieme langue visuelle. Ce qui change, c'est la forme — un rayon plus
+ * doux, une profondeur discrete, et un survol qui eleve legerement.
+ */
+.connexion-actions .bouton {
+  width: 100%;
+  padding: 0.8rem 1.6rem;
+  /* Herite de la sans-serif du formulaire : le libelle ne doit pas ressortir
+     dans le serif du reste du site, sinon le bouton parait etranger. */
+  font-family: inherit;
+  font-size: var(--taille-base);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--texte-inverse) 12%, transparent),
+    0 6px 16px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+  transition:
+    background-color var(--transition-normale),
+    box-shadow var(--transition-normale),
+    transform var(--transition-rapide);
+}
+
+.connexion-actions .bouton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--texte-inverse) 12%, transparent),
+    0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.connexion-actions .bouton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ── Entree en scene ───────────────────────────────────────────────────────── */
+
+/*
+ * UNE SEULE animation, a l'arrivee, de 480 ms, sans rebonds ni deplacement.
+ * Le decoratif apparait pendant que le contenu est deja la : l'effet est un
+ * « adoucissement », pas une demonstration. Rien ne tourne ensuite.
+ *
+ * `prefers-reduced-motion` neutralise l'ensemble : le contenu apparait
+ * immediatement, sans transition.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .connexion-lueur {
+    animation: connexion-lumiere 900ms var(--transition-normale) both;
+  }
+
+  .connexion-lueur--basse {
+    animation-delay: 120ms;
+  }
+
+  .connexion-carte {
+    animation: connexion-apparition 480ms var(--transition-normale) both;
+  }
+}
+
+@keyframes connexion-lumiere {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes connexion-apparition {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connexion-lueur,
+  .connexion-carte {
+    animation: none;
+  }
+}
+
+/* ── Reperes ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 30rem) {
+  /*
+   * Sous ~480 px, le titre ne tient plus sur une ligne. Plutot que de le laisser
+   * se couper n'importe comment, on le reduit un peu et on resserre la carte.
+   */
+  .connexion-titre {
+    white-space: normal;
+    font-size: clamp(1.05rem, 5.4vw, 1.25rem);
+  }
+
+  .connexion-carte {
+    padding: var(--espace-5) var(--espace-4);
+  }
+}
+
+@media (max-width: 26rem) {
+  /*
+   * La carte s'etroit avec l'ecran, et l'atmosphere se calme : sur un telephone,
+   * une nappe large tient mal dans une fenetre etroite et se lit comme une
+   * tache. On reduit l'opacite plutot que de laisser le degrade bavouiller.
+   */
+  .connexion-lueur {
+    filter: blur(70px);
+    opacity: 0.5;
+  }
 }
 
 /* =============================================================================

@@ -82,11 +82,11 @@
     "basculerTheme": "Changer de theme"
   },
   "auth": {
-    "titreConnexion": "Connexion a l'espace prive",
+    "titreConnexion": "Connexion à l'espace privé",
     "sousTitreConnexion": "Acces reserve au medecin du cabinet",
-    "email": "Adresse email",
+    "email": "Email",
     "motDePasse": "Mot de passe",
-    "seConnecter": "Se connecter",
+    "seConnecter": "Connexion",
     "seDeconnecter": "Se deconnecter",
     "placeholderEmail": "medecin@cabinet.dz",
     "placeholderMotDePasse": "Votre mot de passe",

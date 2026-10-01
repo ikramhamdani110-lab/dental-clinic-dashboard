@@ -76,43 +76,68 @@ export function FormulaireConnexion(): React.JSX.Element {
   }
 
   return (
-    <form onSubmit={soumettre} method="post" action="/connexion" noValidate>
+    <form
+      className="connexion-formulaire"
+      onSubmit={soumettre}
+      method="post"
+      action="/connexion"
+      noValidate
+    >
       {erreur ? (
-        <div className="encadre-erreur" role="alert" style={{ marginBottom: 'var(--espace-4)' }}>
+        <div className="encadre-erreur connexion-erreur" role="alert">
           {erreur}
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--espace-4)' }}>
-        <ChampTexte
-          nom="email"
-          type="email"
-          etiquette={t('auth.email')}
-          placeholder={t('auth.placeholderEmail')}
-          autoComplete="username"
-          obligatoire
-          sansNom
-          value={email}
-          onChange={(evenement) => setEmail(evenement.target.value)}
-          disabled={enCours}
-        />
+      {/*
+        LES DEUX CHAMPS — ÉTIQUETTE FLOTTANTE.
 
-        <ChampTexte
-          nom="password"
-          type="password"
-          etiquette={t('auth.motDePasse')}
-          placeholder={t('auth.placeholderMotDePasse')}
-          autoComplete="current-password"
-          obligatoire
-          sansNom
-          value={motDePasse}
-          onChange={(evenement) => setMotDePasse(evenement.target.value)}
-          disabled={enCours}
-        />
+        Le composant `ChampTexte` n'est pas modifie : il pose deja un VRAI
+        `<label htmlFor>` avant l'`<input>`, et c'est ce label qui flotte. On ne le
+        deplace pas dans la valeur du champ, on ne le duplique pas, on ne le rend
+        pas flottant en CSS pur — ce serait inaccessible.
+
+        Le declencheur est l'etat reel du champ : `.connexion-champ--rempli` est
+        pose quand le champ a une valeur, et une transition CSS fait monter
+        l'etiquette. Le `:focus-within` s'occupe du cas « vide mais focalise » :
+        l'etiquette monte des que le curseur entre, sans attendre la frappe.
+
+        Le libelle reste donc un VRAI label, associe au controle, lu par les
+        lecteurs d'ecran, et le comportement natif de l'input — autocompletion,
+        correction, selection, `type` — n'est pas touche.
+      */}
+      <div className="connexion-champs">
+        <div className={`connexion-champ${email ? ' connexion-champ--rempli' : ''}`}>
+          <ChampTexte
+            nom="email"
+            type="email"
+            etiquette={t('auth.email')}
+            autoComplete="username"
+            obligatoire
+            sansNom
+            value={email}
+            onChange={(evenement) => setEmail(evenement.target.value)}
+            disabled={enCours}
+          />
+        </div>
+
+        <div className={`connexion-champ${motDePasse ? ' connexion-champ--rempli' : ''}`}>
+          <ChampTexte
+            nom="password"
+            type="password"
+            etiquette={t('auth.motDePasse')}
+            autoComplete="current-password"
+            obligatoire
+            sansNom
+            value={motDePasse}
+            onChange={(evenement) => setMotDePasse(evenement.target.value)}
+            disabled={enCours}
+          />
+        </div>
       </div>
 
-      <div style={{ marginTop: 'var(--espace-5)' }}>
-        <Bouton type="submit" variante="principal" disabled={enCours} style={{ width: '100%' }}>
+      <div className="connexion-actions">
+        <Bouton type="submit" variante="principal" disabled={enCours}>
           {enCours ? t('commun.chargement') : t('auth.seConnecter')}
         </Bouton>
       </div>

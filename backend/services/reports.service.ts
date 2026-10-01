@@ -164,9 +164,10 @@ afficher
  *   personnalisee terminee en 2025 parle de 2025. La regle de decoupage est celle
  *   de `periodeAnnee`, identique a celle des autres periodes (bornes locales).
  *
- *   Le mois precedent n'est CALCULE QUE s'il a genere des revenus : sans
- *   reference, un pourcentage d'evolution serait trompeur (division par zero, ou
- *   hausse illusoire). L'interface s'appuie sur `comparaisonDisponible`.
+ * Le pourcentage d'evolution se calcule sur le MOIS COURANT comme denominateur :
+ * `(revenusMois - revenusMoisPrecedent) * 100 / revenusMois`. Il n'est produit
+ * QUE si le mois courant a genere des revenus, car c'est lui le diviseur.
+ * L'interface s'appuie sur `comparaisonDisponible`.
  */
 export async function rapportSyntheseFinanciere(periode: Periode): Promise<RapportSyntheseFinanciere> {
   /*
@@ -207,9 +208,28 @@ export async function rapportSyntheseFinanciere(periode: Periode): Promise<Rappo
       totalEncaisse(moisPrecedentDebut, moisPrecedentFin),
     ])
 
-  const comparaisonDisponible = revenusMoisPrecedent > 0
+  /*
+   * L'EVOLUTION EST RAPPORTEE AU MOIS COURANT, pas au mois precedent.
+   *
+   * Formule imposee : `(difference * 100) / revenusMois`.
+   *
+   * Exemple : mois courant 50 DA, mois precedent 40 DA, difference 10 DA
+   * -> 10 * 100 / 50 = 20 % -> « Hausse de 20 % ».
+   *
+   * La reference est donc le DENOMINATEUR du mois courant, et non la base
+   * conventionnelle « precedente ». C'est un choix d'affichage assume : l'ecart
+   * est exprime en pourcentage du niveau d'activite atteint ce mois-ci.
+   *
+   * La division se fait sur `revenusMois` : c'est donc lui qui doit etre non
+   * nul pour qu'un pourcentage soit interpretable. Le mois precedent, lui, n'a
+   * pas besoin d'avoir genere de revenu — un passage de 0 a 50 DA doit
+   * justement s'afficher comme une hausse a 100 %, pas comme « indisponible ».
+   * `comparaisonDisponible` pilote desormais l'affichage sur cette seule
+   * condition.
+   */
+  const comparaisonDisponible = revenusMois > 0
   const variationPourcent = comparaisonDisponible
-    ? ((revenusMois - revenusMoisPrecedent) / revenusMoisPrecedent) * 100
+    ? ((revenusMois - revenusMoisPrecedent) / revenusMois) * 100
     : null
 
   return {
