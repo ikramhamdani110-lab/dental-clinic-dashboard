@@ -196,6 +196,63 @@ textarea.champ-controle {
   font-weight: 500;
 }
 
+/*
+ * ── Champ date : les « / » sont un calque VISUEL ─────────────────────────────
+ *
+ * Le champ continue d'éditer une suite de chiffres bruts ; les séparateurs sont
+ * dessinés par un élément posé dessous, et le texte de l'input est rendu
+ * transparent. Le curseur, lui, reste celui du navigateur : il n'a aucun `/` à
+ * franchir, ce qui rend l'édition au milieu d'une date parfaitement naturelle.
+ *
+ * Les deux couches partagent la MÊME police, la MÊME taille et la MÊME grille de
+ * caractères (`font-variant-numeric: tabular-nums`), sans quoi chaque chiffre ne
+ * tomberait pas sur son emplacement.
+ */
+.champ-date {
+  position: relative;
+  display: block;
+}
+
+/* Le gabarit de la date, ou la date en cours de saisie. */
+.champ-date-modele {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  font-size: var(--taille-base);
+  font-variant-numeric: tabular-nums;
+  /* Un peu plus clair que le texte saisi : c'est un repère, pas une valeur. */
+  color: var(--texte-tertiaire);
+  pointer-events: none;
+  user-select: none;
+  white-space: pre;
+}
+
+/* L'input passe au-dessus mais ne montre que son texte — les « / » sont dessous. */
+.champ-date-saisie {
+  position: relative;
+  background-color: transparent;
+  /* Chaque chiffre occupe une case fixe : le calque et la saisie s'alignent. */
+  letter-spacing: 0.32em;
+  font-variant-numeric: tabular-nums;
+  color: transparent;
+  caret-color: var(--texte-principal);
+}
+
+.champ-date-saisie::placeholder {
+  color: transparent;
+}
+
+.champ-date-saisie:focus {
+  background-color: transparent;
+}
+
+/* Le calque suit l'état de validité, pas l'état de focus. */
+.champ-date:has(.champ-date-saisie[aria-invalid='true']) .champ-date-modele {
+  color: var(--erreur-doux);
+}
+
 .champ-grille {
   display: grid;
   gap: var(--espace-4);
@@ -517,11 +574,25 @@ textarea.champ-controle {
   color: var(--texte-principal);
 }
 
+/*
+ * ENCADRES DE MESSAGE ET NOTIFICATIONS — SANS BANDE LATÉRALE COLORÉE.
+ *
+ * Ces encadrés avaient une bande verticale de 3 px colorée à gauche (jaune pour
+ * un avertissement, bleu pour une information, rouge pour une erreur, vert pour
+ * un succès). C'était décoratif : elle répétait une couleur déjà portée par le
+ * TEXTE du message, sans rien apprendre au lecteur. Sur une valeur comme
+ * « Reste à payer », la même pastille parasite attachée au coin du montant
+ * distraitsait du chiffre lui-même.
+ *
+ * La bande est donc SUPPRIMÉE, pas remplacée : ni `border-left`, ni `::before`,
+ * ni décalage de mise en page pour compenser. Le fond doux, le rayon et le texte
+ * restent inchangés — le message, son état et son comportement ne bougent pas.
+ */
+
 /* Avertissement encadre (suppression, delai de corbeille) */
 .encadre-avertissement {
   padding: var(--espace-3) var(--espace-4);
   background-color: var(--avertissement-doux);
-  border-left: 3px solid var(--avertissement);
   border-radius: var(--rayon-petit);
   color: var(--texte-secondaire);
   font-size: var(--taille-petite);
@@ -530,7 +601,6 @@ textarea.champ-controle {
 .encadre-information {
   padding: var(--espace-3) var(--espace-4);
   background-color: var(--information-doux);
-  border-left: 3px solid var(--information);
   border-radius: var(--rayon-petit);
   color: var(--texte-secondaire);
   font-size: var(--taille-petite);
@@ -539,7 +609,6 @@ textarea.champ-controle {
 .encadre-erreur {
   padding: var(--espace-3) var(--espace-4);
   background-color: var(--erreur-doux);
-  border-left: 3px solid var(--erreur);
   border-radius: var(--rayon-petit);
   color: var(--texte-secondaire);
   font-size: var(--taille-petite);
@@ -566,24 +635,22 @@ textarea.champ-controle {
   padding: var(--espace-3) var(--espace-4);
   background-color: var(--fond-surface-eleve);
   border: 1px solid var(--bordure);
-  border-left-width: 3px;
   border-radius: var(--rayon-moyen);
   box-shadow: var(--ombre-moyenne);
   pointer-events: auto;
   animation: sahed-apparition var(--transition-normale);
 }
 
-.notification-succes {
-  border-left-color: var(--succes);
-}
-.notification-erreur {
-  border-left-color: var(--erreur);
-}
-.notification-avertissement {
-  border-left-color: var(--avertissement);
-}
+/*
+ * Les quatre variantes de notification ne fixent plus la couleur d'un bord : il
+ * n'y a plus de bord a colorer. Elles restent déclarées pour que le balisage
+ * existant et les tests restent valides — elles n'apportent plus de style.
+ */
+.notification-succes,
+.notification-erreur,
+.notification-avertissement,
 .notification-information {
-  border-left-color: var(--information);
+  /* Volontairement sans effet : la bande latérale colorée a été supprimée. */
 }
 
 .notification-texte {
@@ -951,8 +1018,22 @@ textarea.champ-controle {
   color: var(--texte-principal);
 }
 
+/*
+ * MISE EN ÉVIDENCE DES MONTANTS — SANS COULEUR.
+ *
+ * `.solde-valeur-attention` (montant restant dû, évolution négative) portait un
+ * jaune d'alerte sur le CHIFFRE, et la couleur environnante — le fond doux de
+ * l'encadré, la carte qui le contient — composait au final une petite marque
+ * colorée collée au coin de chaque valeur en attente, dont « Reste à payer ».
+ *
+ * Le texte reste dans la couleur normale du texte : la valeur reste ÉVIDENTE,
+ * elle ne perd ni son sens ni sa position dans la grille. Seule la teinture
+ * d'alerte est retirée, car c'est elle qui faisait pastille. La variante
+ * `.solde-valeur-solde` est conservée telle quelle : elle ne fait pas partie de
+ * l'indicateur demandé, et « solde » est une information, pas une alerte.
+ */
 .solde-valeur-attention {
-  color: var(--avertissement-texte);
+  color: var(--texte-principal);
 }
 
 .solde-valeur-solde {

@@ -245,7 +245,6 @@ export function FormulaireRendezVous(): React.JSX.Element {
               etiquette="Total (DA)"
               obligatoire
               inputMode="decimal"
-              placeholder="20000"
               value={total}
               onChange={(event) => setTotal(event.target.value)}
               {...(erreursChamps.total ? { erreur: erreursChamps.total } : {})}
@@ -255,11 +254,20 @@ export function FormulaireRendezVous(): React.JSX.Element {
               etiquette="Payé (DA)"
               obligatoire
               inputMode="decimal"
-              placeholder="0"
               value={paye}
               onChange={(event) => setPaye(event.target.value)}
               {...(erreursChamps.paye ? { erreur: erreursChamps.paye } : {})}
             />
+            {/*
+              RESTE — CALCULE, JAMAIS SAISI.
+
+              Le montant restant n'est PAS un champ de saisie : il se déduit du
+              total et du montant payé, et n'est donc jamais envoyé comme une
+              valeur propre. Les deux champs au-dessus démarrent vides ; tant que
+              l'un des deux manque, le reste ne peut pas être connu et l'on
+              affiche le tiret plutôt qu'un « 0 » qui laisserait croire à un
+              solde réglé.
+            */}
             <div className="champ">
               <span className="champ-etiquette">Reste (DA)</span>
               <output className="champ-controle" aria-live="polite">

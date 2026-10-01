@@ -190,7 +190,6 @@ export function FormulairePaiement(): React.JSX.Element {
             etiquette={t('paiements.montant')}
             obligatoire
             inputMode="decimal"
-            placeholder="15000"
             value={montant}
             onChange={(evenement) => setMontant(evenement.target.value)}
           />

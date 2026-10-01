@@ -288,13 +288,18 @@ export function FormulairePaiementPatient({
                   La conversion est desormais FAITE ICI, une seule fois, avec
                   l'utilitaire du domaine financier : la valeur transmise est bien
                   un nombre de centimes, conforme au nom du champ.
+
+                  AUCUN MONTANT D'EXEMPLE AU PLACEHOLDER : « 10000 » se lisait
+                  comme une somme deja saisie et pouvait etre ENVOYÉ sans que le
+                  médecin l'ait choisie. Le champ part vide : un montant saisi
+                  par erreur mais non voulu se voit, un montant inventé ne se voit
+                  pas.
                 */}
                 <ChampTexte
                   nom="montant"
                   etiquette="Combien le patient paie aujourd'hui (DA)"
                   obligatoire
                   inputMode="decimal"
-                  placeholder="10000"
                   value={montant}
                   onChange={(evenement) => setMontant(evenement.target.value)}
                 />

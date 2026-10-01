@@ -128,15 +128,18 @@ function seulementChiffres(valeur: string): string {
 }
 
 /**
- * `12345678` ou `12/34/5678` → `12/34/5678`.
- * Utilise a la sortie du champ : c'est le SEUL endroit ou l'affichage est
- * reecrit, donc jamais en plein milieu d'une frappe.
+ * La date pour AFFICHAGE SEULEMENT : `25/09/2026`, `__/__/____`, `2_/__/____`…
+ *
+ * Cette fonction ne sert PAS à piloter la saisie. Elle n'est utilisée que pour le
+ * calque VISUEL posé sous le champ. La valeur réellement éditée reste une suite
+ * de chiffres.
  */
-function formatFr(valeurBrute: string): string {
-  const chiffres = seulementChiffres(valeurBrute)
-  if (chiffres.length <= 2) return chiffres
-  if (chiffres.length <= 4) return `${chiffres.slice(0, 2)}/${chiffres.slice(2)}`
-  return `${chiffres.slice(0, 2)}/${chiffres.slice(2, 4)}/${chiffres.slice(4)}`
+function formatAffichage(frappe: string): string {
+  if (frappe.length === 0) return '__/__/____'
+  const jour = (frappe.slice(0, 2) + '__').slice(0, 2)
+  const mois = (frappe.slice(2, 4) + '__').slice(0, 2)
+  const annee = (frappe.slice(4, 8) + '____').slice(0, 4)
+  return `${jour}/${mois}/${annee}`
 }
 
 /**
@@ -155,11 +158,11 @@ function versIso(valeurBrute: string): string | null {
   return `${String(annee).padStart(4, '0')}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`
 }
 
-/** `2026-03-12` → `12/03/2026`, pour l'affichage initial d'une valeur deja connue. */
+/** `2026-03-12` → `25092026` (chiffres) : l'etat du champ est une suite de chiffres. */
 function depuisIso(iso: string): string {
   const correspond = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
   if (!correspond) return ''
-  return formatFr(`${correspond[3]}${correspond[2]}${correspond[1]}`)
+  return `${correspond[3]}${correspond[2]}${correspond[1]}`
 }
 
 function joursDansLeMois(annee: number, mois: number): number {
@@ -214,48 +217,82 @@ export function ChampDate({
       <label htmlFor={id} className={`champ-etiquette${requis ? ' champ-obligatoire' : ''}`}>
         {etiquette}
       </label>
-      <input
-        id={id}
-        type="text"
-        inputMode="numeric"
-        name={nom}
-        className="champ-controle"
-        placeholder="jj/mm/aaaa"
-        autoComplete="off"
-        value={frappe}
-        aria-invalid={messageErreur ? 'true' : undefined}
-        aria-describedby={idsDescription.length > 0 ? idsDescription.join(' ') : undefined}
-        aria-required={requis ? 'true' : undefined}
-        // Frappe : on ne conserve que les chiffres, on ne remet JAMAIS en forme.
-        onChange={(evenement) => {
-          setErreurLocale(null)
-          setFrappe(seulementChiffres(evenement.target.value))
-        }}
-        // Sortie : la seule occasion de reformater et de valider.
-        onBlur={() => {
-          const iso = versIso(frappe)
-          if (frappe === '') {
-            sortieEnCours.current = true
+      {/*
+       * ════════════════════════════════════════════════════════════════════════════
+       *  LES SÉPARATEURS « / » SONT UN CALQUE VISUEL, PAS UNE VALEUR
+       * ════════════════════════════════════════════════════════════════════════════
+       *
+       *  L'idée tient en une phrase : le champ continue d'éditer EXACTEMENT la
+       *  même suite de chiffres qu'avant, avec le curseur natif du navigateur, et
+       *  les « / » sont dessinés PAR-DESSUS, sans jamais entrer dans la valeur.
+       *
+       *  Pourquoi c'est la bonne architecture, et non une astuce de plus :
+       *
+       *    - le navigateur édite un `input` dont la valeur est `25092026`. Le
+       *      curseur se déplace entre des CHIFFRES, il n'a aucun `/` à sauter ;
+       *    - React ne réécrit donc JAMAIS la valeur pendant la frappe. Aucune
+       *      position de curseur n'est calculée, rien à « rattraper », donc aucun
+       *      saut possible — le bug historique ne peut pas se reproduire ;
+       *    - `onChange` reste `seulementChiffres(...)`, exactement comme avant ;
+       *    - le calque est `aria-hidden` et `pointer-events: none` : il n'est ni
+       *      focusable, ni sélectionnable, ni transmis. Un clic passe au travers.
+       *
+       *  Les « _ » du gabarit vide sont de même purement visuels : la valeur reste
+       *  la chaîne vide.
+       *
+       *  Le calque et le texte de l'input partagent la MÊME grille de caractères
+       *  (chiffres tabulaires) et le même espacement, ce qui aligne chaque chiffre
+       *  sur son emplacement dans `jj/mm/aaaa`.
+       */}
+      <div className="champ-date">
+        <span className="champ-date-modele" aria-hidden="true">
+          {formatAffichage(frappe)}
+        </span>
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          name={nom}
+          className="champ-controle champ-date-saisie"
+          // Le placeholder du champ est VOLONTAIREMENT vide : le gabarit visible
+          // vient du calque. Deux gabarits superposés se doubleraient à l'écran.
+          placeholder=""
+          autoComplete="off"
+          value={frappe}
+          aria-invalid={messageErreur ? 'true' : undefined}
+          aria-describedby={idsDescription.length > 0 ? idsDescription.join(' ') : undefined}
+          aria-required={requis ? 'true' : undefined}
+          // Frappe : on ne conserve que les chiffres, on ne remet JAMAIS en forme.
+          onChange={(evenement) => {
             setErreurLocale(null)
-            onChangeIso('')
-            return
-          }
-          sortieEnCours.current = true
-          setFrappe(formatFr(frappe))
-          if (iso === null) {
-            setErreurLocale(t('commun.dateInvalide'))
-            return
-          }
-          onChangeIso(iso)
-        }}
-        onKeyDown={(evenement) => {
-          // `Entrée` valide sans avoir a_losses le focus : meme comportement que
-          // la sortie de champ, donc pas de double traitement.
-          if (evenement.key === 'Enter') {
-            evenement.currentTarget.blur()
-          }
-        }}
-      />
+            setFrappe(seulementChiffres(evenement.target.value))
+          }}
+          // Sortie : validation uniquement. La valeur affichée est déjà gérée par
+          // le calque, il n'y a donc plus rien à reformater ici.
+          onBlur={() => {
+            const iso = versIso(frappe)
+            if (frappe === '') {
+              sortieEnCours.current = true
+              setErreurLocale(null)
+              onChangeIso('')
+              return
+            }
+            sortieEnCours.current = true
+            if (iso === null) {
+              setErreurLocale(t('commun.dateInvalide'))
+              return
+            }
+            onChangeIso(iso)
+          }}
+          onKeyDown={(evenement) => {
+            // `Entrée` valide sans avoir a perdre le focus : même comportement que
+            // la sortie de champ, donc pas de double traitement.
+            if (evenement.key === 'Enter') {
+              evenement.currentTarget.blur()
+            }
+          }}
+        />
+      </div>
       {aide ? (
         <span className="champ-aide" id={`${id}-aide`}>
           {aide}

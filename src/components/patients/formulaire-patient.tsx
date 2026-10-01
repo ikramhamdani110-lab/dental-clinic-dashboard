@@ -178,13 +178,17 @@ export function FormulairePatient({
               interdire la frappe au clavier. Le type reste `text` : `type=number`
               afficherait des flechettes et refuserait la saisie de certains
               caracteres sans message clair (le serveur, lui, valide).
+
+              AUCUN EXEMPLE CHIFFRE DANS LE PLACEHOLDER : « 24 » se lisait comme
+              une valeur deja saisie, et le medecin le prenait pour l'age du
+              patient. Le champ demarre donc VIDE, sans même une suggestion
+              numérique : l'age est une information a RDC, pas un exemple.
             */}
             <ChampTexte
               nom="age"
               etiquette={t('patients.age')}
               inputMode="numeric"
               autoComplete="off"
-              placeholder="24"
               value={valeurs.age}
               onChange={(evenement) => modifier('age', evenement.target.value)}
               {...(erreursChamps.age ? { erreur: erreursChamps.age } : {})}
