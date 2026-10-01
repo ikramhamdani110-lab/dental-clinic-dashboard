@@ -8,6 +8,7 @@ import { formaterMontant } from '@backend/domain/finance'
 
 import { useRequete } from '@/lib/hooks/use-requete'
 import { surModification } from '@/lib/evenements-donnees'
+import { TONS_STATUT_RENDEZ_VOUS } from '@/components/ui/badge-statut'
 
 /**
  * =============================================================================
@@ -197,7 +198,7 @@ export function DonneesTableauBord(): React.JSX.Element {
                       {rdv.typeTraitement ?? rdv.motif ?? '—'}
                     </td>
                     <td data-etiquette={t('rendezVous.statut')}>
-                      <StatutRendezVousJour statut={rdv.statut} dateFin={rdv.dateFin} />
+                      <StatutRendezVousJour statut={rdv.statut} />
                     </td>
                   </tr>
                 ))}
@@ -263,7 +264,7 @@ export function DonneesTableauBord(): React.JSX.Element {
                       {rdv.motif ?? '—'}
                     </td>
                     <td data-etiquette={t('rendezVous.statut')}>
-                      <StatutRendezVousJour statut={rdv.statut} dateFin={rdv.dateFin} />
+                      <StatutRendezVousJour statut={rdv.statut} />
                     </td>
                   </tr>
                 ))}
@@ -306,76 +307,45 @@ function Statistique({
 }
 
 /**
- * Statut d'un rendez-vous, formule pour le medecin.
+ * Statut d'un rendez-vous, affiche tel que le medecin l'a laisse.
  *
- *  Le vocabulaire technique de la base est traduit en TROIS reponses a la seule
- *  question qui compte sur un ecran d'accueil : « qu'est-il arrive a ce
- *  rendez-vous ? »
+ * Le tableau de bord ne CONCLUT RIEN a partir de la date. Affiche, il pourrait
+ * ecran « Fait » a la seule raison que l'heure est passee, ou « Absent » parce
+ * que le creneau s'est acheve — deux affirmations qu'il n'a jamais faites et que
+ * rien ne permet d'affirmer a sa place. Un rendez-vous passe sans intervention
+ * de sa part reste donc « Planifie », indefinitely.
  *
- *    - Fait            : le patient est venu (rendez-vous honore) ;
- *    - N'est pas venu  : le patient ne s'est pas presente ;
- *    - Reprogramme     : le rendez-vous a ete deplace, OU il reste a venir.
+ * L'etat affiche est donc celui stocke, traduit par la meme table que le reste
+ * de l'application (`rendezVous.statuts`) : un seul vocabulaire sur tous les
+ * ecrans. Les valeurs d'organisation historiques (`CONFIRME`, `EN_ATTENTE`,
+ * `EN_COURS`, `ANNULE`) y trouvent une traduction, ce qui evite d'afficher un
+ * code brut sur un rendez-vous ancien — et « ANNULE » se lit « Fait », conformement
+ * au vocabulaire demande.
  *
- *  La decision combine l'ETAT ENREGISTRE et le RAPPORT A L'HEURE COURANTE :
- *  un rendez-vous a venir ne peut pas etre « Fait », et un creneau passe sans
- *  avoir ete honore signifie que le patient ne s'est pas presente. Sans cette
- *  seconde information, toute la journee s'afficherait de la meme facon.
- *
- *  `dateFin` sert de reference : un rendez-vous encore en cours n'est declare
- *  non venu qu'une fois son creneau acheve.
+ * `dateFin` n'est plus consulte : c'est volontairement le parametre
+ * `maintenant` qui a disparu du raisonnement, pas l'affichage.
  */
-function StatutRendezVousJour({
-  statut,
-  dateFin,
-}: {
-  statut: string
-  dateFin: string
-}): React.JSX.Element {
-  const libelle = libelleStatutJour(statut, dateFin)
-  const ton = libelle === 'FAIT' ? 'succes' : libelle === 'NON_VENU' ? 'erreur' : 'avertissement'
-
+function StatutRendezVousJour({ statut }: { statut: string }): React.JSX.Element {
+  const libelle = libelleStatutJour(statut)
   return (
-    <span className={`badge badge-${ton}`}>
-      {t(`tableauDeBord.statutsTableauDeBord.${libelle}`)}
+    <span className={`badge badge-${TONS_STATUT_RENDEZ_VOUS[statut] ?? 'neutre'}`}>
+      {t(`rendezVous.statuts.${libelle}`)}
     </span>
   )
 }
 
-/** Cle de statut affiche : FAIT, NON_VENU ou REPROGRAMME. */
-export function libelleStatutJour(
-  statut: string,
-  dateFin: string,
-  maintenant: number = Date.now(),
-): 'FAIT' | 'NON_VENU' | 'REPROGRAMME' {
-  // 1. Un « absent » est une decision du medecin : elle prime sur la date.
-  if (statut === 'ABSENT') return 'NON_VENU'
-
-  // 2. Le creneau est-il termine ?
-  //
-  //    ATTENTION : `new Date(null)` ou `new Date('')` ne renvoient PAS une date
-  //    invalide mais le 1er janvier 1970. Tester seulement `Number.isNaN` ferait
-  //    donc passer une heure manquante pour un creneau vieux de 50 ans. On exige
-  //    une date exploitable ET strictement anterieure a maintenant.
-  const fin = new Date(dateFin)
-  const dateExploitable =
-    typeof dateFin === 'string' && dateFin.length > 0 && !Number.isNaN(fin.getTime())
-  const creneauTermine = dateExploitable && fin.getTime() < maintenant
-
-  // 3. Un creneau A VENIR ne peut pas avoir ete honore, quel que soit le statut
-  //    enregistre. C'est la protection contre une donnee incoherente (un
-  //    rendez-vous futur marque TERMINE) : sur un ecran medical, mieux vaut
-  //    afficher « encore a faire » que d'annoncer une consultation qui n'a pas
-  //    eu lieu.
-  if (!creneauTermine) return 'REPROGRAMME'
-
-  // 4. Le creneau est passe. L'etat enregistre decide alors de ce qui s'y est
-  //    reellement produit.
-  if (statut === 'TERMINE' || statut === 'EN_COURS') return 'FAIT'
-  if (statut === 'REPROGRAMME') return 'REPROGRAMME'
-
-  // 5. Creneau passe, statut encore ouvert (planifie, confirme, en attente) :
-  //    personne ne s'est presente.
-  return 'NON_VENU'
+/**
+ * Valeur de statut a afficher sur le tableau de bord.
+ *
+ * Une seule regle : on affiche l'etat ENREGISTRE. Aucune comparaison a la date
+ * du jour n'est faite, nulle part, pour quelque raison que ce soit.
+ *
+ * Une valeur inconnue (donnee historique, evolution du schema) est renvoyee telle
+ * quelle : l'affichage retombe alors sur une traduction ou, a defaut, sur le
+ * code brut plutot que d'inventer un etat que le medecin n'a pas choisi.
+ */
+export function libelleStatutJour(statut: string): string {
+  return statut
 }
 
 /*

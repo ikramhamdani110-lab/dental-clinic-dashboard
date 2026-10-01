@@ -17,7 +17,7 @@ import { contenu, t } from '@content/index'
 
 type TonBadge = 'neutre' | 'info' | 'succes' | 'avertissement' | 'erreur'
 
-const TONS_STATUT_RENDEZ_VOUS: Record<string, TonBadge> = {
+export const TONS_STATUT_RENDEZ_VOUS: Record<string, TonBadge> = {
   PLANIFIE: 'info',
   CONFIRME: 'succes',
   EN_ATTENTE: 'avertissement',

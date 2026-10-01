@@ -120,8 +120,8 @@
     "aucunNouveauRendezVous": "Aucun rendez-vous cree aujourd'hui.",
     "statutsTableauDeBord": {
       "FAIT": "Fait",
-      "REPROGRAMME": "Reprogramme",
-      "NON_VENU": "N'est pas venu"
+      "REPROGRAMME": "Reprogrammé",
+      "NON_VENU": "Absent"
     },
     "rendezVousDuJour": "Rendez-vous du jour",
     "nouveauxRendezVousCrees": "Nouveaux rendez-vous",
@@ -252,8 +252,8 @@
       "CONFIRME": "Confirmé",
       "EN_ATTENTE": "En attente",
       "EN_COURS": "En cours",
-      "TERMINE": "Terminé",
-      "ANNULE": "Annulé",
+      "TERMINE": "Fait",
+      "ANNULE": "Fait",
       "ABSENT": "Absent",
       "REPROGRAMME": "Reprogrammé"
     },

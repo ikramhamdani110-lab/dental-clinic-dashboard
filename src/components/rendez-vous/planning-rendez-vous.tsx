@@ -45,25 +45,30 @@ type Vue = 'jour' | 'semaine' | 'mois'
  * Statuts proposes dans le selecteur de la colonne « Statut » de chaque ligne.
  *
  * Le vocabulaire est celui du tableau de bord et de la fiche patient, afin qu'un
- * meme etat ne soit jamais designe de deux facons :
+ * meme etat ne soit jamais designe de deux facons. Les quatre statuts visibles
+ * sont exactement :
  *
- * LISTE UTILISABLE PAR LE MEDECIN — TROIS CONSTATS, TROIS STATUTS :
+ *   Planifie ..... le rendez-vous est pris, rien de plus ;
+ *   Fait ......... le patient est venu, la consultation a eu lieu ;
+ *   Absent ....... le patient ne s'est pas presente ;
+ *   Reprogramme .. le rendez-vous a ete reporte.
  *
- *   Absent ........ le patient ne s'est pas presente ;
- *   Reprogramme ... le rendez-vous a ete reporte ;
- *   Annule ........ le rendez-vous ne se tiendra pas.
+ * « Planifie » reste selectionne par defaut tant que le medecin ne change rien :
+ * c'est la seule evolution automatique du systeme, et elle ne se produit qu'A LA
+ * CREATION du rendez-vous (cf. service). Aucun passage automatique a « Fait » :
+ * un rendez-vous reste « Planifie » meme apres le passage de sa date, tant que
+ * le medecin ne l'a pas change lui-meme. « Fait » ne veut donc dire que « le
+ * medecin a confirme que la consultation a eu lieu ».
  *
- * Ce sont les SEULES valeurs proposées. Les statuts d'organisation (`PLANIFIE`,
- * `CONFIRME`, `EN_ATTENTE`, `EN_COURS`, `TERMINE`) decrivent l'etat administratif
- * du creneau, pas ce que le medecin constate : ils restent dans l'enumeration de
- * la base, sont ecrits par le service a la creation, et restent presents dans
- * tous les enregistrements historiques — ils ne sont simplement plus
- * selectables. Aucun changement de schema, d'enumeration ni de validation.
+ * `TERMINE` est la valeur stockee qui porte ce libelle. Les autres valeurs de
+ * l'enumeration de la base (`CONFIRME`, `EN_ATTENTE`, `EN_COURS`, `ANNULE`) sont
+ * conservees : elles restent dans l'historique existant et ne sont simplement
+ * plus selectables. Aucun changement de schema, d'enumeration ni de migration.
  */
 const OPTIONS_STATUT = [
+  { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
   { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
   { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
-  { valeur: 'ANNULE', libelle: t('rendezVous.statuts.ANNULE') },
 ]
 
 /**
@@ -79,9 +84,10 @@ const OPTIONS_STATUT = [
  */
 const OPTIONS_FILTRE_STATUT = [
   { valeur: STATUT_TOUS, libelle: 'Tous' },
+  { valeur: 'PLANIFIE', libelle: t('rendezVous.statuts.PLANIFIE') },
+  { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
   { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
   { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
-  { valeur: 'ANNULE', libelle: t('rendezVous.statuts.ANNULE') },
 ]
 
 export function PlanningRendezVous(): React.JSX.Element {
