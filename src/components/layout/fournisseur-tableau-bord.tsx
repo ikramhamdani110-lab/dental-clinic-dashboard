@@ -2,6 +2,7 @@
 
 import { NotificationsProvider } from '@/components/ui/notifications'
 import { ThemeProvider } from '@/components/ui/theme-provider'
+import { FournisseurLangue } from '@/components/langue/fournisseur-langue'
 
 /**
  * Fournisseurs client du tableau de bord : theme et notifications.
@@ -20,7 +21,9 @@ export function FournisseurTableauBord({
 }): React.JSX.Element {
   return (
     <ThemeProvider>
-      <NotificationsProvider>{children}</NotificationsProvider>
+      <FournisseurLangue>
+        <NotificationsProvider>{children}</NotificationsProvider>
+      </FournisseurLangue>
     </ThemeProvider>
   )
 }

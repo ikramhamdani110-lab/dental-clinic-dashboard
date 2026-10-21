@@ -33,12 +33,12 @@ export function lirePagination(recherche: URLSearchParams): PaginationParams {
   const taille = tailleBrute ? Number.parseInt(tailleBrute, 10) : DEFAULT_PAGE_SIZE
 
   if (Number.isNaN(page) || page < 1) {
-    throw erreurs.validation('Le numero de page doit etre un entier superieur ou egal a 1.', [
-      { champ: 'page', message: 'Numero de page invalide.' },
+    throw erreurs.validation('Le numéro de page doit être un entier supérieur ou égal à 1.', [
+      { champ: 'page', message: 'Numéro de page invalide.' },
     ])
   }
   if (Number.isNaN(taille) || taille < 1 || taille > MAX_PAGE_SIZE) {
-    throw erreurs.validation(`La taille de page doit etre comprise entre 1 et ${MAX_PAGE_SIZE}.`, [
+    throw erreurs.validation(`La taille de page doit être comprise entre 1 et ${MAX_PAGE_SIZE}.`, [
       { champ: 'taille', message: `Taille de page invalide (maximum ${MAX_PAGE_SIZE}).` },
     ])
   }

@@ -122,7 +122,7 @@ export function FormulairePaiementPatient({
       // avant l'envoi, avec le meme message que le serveur.
       const montantEnCentimes = parseMontantEnCentimes(montant)
       if (montantEnCentimes === null || montantEnCentimes <= 0) {
-        setErreurGenerale(t('paiements.montantInvalide'))
+        setErreurGenerale(t('paiements.montantPositif'))
         setEnCours(false)
         return
       }

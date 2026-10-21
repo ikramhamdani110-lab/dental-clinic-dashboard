@@ -438,7 +438,7 @@ export async function restaurer(entreeId: string, contexte: JournalContext): Pro
   if (!entree) throw erreurs.introuvable('Element de la Corbeille')
 
   if (entree.restaureLe || entree.supprimeDefinitivementLe) {
-    throw erreurs.conflit('Cet element a deja ete traite.')
+    throw erreurs.conflit('Cet élément a déjà été traité.')
   }
 
   // ---- VERIFICATION SERVEUR DE LA FENETRE DE 24 HEURES ----
@@ -488,7 +488,7 @@ export async function supprimerDefinitivement(
   if (!entree) throw erreurs.introuvable('Element de la Corbeille')
 
   if (entree.restaureLe || entree.supprimeDefinitivementLe) {
-    throw erreurs.conflit('Cet element a deja ete traite.')
+    throw erreurs.conflit('Cet élément a déjà été traité.')
   }
 
   // Une entree encore restaurable ne peut pas etre supprimee definitivement par
@@ -496,7 +496,7 @@ export async function supprimerDefinitivement(
   // destruction accidentelle alors que la restauration reste possible.
   if (estRestaurable(entree.expireLe)) {
     throw erreurs.conflit(
-      "Cet element est encore restaurable. Attendez l'expiration des 24 heures ou restaurez-le.",
+      "Cet élément est encore restaurable. Attendez l'expiration des 24 heures ou restaurez-le.",
     )
   }
 
@@ -526,7 +526,7 @@ async function executerSuppressionDefinitive(
     case 'PAIEMENT':
       // Interdit : un paiement est un evenement financier historique.
       throw erreurs.conflit(
-        'Un paiement ne peut pas etre supprime definitivement. Utilisez la correction ou l’annulation, qui conserve l’historique.',
+        'Un paiement ne peut pas être supprimé définitivement. Utilisez la correction ou l’annulation, qui conserve l’historique.',
       )
 
     case 'PATIENT': {
@@ -536,7 +536,7 @@ async function executerSuppressionDefinitive(
       ])
       if (traitements > 0 || paiements > 0) {
         throw erreurs.conflit(
-          "Ce patient possede des traitements ou des paiements. L'historique medical et financier ne peut pas etre detruit.",
+          "Ce patient possède des traitements ou des paiements. L'historique médical et financier ne peut pas être détruit.",
         )
       }
       await prisma.patient.delete({ where: { id: entityId } })
@@ -547,7 +547,7 @@ async function executerSuppressionDefinitive(
       const paiements = await prisma.payment.count({ where: { treatmentId: entityId } })
       if (paiements > 0) {
         throw erreurs.conflit(
-          "Ce traitement possede des paiements. L'historique financier ne peut pas etre detruit.",
+          "Ce traitement possède des paiements. L'historique financier ne peut pas être détruit.",
         )
       }
       // Les visites suivent la suppression (cascade declaree dans le schema).

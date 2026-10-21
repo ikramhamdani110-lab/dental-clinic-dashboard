@@ -26,9 +26,14 @@ import { EnTetePage } from '@/components/layout/en-tete-page'
  */
 export async function PagePrivee({
   titre,
+  /** Clé de traduction optionnelle : si fournie, le titre est résolu COTÉ
+   *  CLIENT dans la langue active (le médecin peut donc basculer la langue et
+   *  voir le titre changer, comme le reste de l'interface). */
+  cleTitre,
   children,
 }: {
-  titre: string
+  titre?: string
+  cleTitre?: string
   children: React.ReactNode
 }): Promise<React.JSX.Element> {
   const magasinCookies = await cookies()
@@ -40,7 +45,7 @@ export async function PagePrivee({
 
   return (
     <>
-      <EnTetePage titre={titre} utilisateur={utilisateur} />
+      <EnTetePage titre={titre} cleTitre={cleTitre} utilisateur={utilisateur} />
       {children}
     </>
   )

@@ -9,6 +9,7 @@ import { BadgeStatutPaiement } from '@/components/ui/badge-statut'
 import { ChampTexte } from '@/components/ui/champ'
 import { Pagination } from '@/components/patients/liste-patients'
 import { useDebounce, useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
@@ -115,7 +116,7 @@ export function ListePaiements(): React.JSX.Element {
                 {donnees.elements.map((paiement) => (
                   <tr key={paiement.id}>
                     <td data-etiquette={t('paiements.datePaiement')}>
-                      {new Date(paiement.datePaiement).toLocaleDateString('fr-FR')}
+                      {new Date(paiement.datePaiement).toLocaleDateString(localeDates())}
                     </td>
                     <td data-etiquette={t('commun.patient')}>
                       {paiement.patient.prenom} {paiement.patient.nom}

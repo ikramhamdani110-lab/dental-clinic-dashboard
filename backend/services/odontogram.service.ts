@@ -223,8 +223,8 @@ export async function enregistrerChangement(
   if (!patient) throw erreurs.introuvable('Patient')
 
   if (!estDentFdiConnue(donnees.numeroDent)) {
-    throw erreurs.validation('Le numero de dent ne correspond a aucune dent FDI valide.', [
-      { champ: 'numeroDent', message: 'Numero de dent FDI invalide.' },
+    throw erreurs.validation('Le numéro de dent ne correspond à aucune dent FDI valide.', [
+      { champ: 'numeroDent', message: 'Numéro de dent FDI invalide.' },
     ])
   }
 

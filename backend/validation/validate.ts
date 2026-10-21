@@ -22,7 +22,7 @@ export function valider<T extends z.ZodTypeAny>(schema: T, donnees: unknown): z.
   if (!resultat.success) {
     const champs = versErreursChamps(resultat.error)
     throw erreurs.validation(
-      'Certaines informations saisies sont invalides. Verifiez les champs signales.',
+      'Certaines informations saisies sont invalides. Vérifiez les champs signalés.',
       champs,
     )
   }
@@ -34,7 +34,7 @@ export function valider<T extends z.ZodTypeAny>(schema: T, donnees: unknown): z.
 export async function lireCorpsJson(request: Request): Promise<unknown> {
   const type = request.headers.get('content-type') ?? ''
   if (!type.includes('application/json')) {
-    throw erreurs.validation('Le corps de la requete doit etre au format JSON.')
+    throw erreurs.validation('Le corps de la requête doit être au format JSON.')
   }
   try {
     return await request.json()
@@ -47,7 +47,7 @@ export async function lireCorpsJson(request: Request): Promise<unknown> {
 export async function lireFormData(request: Request): Promise<FormData> {
   const type = request.headers.get('content-type') ?? ''
   if (!type.includes('multipart/form-data')) {
-    throw erreurs.validation('Le corps de la requete doit etre un formulaire multipart.')
+    throw erreurs.validation('Le corps de la requête doit être un formulaire multipart.')
   }
   try {
     return await request.formData()

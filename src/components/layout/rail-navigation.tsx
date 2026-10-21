@@ -9,6 +9,7 @@ import { t } from '@content/index'
 import { Icone, type NomIcone } from '@/components/ui/icone'
 import { useNotifications } from '@/components/ui/notifications'
 import { useTheme } from '@/components/ui/theme-provider'
+import { useLangue } from '@/components/langue/fournisseur-langue'
 import { messageErreur, requeteApi } from '@/lib/api-client'
 
 /**
@@ -46,6 +47,9 @@ import { messageErreur, requeteApi } from '@/lib/api-client'
 
 interface EntreeRail {
   href: string
+  /** Clé de traduction du libellé (résolue au rendu, pas au module). */
+  cleLibelle: string
+  /** Libellé résolu pour la langue courante, calculé au rendu. */
   libelle: string
   icone: NomIcone
 }
@@ -58,14 +62,15 @@ interface EntreeRail {
  * l'espace prive. Cela evite d'ajouter une quatrieme icone a un rail dont la
  * fonction est justement d'etre compact.
  */
-const ENTREES: EntreeRail[] = [
-  { href: '/patients', libelle: t('navigation.patients'), icone: 'patients' },
-  { href: '/rendez-vous', libelle: t('navigation.rendezVous'), icone: 'calendrier' },
-  { href: '/rapports', libelle: t('navigation.rapports'), icone: 'rapports' },
+const ENTREES: Array<{ href: string; cleLibelle: string; icone: NomIcone }> = [
+  { href: '/patients', cleLibelle: 'navigation.patients', icone: 'patients' },
+  { href: '/rendez-vous', cleLibelle: 'navigation.rendezVous', icone: 'calendrier' },
+  { href: '/rapports', cleLibelle: 'navigation.rapports', icone: 'rapports' },
 ]
 
 export function RailNavigation(): React.JSX.Element {
   const { theme, basculerTheme } = useTheme()
+  const { langue, changerLangue } = useLangue()
   const notifications = useNotifications()
   const router = useRouter()
   // Le chemin sert ici uniquement a marquer la marque « DS » comme courante
@@ -149,7 +154,7 @@ export function RailNavigation(): React.JSX.Element {
               On utilise le lien Next : la navigation reste cote client, donc
               instantanee, et le rail ne se demonte pas entre deux pages.
             */}
-            <LienRail entree={entree} />
+            <LienRail entree={{ ...entree, libelle: t(entree.cleLibelle) }} />
           </li>
         ))}
       </ul>
@@ -168,6 +173,21 @@ export function RailNavigation(): React.JSX.Element {
         <span className="rail-soulignement" aria-hidden="true" />
         <span className="rail-libelle" aria-hidden="true">
           {enClair ? t('theme.modeSombre') : t('theme.modeClair')}
+        </span>
+      </button>
+
+      {/* ── Bascule de langue, directement SOUS le bouton clair/sombre ─────── */}
+      <button
+        type="button"
+        className="rail-item rail-bouton"
+        onClick={() => changerLangue(langue === 'fr' ? 'ar' : 'fr')}
+        aria-label={t('commun.langue')}
+        title={t('commun.langue')}
+      >
+        <Icone nom="langue" className="rail-icone" />
+        <span className="rail-soulignement" aria-hidden="true" />
+        <span className="rail-libelle" aria-hidden="true">
+          {langue === 'fr' ? 'العربية' : 'Français'}
         </span>
       </button>
 

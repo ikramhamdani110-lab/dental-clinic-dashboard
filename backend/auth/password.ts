@@ -52,11 +52,11 @@ export function validatePasswordStrength(password: string): string[] {
 
   if (password.length < LONGUEUR_MIN_MOT_DE_PASSE) {
     problemes.push(
-      `Le mot de passe doit contenir au moins ${LONGUEUR_MIN_MOT_DE_PASSE} caracteres.`,
+      `Le mot de passe doit contenir au moins ${LONGUEUR_MIN_MOT_DE_PASSE} caractères.`,
     )
   }
   if (password.length > LONGUEUR_MAX_MOT_DE_PASSE) {
-    problemes.push(`Le mot de passe ne peut pas depasser ${LONGUEUR_MAX_MOT_DE_PASSE} caracteres.`)
+    problemes.push(`Le mot de passe ne peut pas dépasser ${LONGUEUR_MAX_MOT_DE_PASSE} caractères.`)
   }
   if (!/[a-z]/.test(password)) problemes.push('Le mot de passe doit contenir une minuscule.')
   if (!/[A-Z]/.test(password)) problemes.push('Le mot de passe doit contenir une majuscule.')

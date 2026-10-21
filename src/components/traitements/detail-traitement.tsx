@@ -8,6 +8,7 @@ import { formaterMontant } from '@backend/domain/finance'
 import { BadgeStatutTraitement } from '@/components/ui/badge-statut'
 import { LienBouton } from '@/components/ui/bouton'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * Detail d'un traitement (§12, §13).
@@ -179,7 +180,7 @@ export function DetailTraitement({ traitementId }: { traitementId: string }): Re
                   <tr key={visite.id}>
                     <td data-etiquette={t('traitements.numeroSeance')}>{visite.numeroSeance}</td>
                     <td data-etiquette={t('commun.date')}>
-                      {new Date(visite.dateDebut).toLocaleDateString('fr-FR')}
+                      {new Date(visite.dateDebut).toLocaleDateString(localeDates())}
                     </td>
                     <td data-etiquette={t('traitements.proceduresRealisees')}>
                       {visite.proceduresRealisees ?? '—'}

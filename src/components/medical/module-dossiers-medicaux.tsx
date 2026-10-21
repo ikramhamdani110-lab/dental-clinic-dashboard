@@ -8,6 +8,7 @@ import { t } from '@content/index'
 import { SelecteurPatient } from '@/components/patients/selecteur-patient'
 import { Pagination } from '@/components/patients/liste-patients'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
@@ -104,7 +105,7 @@ export function ModuleDossiersMedicaux(): React.JSX.Element {
               {donnees.dossiers.map((dossier) => (
                 <tr key={dossier.id}>
                   <td data-etiquette={t('commun.date')}>
-                    {new Date(dossier.date).toLocaleDateString('fr-FR')}
+                    {new Date(dossier.date).toLocaleDateString(localeDates())}
                   </td>
                   <td data-etiquette={t('dossiersMedicaux.motifPlainte')}>
                     {dossier.motifPlainte ?? '—'}

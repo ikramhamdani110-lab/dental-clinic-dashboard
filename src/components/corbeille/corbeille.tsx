@@ -10,6 +10,7 @@ import { useNotifications } from '@/components/ui/notifications'
 import { Pagination } from '@/components/patients/liste-patients'
 import { requeteApi, messageErreur } from '@/lib/api-client'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
@@ -80,7 +81,7 @@ function formaterDuree(ms: number): string {
 function formaterDate(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString('fr-FR', {
+  return date.toLocaleString(localeDates(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

@@ -133,7 +133,7 @@ export async function televerserDocument(
   const typeDetecte = await fileTypeFromBuffer(contenu)
   if (!typeDetecte || !ALLOWED_DOCUMENT_MIME_SET.has(typeDetecte.mime)) {
     throw erreurs.fichierInvalide(
-      'Ce type de fichier n’est pas autorise. Formats acceptes : JPEG, PNG, WebP, GIF, TIFF, BMP et PDF.',
+      'Ce type de fichier n’est pas autorisé. Formats acceptés : JPEG, PNG, WebP, GIF, TIFF, BMP et PDF.',
     )
   }
 

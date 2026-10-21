@@ -132,7 +132,7 @@ function resoudrePeriode(params: URLSearchParams): Periode {
       const du = params.get('du')
       const au = params.get('au')
       if (!du || !au) {
-        throw erreurs.validation('Une periode personnalisee exige les dates de debut et de fin.', [
+        throw erreurs.validation('Une période personnalisée exige les dates de début et de fin.', [
           { champ: 'du', message: 'Date de debut manquante.' },
           { champ: 'au', message: 'Date de fin manquante.' },
         ])
@@ -140,10 +140,10 @@ function resoudrePeriode(params: URLSearchParams): Periode {
       const debut = new Date(du)
       const fin = new Date(au)
       if (Number.isNaN(debut.getTime()) || Number.isNaN(fin.getTime())) {
-        throw erreurs.validation('Les dates de la periode sont invalides.')
+        throw erreurs.validation('Les dates de la période sont invalides.')
       }
       if (fin.getTime() < debut.getTime()) {
-        throw erreurs.validation('La date de fin doit etre posterieure a la date de debut.')
+        throw erreurs.validation('La date de fin doit être postérieure à la date de début.')
       }
       fin.setHours(23, 59, 59, 999)
       debut.setHours(0, 0, 0, 0)

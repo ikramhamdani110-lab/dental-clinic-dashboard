@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function PageOdontogramme(): Promise<React.JSX.Element> {
   return (
-    <PagePrivee titre={t('odontogramme.titre')}>
+    <PagePrivee cleTitre="odontogramme.titre">
       <Suspense fallback={<p className="etat-vide-texte">{t('tableaux.chargement')}</p>}>
         <ModuleOdontogramme />
       </Suspense>

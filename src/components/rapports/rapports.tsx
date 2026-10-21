@@ -11,10 +11,11 @@ import { Bouton, LienBouton } from '@/components/ui/bouton'
 import { ChampDate, ChampSelection } from '@/components/ui/champ'
 import { Pagination } from '@/components/patients/liste-patients'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
- *  RAPPORTS — SYNTHESE FINANCIERE DE LA CLINIQUE (§27)
+ *  RAPPORTS — SYNTHESE FINANCIERE DE LA CLINIQUE (§27)
  * =============================================================================
  *
  *  Cette page est LA vue financiere de l'application : les paiements se creent
@@ -188,7 +189,7 @@ export function Rapports(): React.JSX.Element {
   /**
    * Callback stable pour le bouton « Afficher » de la période personnalisée.
    * Wrappé dans useCallback afin que la référence ne change que quand `du` ou
-   * `au` changent — garantissant que `React.memo` dans `ChampsDatesPersonnalisees`
+   * `au` changent — garantissant que `React.memo` dans `ChampsDatesPersonnalisees`
    * ne re-rende pas le composant lors des mises à jour asynchrones du parent.
    */
   const handleAfficher = useCallback(() => {
@@ -238,7 +239,7 @@ export function Rapports(): React.JSX.Element {
   )
 
   /*
-   * EVOLUTION — ELLE SUIT LA PERIODE, PAS LE MONTAGE.
+   * EVOLUTION — ELLE SUIT LA PERIODE, PAS LE MONTAGE.
    *
    *   - periode « cette annee » ou « annee precedente » : la courbe decrit
    *     l'annee choisie dans le menu (12 points mensuels), ce qui permet de la
@@ -320,8 +321,8 @@ export function Rapports(): React.JSX.Element {
 
             {synthese.donnees ? (
               <span className="entete-page-sous-titre">
-                {new Date(synthese.donnees.periode.debut).toLocaleDateString('fr-FR')} —{' '}
-                {new Date(synthese.donnees.periode.fin).toLocaleDateString('fr-FR')}
+                {new Date(synthese.donnees.periode.debut).toLocaleDateString(localeDates())} —{' '}
+                {new Date(synthese.donnees.periode.fin).toLocaleDateString(localeDates())}
               </span>
             ) : null}
           </div>
@@ -350,7 +351,7 @@ export function Rapports(): React.JSX.Element {
             Le menu ANNUEL n'apparait QUE pour les periodes « cette annee » et
             « annee precedente » : ce sont les seules ou le medecin choisit une
             annee precise. Ailleurs, la courbe suit le filtre de periode et ce
-            menu n'aurait aucun effet — l'afficher laisserait croire le contraire.
+            menu n'aurait aucun effet — l'afficher laisserait croire le contraire.
           */}
           {anneePiloteeParLaPeriode ? (
             <div style={{ minWidth: '8rem' }}>
@@ -533,9 +534,9 @@ function SyntheseFinanciereCartes({
  *   periode : un point par JOUR sur une fenetre courte, un point par MOIS
  *   au-dela. L'etiquette de l'axe suit donc cette maille :
  *
- *     - 'jour' : « 12/09 » — le quantieme suffit, l'annee est connue par la
+ *     - 'jour' : « 12/09 » — le quantieme suffit, l'annee est connue par la
  *       periode affichee juste au-dessus ;
- *     - 'mois' : « Sep » — la lecture mensuelle reste identique a avant.
+ *     - 'mois' : « Sep » — la lecture mensuelle reste identique a avant.
  */
 function CourbeRevenus({
   points,
@@ -637,7 +638,7 @@ function ComparaisonMois({
           </div>
           <div className="solde-element">
             <span className="solde-etiquette">
-              {t('rapports.moisPrecedent')} — {nomMoisPrecedent}
+              {t('rapports.moisPrecedent')} — {nomMoisPrecedent}
             </span>
             <span className="solde-valeur">
               {formaterMontant(synthese.revenusMoisPrecedentCentimes)}
@@ -660,7 +661,7 @@ function ComparaisonMois({
 }
 
 /**
- * Soldes patients — montants restants a recevoir.
+ * Soldes patients — montants restants a recevoir.
  *
  * Le calcul (facture - paye), le filtre des soldes positifs, le tri et la
  * pagination sont entierement realises EN BASE (§27, §35) : le navigateur ne

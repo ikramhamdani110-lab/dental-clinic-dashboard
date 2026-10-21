@@ -32,7 +32,7 @@ export default async function PageModifierPatient({
   if (!resultat.success) notFound()
 
   return (
-    <PagePrivee titre={t('commun.modifier')}>
+    <PagePrivee cleTitre="commun.modifier">
       <nav className="fil-ariane" aria-label={t('accessibilite.filAriane')}>
         <Link href="/patients">{t('patients.titre')}</Link>
         <span aria-hidden="true">/</span>

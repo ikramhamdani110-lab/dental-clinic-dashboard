@@ -30,8 +30,9 @@ const CLE_STOCKAGE = 'sahed-theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   /*
-   * Le rendu serveur ne connait pas le theme : on part du defaut (sombre) et on
-   * corrige au montage, a partir de l'attribut DEJA pose par le script racine.
+   * Le rendu serveur ne connait pas le theme : on part du defaut (SOMBRE,
+   * exigence produit) et on corrige au montage, a partir de l'attribut DEJA pose
+   * par le script racine.
    *
    * Ce n'est pas une source de clignotement : le script d'amorcage s'execute
    * avant la peinture, donc l'ATTRIBUT est deja correct ; seul l'ETAT React

@@ -42,7 +42,7 @@ function lireCookie(nom: string): string | null {
 }
 
 const MESSAGE_SERVICE_INDISPONIBLE =
-  'Le service est temporairement indisponible. Veuillez reessayer dans quelques instants.'
+  'Le service est temporairement indisponible. Veuillez réessayer dans quelques instants.'
 
 export interface OptionsRequete {
   methode?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'

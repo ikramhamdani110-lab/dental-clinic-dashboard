@@ -69,7 +69,7 @@ export function middleware(request: NextRequest): NextResponse {
       return NextResponse.json(
         {
           code: 'ACCES_REFUSE',
-          message: 'Requete refusee : origine non autorisee.',
+          message: 'Requête refusée : origine non autorisée.',
         },
         { status: 403 },
       )

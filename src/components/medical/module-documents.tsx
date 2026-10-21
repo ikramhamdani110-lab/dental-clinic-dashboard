@@ -12,6 +12,7 @@ import { SelecteurPatient } from '@/components/patients/selecteur-patient'
 import { Pagination } from '@/components/patients/liste-patients'
 import { messageErreur, requeteApi } from '@/lib/api-client'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
@@ -202,7 +203,7 @@ export function ModuleDocuments(): React.JSX.Element {
                       {(document.tailleOctets / 1024).toFixed(0)} Ko
                     </td>
                     <td data-etiquette={t('commun.date')}>
-                      {new Date(document.createdAt).toLocaleDateString('fr-FR')}
+                      {new Date(document.createdAt).toLocaleDateString(localeDates())}
                     </td>
                     <td data-etiquette={t('commun.actions')}>
                       {/* Lien de telechargement authentifie : le fichier n'est

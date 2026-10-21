@@ -49,6 +49,13 @@ export default async function LayoutTableauBord({
     redirect('/connexion')
   }
 
+  // Premier acces : l'utilisateur utilise encore le mot de passe initial
+  // (sentinelle `passwordChangedAt = epoch 0` posée par le seed). Tant que le
+  // mot de passe n'a pas été changé, AUCUNE page privée n'est accessible.
+  if (session.user.passwordChangedAt.getTime() <= 0) {
+    redirect('/premiere-connexion')
+  }
+
   return (
     <FournisseurTableauBord
       utilisateur={{

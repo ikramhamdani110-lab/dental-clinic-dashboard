@@ -251,7 +251,7 @@ export async function modifierTraitement(
     const solde = await calculerSoldeTraitement(id)
     if (donnees.prixTotalCentimes < solde.totalPayeCentimes) {
       throw erreurs.montantInvalide(
-        `Le prix total ne peut pas etre inferieur aux paiements deja encaisses (${(solde.totalPayeCentimes / 100).toLocaleString('fr-FR')} DA). Corrigez ou annulez d'abord un paiement.`,
+        `Le prix total ne peut pas être inférieur aux paiements déjà encaissés (${(solde.totalPayeCentimes / 100).toLocaleString('fr-FR')} DA). Corrigez ou annulez d'abord un paiement.`,
       )
     }
   }

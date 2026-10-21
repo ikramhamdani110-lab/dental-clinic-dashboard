@@ -8,6 +8,7 @@ import { t } from '@content/index'
 import { SelecteurPatient } from '@/components/patients/selecteur-patient'
 import { Pagination } from '@/components/patients/liste-patients'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
@@ -95,7 +96,7 @@ export function ModuleOrdonnances(): React.JSX.Element {
       {donnees.ordonnances.map((ordonnance) => (
         <section key={ordonnance.id} className="carte">
           <div className="carte-entete">
-            <h2 className="carte-titre">{new Date(ordonnance.date).toLocaleDateString('fr-FR')}</h2>
+            <h2 className="carte-titre">{new Date(ordonnance.date).toLocaleDateString(localeDates())}</h2>
             {ordonnance.auteur ? (
               <span className="liste-compacte-detail">{ordonnance.auteur}</span>
             ) : null}

@@ -1,4 +1,6 @@
-import { t } from '@content/index'
+'use client'
+
+import { useT } from '@/components/langue/fournisseur-langue'
 
 /**
  * =============================================================================
@@ -22,22 +24,38 @@ import { t } from '@content/index'
  *  Le nom du medecin reste affiche : c'est un repere utile en cabinet, ou
  *  plusieurs personnes peuvent utiliser le meme poste.
  */
+/**
+ * En-tete de page — CLIENT, pour que le titre suive la langue choisie.
+ *
+ * Si `cleTitre` est fournie, le titre est résolu au rendu dans la langue
+ * active ; sinon, le `titre` (déjà traduit côté serveur) est affiché tel quel.
+ */
 export function EnTetePage({
   titre,
+  cleTitre,
   utilisateur,
 }: {
-  titre: string
+  titre?: string
+  cleTitre?: string
   utilisateur: { nomAffichage: string; email: string }
 }): React.JSX.Element {
+  const t = useT()
+  const affiche = cleTitre ? t(cleTitre) : titre
+
   return (
     <div className="en-tete-page">
       <div className="en-tete-page-identite">
-        <h1 className="en-tete-page-titre">{titre}</h1>
+        <h1 className="en-tete-page-titre">{affiche}</h1>
         <p className="en-tete-page-utilisateur">
           {utilisateur.nomAffichage}
           <span className="en-tete-page-role"> · {t('commun.medecin')}</span>
         </p>
       </div>
+      {/*
+        PAS de sélecteur de langue ici : le rail de navigation porte déjà
+        l'unique bascule FR/AR de l'interface. Avoir un second contrôle dans
+        l'en-tête dupliquait la même action à l'écran.
+      */}
     </div>
   )
 }

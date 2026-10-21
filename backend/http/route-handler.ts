@@ -89,7 +89,7 @@ export function responseErreur(error: unknown): NextResponse {
     if (error.code === 'P2002') {
       logger.warn('Violation de contrainte unique', { code: error.code, meta: error.meta })
       return NextResponse.json(
-        new AppError('CONFLIT', 'Cet enregistrement existe deja.').toPublicJSON(),
+        new AppError('CONFLIT', 'Cet enregistrement existe déjà.').toPublicJSON(),
         { status: 409 },
       )
     }
@@ -98,7 +98,7 @@ export function responseErreur(error: unknown): NextResponse {
       return NextResponse.json(
         new AppError(
           'CONFLIT',
-          "Cet element est lie a d'autres donnees et ne peut pas etre traite ainsi.",
+          "Cet élément est lié à d'autres données et ne peut pas être traité ainsi.",
         ).toPublicJSON(),
         { status: 409 },
       )
@@ -113,7 +113,7 @@ export function responseErreur(error: unknown): NextResponse {
     error instanceof Prisma.PrismaClientInitializationError ||
     error instanceof Prisma.PrismaClientRustPanicError
   ) {
-    logger.error('Base de donnees indisponible', { error })
+    logger.error('Base de données indisponible', { error })
     return NextResponse.json(erreurs.serviceIndisponible().toPublicJSON(), { status: 503 })
   }
 
@@ -154,7 +154,7 @@ export function routePrivee(
         logger.warn('Jeton CSRF absent ou invalide', { path: request.nextUrl.pathname })
         throw new AppError(
           'ACCES_REFUSE',
-          'Requete refusee : jeton de securite invalide. Rechargez la page et reessayez.',
+          'Requête refusée : jeton de sécurité invalide. Rechargez la page et réessayez.',
         )
       }
 

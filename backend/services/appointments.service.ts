@@ -6,7 +6,7 @@ import { erreurs } from '@backend/errors/app-error'
 import { calcTotalPaye } from '@backend/services/payments.service'
 import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pagination'
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
-import { filtreExclusion } from '@backend/services/trash.service'
+import { filtreExclusion, identifiantsEnCorbeille } from '@backend/services/trash.service'
 import { TYPES_TRAITEMENT_RENDEZ_VOUS } from '@backend/domain/constants'
 
 /**
@@ -106,12 +106,16 @@ export async function detecterConflit(params: {
     dateFin: Date
   }>
 }> {
+  // Les rendez-vous places en Corbeille (24 h) ne doivent pas bloquer un
+  // creneau : ils ne sont plus visibles dans le planning.
+  const enCorbeille = await identifiantsEnCorbeille('RENDEZ_VOUS')
   const conflits = await prisma.appointment.findMany({
     where: {
       statut: { notIn: ['ANNULE', 'ABSENT'] },
       dateDebut: { lt: params.dateFin },
       dateFin: { gt: params.dateDebut },
       ...(params.exclureId ? { id: { not: params.exclureId } } : {}),
+      ...(enCorbeille.length > 0 ? { id: { notIn: enCorbeille } } : {}),
     },
     select: {
       dateDebut: true,
@@ -140,8 +144,8 @@ export function messageConflit(
   const heure = (date: Date) =>
     date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const premier = rendezVous[0]
-  if (!premier) return 'Un rendez-vous existe deja sur ce creneau.'
-  return `Un rendez-vous existe deja sur ce creneau : ${premier.patient} de ${heure(premier.dateDebut)} a ${heure(premier.dateFin)}.`
+  if (!premier) return 'Un rendez-vous existe déjà sur ce créneau.'
+  return `Un rendez-vous existe déjà sur ce créneau : ${premier.patient} de ${heure(premier.dateDebut)} à ${heure(premier.dateFin)}.`
 }
 
 /** Liste paginee, filtree par periode / statut / recherche patient. */

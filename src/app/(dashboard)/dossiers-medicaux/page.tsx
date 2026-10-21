@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function PageDossiersMedicaux(): Promise<React.JSX.Element> {
   return (
-    <PagePrivee titre={t('dossiersMedicaux.titre')}>
+    <PagePrivee cleTitre="dossiersMedicaux.titre">
       <Suspense fallback={<p className="etat-vide-texte">{t('tableaux.chargement')}</p>}>
         <ModuleDossiersMedicaux />
       </Suspense>

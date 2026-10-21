@@ -321,6 +321,34 @@ textarea.champ-controle {
   color: var(--texte-tertiaire);
 }
 
+/*
+ * CARTE STATISTIQUE CLIQUABLE (tableau de bord → planning).
+ *
+ * `statistique-lien` est posé par `StatistiqueCliquable` sur le `<Link>` qui
+ * enveloppe toute la carte. Le survol et le FOCUS CLAVIER partagent le même
+ * indice visuel : une bordure accentuée et une légère élévation — sans déplacer
+ * la mise en page, sans décoration superflue. `:focus-visible` seul : un clic
+ * souris ne doit pas laisser un anneau de focus persistant à l'écran.
+ */
+a.statistique-lien {
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+a.statistique-lien:hover {
+  border-color: var(--accent, var(--texte-principal));
+  box-shadow: var(--ombre-grande, 0 6px 16px rgb(0 0 0 / 0.12));
+  transform: translateY(-1px);
+}
+
+a.statistique-lien:focus-visible {
+  outline: 2px solid var(--accent, var(--texte-principal));
+  outline-offset: 2px;
+  border-color: var(--accent, var(--texte-principal));
+}
+
 /* ── Grille de statistiques ────────────────────────────────────────────────── */
 
 .grille-statistiques {
@@ -1887,3 +1915,76 @@ textarea.champ-controle {
   }
 }
 
+
+/*
+ * NOTE — Sélecteur de langue d'en-tête retiré (`.selecteur-langue` et
+ * `.selecteur-langue-bouton*`) : le rail de navigation porte désormais
+ * l'unique bascule FR/AR de l'interface, un second contrôle dans chaque
+ * en-tête de page ne faisait que dupliquer l'action.
+ */
+
+/* ── Mode ARABE (RTL) ──────────────────────────────────────────────────────── */
+/*
+ * La direction du document (`dir="rtl"` sur `<html>`) inverse AUTOMATIQUEMENT
+ * les flux flex/grid et les alignements textuels : la plupart des écrans se
+ * retournent sans une ligne de CSS. Les ajustements ci-dessous traitent ce qui
+ * reste directionnel en dur : le rail fixe, les libellés absolus, et le
+ * chiffrement des nombres (toujours LTR pour rester lisibles).
+ */
+
+html[dir='rtl'] body {
+  font-family: 'Noto Naskh Arabic', 'Segoe UI', Tahoma, var(--police-texte);
+}
+
+/*
+ * Le rail reste ancré À GAUCHE dans les deux langues (exigence : la navigation
+ * ne change pas de place). En RTL, la grille de la coquille inverserait
+ * normalement ses colonnes et réserverait la place du rail À DROITE, tandis que
+ * le rail fixé resterait à gauche : le contenu serait alors RECOUVERT par le
+ * rail (constaté en capture à 1440 px). On fige donc la GRILLE en LTR — la
+ * colonne du rail reste la première, à gauche — et on rétablit la direction RTL
+ * à l'intérieur du contenu, qui est seul concerné par la lecture arabe.
+ */
+html[dir='rtl'] .coquille {
+  direction: ltr;
+}
+
+html[dir='rtl'] .contenu-principal {
+  direction: rtl;
+}
+
+/*
+ * Les libellés flottants du rail CONSERVENT l'ancrage du français : ils
+ * s'ouvrent à DROITE de l'icône dans les deux langues. Une inversion en RTL les
+ * faisait sortir du rail côté gauche et, sur mobile, la règle (plus spécifique
+ * que le palier 40 rem) repoussait les libellés hors de l'écran — mesure à
+ * 375 px : défilement horizontal de 471 px pour 375 visibles. Le texte arabe
+ * s'affiche très bien dans une boîte ancrée à droite ; seul SON alignement
+ * interne suit la direction du document.
+ */
+
+/* Les montants, badges de statut et numéros restent LTR à l'intérieur d'un
+    texte RTL : « 12 500 DA » doit se lire de gauche à droite. */
+html[dir='rtl'] .montant,
+html[dir='rtl'] .badge-statut,
+html[dir='rtl'] code {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/*
+ * SALUTATION DU TABLEAU DE BORD EN ARABE.
+ *
+ * La cursive (« Basic Math Italic » / « Cambria Math ») n'a AUCUN glyphe arabe :
+ * sans cette regle, le texte tombait sur la fonte generique du navigateur, et la
+ * salutation arabe était la seule partie de l'interface dans une famille sans
+ * rapport. On cite en PREMIER une fonte arabe reellement presente sur Windows
+ * (Noto Naskh Arabic, sinon Segoe UI qui couvre l'arabe), pour que la salutation
+ * s'inscrive dans la meme famille visuelle que le reste de la page. L'italique
+ * mathematique n'a pas d'equivalent arabe lisible : la style revient a normal.
+ * Le français n'est PAS touche : la regle ne vaut que sous `html[dir='rtl']`.
+ */
+html[dir='rtl'] .salutation {
+  font-family: 'Noto Naskh Arabic', 'Segoe UI', Tahoma, var(--police-texte);
+  font-style: normal;
+}

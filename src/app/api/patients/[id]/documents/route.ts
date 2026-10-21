@@ -43,7 +43,7 @@ export const POST = routePriveeAvecId(async (request, id, contexte): Promise<Nex
     const typeContenu = request.headers.get('content-type') ?? ''
     if (!typeContenu.includes('multipart/form-data')) {
       throw erreurs.validation(
-        'Le televersement doit etre envoye sous forme de formulaire multipart.',
+        'Le téléversement doit être envoyé sous forme de formulaire multipart.',
       )
     }
 

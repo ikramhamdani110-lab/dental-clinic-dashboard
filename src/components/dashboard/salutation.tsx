@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
+import { useT } from '@/components/langue/fournisseur-langue'
+
 /**
  * =============================================================================
  *  SALUTATION DU TABLEAU DE BORD — ANIMATION DE FRAPPE, UNE SEULE FOIS
@@ -116,6 +118,15 @@ function marquerJouee(sessionId: string | null): void {
   } catch {
     // Stockage indisponible : l animation se rejouera, ce qui reste correct.
   }
+}
+
+/**
+ * Salutation traduite : résout le libellé dans la langue active, puis délègue
+ * au composant d'animation existant. Le texte change, l'animation non.
+ */
+export function SalutationLangue({ sessionId }: { sessionId: string | null }): React.JSX.Element {
+  const t = useT()
+  return <SalutationTableauBord texte={t('tableauDeBord.salutation')} sessionId={sessionId} />
 }
 
 export function SalutationTableauBord({

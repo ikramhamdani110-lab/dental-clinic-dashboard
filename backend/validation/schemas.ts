@@ -28,15 +28,15 @@ export const texteRequis = (min: number, max: number, champ: string) =>
   z
     .string({ required_error: `${champ} est obligatoire.` })
     .trim()
-    .min(min, `${champ} doit contenir au moins ${min} caractere(s).`)
-    .max(max, `${champ} ne peut pas depasser ${max} caracteres.`)
+    .min(min, `${champ} doit contenir au moins ${min} caractère(s).`)
+    .max(max, `${champ} ne peut pas dépasser ${max} caractères.`)
 
 /** Texte optionnel : une chaine vide est normalisee en `null`. */
 export const texteOptionnel = (max: number, champ: string) =>
   z
     .string()
     .trim()
-    .max(max, `${champ} ne peut pas depasser ${max} caracteres.`)
+    .max(max, `${champ} ne peut pas dépasser ${max} caractères.`)
     .optional()
     .transform((valeur) => (valeur === undefined || valeur === '' ? null : valeur))
 
@@ -69,22 +69,22 @@ export const emailRequis = z
  * fiche introuvable.
  */
 export const telephone = z
-  .string({ required_error: 'Le telephone est obligatoire.' })
+  .string({ required_error: 'Le téléphone est obligatoire.' })
   .trim()
-  .min(1, 'Le telephone est obligatoire.')
-  .max(30, 'Le telephone est trop long.')
+  .min(1, 'Le téléphone est obligatoire.')
+  .max(30, 'Le téléphone est trop long.')
   .refine((valeur) => valeur.replace(/\D/g, '').length >= 6, {
-    message: 'Le telephone doit contenir au moins 6 chiffres.',
+    message: 'Le téléphone doit contenir au moins 6 chiffres.',
   })
 
 export const telephoneOptionnel = z
   .string()
   .trim()
-  .max(30, 'Le telephone est trop long.')
+  .max(30, 'Le téléphone est trop long.')
   .optional()
   .transform((valeur) => (valeur === undefined || valeur === '' ? null : valeur))
   .refine((valeur) => valeur === null || valeur.replace(/\D/g, '').length >= 6, {
-    message: 'Le telephone doit contenir au moins 6 chiffres.',
+    message: 'Le téléphone doit contenir au moins 6 chiffres.',
   })
 
 /** Date ISO acceptee depuis un formulaire HTML ou une requete JSON. */
@@ -151,11 +151,11 @@ export const agePatient = z
       // TypeScript ne sait pas encore que la valeur est une chaine.
       return /^\d+$/.test(valeur.trim())
     },
-    { message: "L'age doit etre un nombre entier d'annees, par exemple 24." },
+    { message: "L'âge doit être un nombre entier d'années, par exemple 24." },
   )
   .transform((valeur) => (valeur === null ? null : typeof valeur === 'number' ? valeur : Number.parseInt(valeur, 10)))
   .refine((valeur) => valeur === null || (Number.isInteger(valeur) && valeur >= 0 && valeur <= 130), {
-    message: "L'age doit etre un nombre entier compris entre 0 et 130 ans.",
+    message: "L'âge doit être un nombre entier compris entre 0 et 130 ans.",
   })
 
 /**
@@ -177,7 +177,7 @@ export const dateNaissance = z
   })
   .transform((valeur) => (valeur === null ? null : new Date(valeur)))
   .refine((valeur) => valeur === null || valeur.getTime() <= Date.now(), {
-    message: 'La date de naissance ne peut pas etre dans le futur.',
+    message: 'La date de naissance ne peut pas être dans le futur.',
   })
   .refine((valeur) => valeur === null || valeur.getFullYear() >= 1900, {
     message: 'La date de naissance est invalide.',
@@ -215,13 +215,13 @@ export const montantCentimes = (options: { strictementPositif: boolean }) =>
       if (options.strictementPositif && centimes <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Le montant doit etre superieur a zero.',
+          message: 'Le montant doit être supérieur à zéro.',
         })
       }
       if (!options.strictementPositif && centimes < 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Le montant ne peut pas etre negatif.',
+          message: 'Le montant ne peut pas être négatif.',
         })
       }
     })
@@ -247,14 +247,14 @@ export const montantCentimes = (options: { strictementPositif: boolean }) =>
  */
 export const centimesEntiers = (options: { strictementPositif: boolean }) =>
   z.coerce
-    .number({ invalid_type_error: 'Le montant doit etre un nombre.' })
+    .number({ invalid_type_error: 'Le montant doit être un nombre.' })
     .refine((valeur) => Number.isInteger(valeur), {
-      message: 'Le montant doit etre un nombre entier de centimes.',
+      message: 'Le montant doit être un nombre entier de centimes.',
     })
     .refine((valeur) => (options.strictementPositif ? valeur > 0 : valeur >= 0), {
       message: options.strictementPositif
-        ? 'Le montant doit etre superieur a zero.'
-        : 'Le montant ne peut pas etre negatif.',
+        ? 'Le montant doit être supérieur à zéro.'
+        : 'Le montant ne peut pas être négatif.',
     })
     .refine((valeur) => valeur <= 100_000_000_00, {
       message: 'Le montant saisi est trop eleve.',
@@ -262,13 +262,13 @@ export const centimesEntiers = (options: { strictementPositif: boolean }) =>
 
 /** Numero de dent FDI. */
 export const numeroDentFdi = z.string().trim().refine(estNumeroDentFdiValide, {
-  message: 'Le numero de dent doit etre un code FDI a deux chiffres (ex. 36).',
+  message: 'Le numéro de dent doit être un code FDI à deux chiffres (ex. 36).',
 })
 
 /** Liste de dents FDI, dedupliquee, bornee. */
 export const listeDents = z
   .array(numeroDentFdi)
-  .max(32, 'Le nombre de dents ne peut pas depasser 32.')
+  .max(32, 'Le nombre de dents ne peut pas dépasser 32.')
   .transform((dents) => Array.from(new Set(dents)))
 
 /** Identifiant interne (UUID) transmis dans une URL ou un corps de requete. */
@@ -339,7 +339,7 @@ export const changementMotDePasseSchema = z
       .string()
       .min(
         LONGUEUR_MIN_MOT_DE_PASSE,
-        `Le nouveau mot de passe doit contenir au moins ${LONGUEUR_MIN_MOT_DE_PASSE} caracteres.`,
+        `Le nouveau mot de passe doit contenir au moins ${LONGUEUR_MIN_MOT_DE_PASSE} caractères.`,
       )
       .max(LONGUEUR_MAX_MOT_DE_PASSE, 'Le mot de passe est trop long.'),
     confirmation: z.string(),
@@ -355,7 +355,7 @@ export const changementMotDePasseSchema = z
 
 export const patientCreationSchema = z.object({
   nom: texteRequis(1, 120, 'Le nom'),
-  prenom: texteRequis(1, 120, 'Le prenom'),
+  prenom: texteRequis(1, 120, 'Le prénom'),
   /**
    * Age en annees revolues, SAISI par le medecin. C'est la donnee de reference
    * de l'age du patient (voir `agePatient`).
@@ -372,7 +372,7 @@ export const patientCreationSchema = z.object({
   adresse: texteOptionnel(300, "L'adresse"),
   email: emailOptionnel,
   allergies: texteOptionnel(2000, 'Les allergies'),
-  antecedentsMedicaux: texteOptionnel(4000, 'Les antecedents medicaux'),
+  antecedentsMedicaux: texteOptionnel(4000, 'Les antécédents médicaux'),
   medicamentsActuels: texteOptionnel(2000, 'Les medicaments actuels'),
   contactUrgence: texteOptionnel(300, "Le contact d'urgence"),
   notesGenerales: texteOptionnel(4000, 'Les notes generales'),
@@ -399,11 +399,11 @@ export const rendezVousCreationSchema = z
     motifStatut: texteOptionnel(300, 'Le motif de statut'),
   })
   .refine((data) => data.dateFin.getTime() > data.dateDebut.getTime(), {
-    message: "L'heure de fin doit etre posterieure a l'heure de debut.",
+    message: "L'heure de fin doit être postérieure à l'heure de début.",
     path: ['dateFin'],
   })
   .refine((data) => data.dateFin.getTime() - data.dateDebut.getTime() <= 12 * 60 * 60 * 1000, {
-    message: 'La duree du rendez-vous ne peut pas depasser 12 heures.',
+    message: 'La durée du rendez-vous ne peut pas dépasser 12 heures.',
     path: ['dateFin'],
   })
 
@@ -447,7 +447,7 @@ export const rendezVousModificationSchema = z
       data.dateDebut === undefined ||
       data.dateFin === undefined ||
       data.dateFin.getTime() > data.dateDebut.getTime(),
-    { message: "L'heure de fin doit etre posterieure a l'heure de debut.", path: ['dateFin'] },
+    { message: "L'heure de fin doit être postérieure à l'heure de début.", path: ['dateFin'] },
   )
 
 /**
@@ -471,7 +471,7 @@ export const reprogrammationSchema = z
     motif: texteOptionnel(500, 'Le motif de la reprogrammation'),
   })
   .refine((data) => data.dateFin.getTime() > data.dateDebut.getTime(), {
-    message: "L'heure de fin doit etre posterieure a l'heure de debut.",
+    message: "L'heure de fin doit être postérieure à l'heure de début.",
     path: ['dateFin'],
   })
 
@@ -485,7 +485,7 @@ export const traitementCreationSchema = z.object({
   dents: listeDents.default([]),
   diagnostic: texteOptionnel(4000, 'Le diagnostic'),
   description: texteOptionnel(4000, 'La description'),
-  prixTotalCentimes: montantCentimes({ strictementPositif: false }),
+  prixTotalCentimes: centimesEntiers({ strictementPositif: false }),
   statut: statutTraitementSchema.default('PLANIFIE'),
   dateDebut: dateIsoOptionnelle,
   dateFin: dateIsoOptionnelle,
@@ -515,7 +515,7 @@ export const visiteCreationSchema = z
     appointmentId: identifiant.optional().nullable(),
   })
   .refine((data) => data.dateFin === null || data.dateFin.getTime() > data.dateDebut.getTime(), {
-    message: "L'heure de fin doit etre posterieure a l'heure de debut.",
+    message: "L'heure de fin doit être postérieure à l'heure de début.",
     path: ['dateFin'],
   })
 
@@ -645,9 +645,9 @@ export const parametresSchema = z.object({
   telephoneClinique: telephoneOptionnel,
   emailClinique: emailOptionnel,
   siteWeb: texteOptionnel(300, 'Le site web'),
-  nomMedecin: texteOptionnel(160, 'Le nom du medecin'),
+  nomMedecin: texteOptionnel(160, 'Le nom du médecin'),
   specialite: texteOptionnel(160, 'La specialite'),
-  numeroOrdre: texteOptionnel(80, "Le numero d'ordre"),
+  numeroOrdre: texteOptionnel(80, "Le numéro d'ordre"),
   horaires: texteOptionnel(2000, 'Les horaires'),
 })
 

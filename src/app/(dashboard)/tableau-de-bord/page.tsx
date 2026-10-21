@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { t } from '@content/index'
 import { SESSION_COOKIE_NAME } from '@backend/auth/session'
 import { DonneesTableauBord } from '@/components/dashboard/donnees-tableau-bord'
-import { SalutationTableauBord } from '@/components/dashboard/salutation'
+import { SalutationLangue } from '@/components/dashboard/salutation'
 
 /**
  * ACCUEIL DU TABLEAU DE BORD (§25).
@@ -45,7 +45,7 @@ export default async function PageTableauDeBord(): Promise<React.JSX.Element> {
 
   return (
     <>
-      <SalutationTableauBord texte={t('tableauDeBord.salutation')} sessionId={sessionId} />
+      <SalutationLangue sessionId={sessionId} />
       <DonneesTableauBord />
     </>
   )

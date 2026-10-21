@@ -74,13 +74,39 @@ const scriptTheme = `
   try {
     var cle = 'sahed-theme';
     var enregistre = localStorage.getItem(cle);
-    var theme = enregistre === 'clair' || enregistre === 'sombre'
+    /*
+     * Le mode SOMBRE est l'apparence PAR DEFAUT (exigence produit) : un premier
+     * visiteur, ou un navigateur sans preference, voit l'interface sombre.
+     * Les medecins qui ont explicitement choisi le mode clair le retrouvent.
+     */
+    var theme = enregistre === 'sombre' || enregistre === 'clair'
       ? enregistre
-      : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'clair' : 'sombre');
+      : 'sombre';
     document.documentElement.setAttribute('data-theme', theme);
   } catch (e) {
     document.documentElement.setAttribute('data-theme', 'sombre');
   }
+})();
+`
+
+/**
+ * Script de langue exécuté AVANT le premier rendu, comme le script de thème.
+ *
+ * SANS lui, un médecin ayant choisi l'arabe verrait chaque page s'afficher en
+ * LTR français puis basculer en RTL : un flash de direction, plus génant encore
+ * que le flash de thème car il déplace TOUT le texte. La langue par défaut du
+ * document reste « fr » / « ltr » : seuls ceux qui ont choisi l'arabe voient
+ * une autre direction, et ce dès la première peinture.
+ */
+const scriptLangue = `
+(function () {
+  try {
+    var langue = localStorage.getItem('sahed-lang');
+    if (langue === 'ar') {
+      document.documentElement.lang = 'ar';
+      document.documentElement.dir = 'rtl';
+    }
+  } catch (e) {}
 })();
 `
 
@@ -144,6 +170,11 @@ export default async function RootLayout({
           nonce={nonce}
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: scriptTheme }}
+        />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: scriptLangue }}
         />
       </head>
       <body>{children}</body>

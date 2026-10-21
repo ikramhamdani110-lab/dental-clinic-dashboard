@@ -32,7 +32,7 @@ export default async function PageFichePatient({
   if (!resultat.success) notFound()
 
   return (
-    <PagePrivee titre={t('patients.fiche')}>
+    <PagePrivee cleTitre="patients.fiche">
       <FichePatient patientId={resultat.data} />
     </PagePrivee>
   )

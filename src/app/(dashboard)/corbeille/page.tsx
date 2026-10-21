@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export default async function PageCorbeille(): Promise<React.JSX.Element> {
   return (
-    <PagePrivee titre={t('corbeille.titre')}>
+    <PagePrivee cleTitre="corbeille.titre">
       <Corbeille />
     </PagePrivee>
   )

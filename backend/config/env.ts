@@ -28,13 +28,13 @@ const schema = z
     /** 32 octets minimum : un secret court rendrait les jetons previsibles. */
     SESSION_SECRET: z
       .string()
-      .min(32, 'SESSION_SECRET doit faire au moins 32 caracteres.')
+      .min(32, 'SESSION_SECRET doit faire au moins 32 caractères.')
       .optional(),
 
     /** Sel applicatif du hachage Argon2id. Optionnel mais recommande. */
     PASSWORD_PEPPER: z.string().min(16).optional(),
 
-    APP_URL: z.string().url('APP_URL doit etre une URL absolue valide.'),
+    APP_URL: z.string().url('APP_URL doit être une URL absolue valide.'),
     COOKIE_DOMAIN: z.string().optional(),
     COOKIE_SECURE: z
       .enum(['true', 'false'])
@@ -44,7 +44,15 @@ const schema = z
     /** Compte medecin initial — usage unique par le script de seed. */
     DOCTOR_EMAIL: z.string().email().optional(),
     DOCTOR_NAME: z.string().optional(),
-    DOCTOR_INITIAL_PASSWORD: z.string().min(12).optional(),
+    /**
+     * Mot de passe INITIAL du medecin (seed uniquement). Le minimum est
+     * volontairement plus permissif que le mot de passe definitive : le seed
+     * pose la sentinelle `passwordChangedAt = epoch 0` qui FORCE un changement
+     * a la premiere connexion. La regle stricte (12+ caracteres) s'applique au
+     * NOUVEAU mot de passe (`changementMotDePasseSchema`), pas a la graine
+     * temporaire fournie par le cabinet.
+     */
+    DOCTOR_INITIAL_PASSWORD: z.string().min(8).optional(),
 
     /** Repertoire PRIVE des documents, hors racine web. */
     DOCUMENTS_STORAGE_PATH: z.string().optional(),
@@ -53,7 +61,7 @@ const schema = z
       .default('20971520')
       .transform((value) => Number.parseInt(value, 10))
       .refine((value) => Number.isFinite(value) && value > 0, {
-        message: 'DOCUMENTS_MAX_BYTES doit etre un entier positif.',
+        message: 'DOCUMENTS_MAX_BYTES doit être un entier positif.',
       }),
 
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -62,12 +70,26 @@ const schema = z
     // En production, les cookies doivent etre Secure et le secret de session
     // obligatoire. Ces deux erreurs sont les plus dangereuses : elles rendent
     // le systeme exploitable ou les sessions interceptables.
+    // EXCEPTION : application de bureau — APP_URL pointe sur l'interface locale
+    // (127.0.0.1 / localhost) servie en HTTP simple, jamais accessible depuis
+    // l'exterieur de la machine. Les cookies Secure seraient ignorés par le
+    // navigateur embarqué et rendraient la connexion impossible. Le reste de
+    // la machine n'etant pas exposé, le risque est equivalent au mode dev.
+    const hoteLocal = (() => {
+      try {
+        const hote = new URL(value.APP_URL).hostname
+        return hote === 'localhost' || hote === '127.0.0.1' || hote === '[::1]'
+      } catch {
+        return false
+      }
+    })()
     if (value.NODE_ENV === 'production') {
-      if (!value.COOKIE_SECURE) {
+      if (!value.COOKIE_SECURE && !hoteLocal) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['COOKIE_SECURE'],
-          message: 'COOKIE_SECURE doit valoir "true" en production (HTTPS obligatoire).',
+          message:
+            'COOKIE_SECURE doit valoir "true" en production (HTTPS obligatoire), sauf si APP_URL pointe sur la machine locale (application de bureau).',
         })
       }
       if (!value.SESSION_SECRET) {

@@ -44,10 +44,10 @@ interface PatientTrouve {
  */
 const MOTIFS_COURANTS = [
   'Consultation',
-  'Premiere consultation',
+  'Première consultation',
   'Extraction dentaire',
   'Soin de carie',
-  'Detartrage',
+  'Détartrage',
   'Urgence dentaire',
 ] as const
 

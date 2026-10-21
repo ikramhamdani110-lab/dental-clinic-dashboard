@@ -108,10 +108,9 @@ export const erreurs = {
     new AppError('VALIDATION', message, { fieldErrors }),
 
   nonAuthentifie: (): AppError =>
-    new AppError('NON_AUTHENTIFIE', 'Vous devez etre connecte pour effectuer cette action.'),
-
+    new AppError('NON_AUTHENTIFIE', 'Vous devez être connecté pour effectuer cette action.'),
   accesRefuse: (): AppError =>
-    new AppError('ACCES_REFUSE', "Vous n'etes pas autorise a effectuer cette action."),
+    new AppError('ACCES_REFUSE', "Vous n'êtes pas autorisé à effectuer cette action."),
 
   introuvable: (entite = 'Element'): AppError =>
     new AppError('INTROUVABLE', `${entite} introuvable.`),
@@ -122,16 +121,14 @@ export const erreurs = {
     new AppError('RENDEZ_VOUS_EN_CONFLIT', message),
 
   tropDeRequetes: (): AppError =>
-    new AppError('TROP_DE_REQUETES', 'Trop de tentatives. Veuillez patienter avant de reessayer.'),
-
+    new AppError('TROP_DE_REQUETES', 'Trop de tentatives. Veuillez patienter avant de réessayer.'),
   compteVerrouille: (minutes: number): AppError =>
     new AppError(
       'COMPTE_VERROUILLE',
-      `Compte temporairement verrouille apres plusieurs echecs. Reessayez dans ${minutes} minute(s).`,
+      `Compte temporairement verrouillé après plusieurs échecs. Réessayez dans ${minutes} minute(s).`,
     ),
-
   paiementEnDoublon: (): AppError =>
-    new AppError('PAIEMENT_EN_DOUBLON', 'Ce paiement a deja ete enregistre.'),
+    new AppError('PAIEMENT_EN_DOUBLON', 'Ce paiement a déjà été enregistré.'),
 
   montantInvalide: (message: string): AppError => new AppError('MONTANT_INVALIDE', message),
 
@@ -140,23 +137,20 @@ export const erreurs = {
   fichierTropVolumineux: (maxMo: number): AppError =>
     new AppError(
       'FICHIER_TROP_VOLUMINEUX',
-      `Le fichier depasse la taille maximale autorisee (${maxMo} Mo).`,
+      `Le fichier dépasse la taille maximale autorisée (${maxMo} Mo).`,
     ),
-
   corbeilleExpiree: (): AppError =>
     new AppError(
       'CORBEILLE_EXPIREE',
-      'Le delai de restauration de 24 heures est ecoule. Cet element ne peut plus etre restaure.',
+      'Le délai de restauration de 24 heures est écoulé. Cet élément ne peut plus être restauré.',
     ),
-
   serviceIndisponible: (): AppError =>
     new AppError(
       'SERVICE_INDISPONIBLE',
-      'Le service est temporairement indisponible. Veuillez reessayer dans quelques instants.',
+      'Le service est temporairement indisponible. Veuillez réessayer dans quelques instants.',
     ),
-
   interne: (internals?: Record<string, unknown>): AppError =>
-    new AppError('ERREUR_INTERNE', 'Une erreur interne est survenue. Veuillez reessayer.', {
+    new AppError('ERREUR_INTERNE', 'Une erreur interne est survenue. Veuillez réessayer.', {
       internals,
     }),
 }

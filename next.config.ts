@@ -36,6 +36,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Sortie autonome : necessaire a la distribution de bureau. Le dossier
+  // `.next/standalone` contient un serveur auto-suffisant embarque dans
+  // l'installateur Windows (aucun Node.js requis chez l'utilisateur final).
+  // L'application web deploiee (Vercel) est unaffected : la cible est
+  // determinee par la variable d'environnement BUILD_TARGET.
+  ...(process.env.BUILD_TARGET === 'desktop' ? { output: 'standalone' as const } : {}),
   poweredByHeader: false,
   // Fixe explicitement la racine du projet : une machine comportant plusieurs
   // fichiers `package-lock.json` ferait autrement deviner la mauvaise racine.

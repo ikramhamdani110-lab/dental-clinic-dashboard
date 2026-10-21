@@ -38,6 +38,9 @@ export const POST = routePublique(async (request: NextRequest): Promise<NextResp
         email: resultat.user.email,
         role: resultat.user.role,
       },
+      // Le client doit forcer le changement de mot de passe avant toute action
+      // si l'utilisateur se connecte encore avec le mot de passe initial.
+      doitChangerMotDePasse: resultat.doitChangerMotDePasse,
     })
 
     // Cookie de session : HttpOnly, jamais accessible au JavaScript.

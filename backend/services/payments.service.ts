@@ -161,7 +161,7 @@ export async function ajouterPaiement(
   }
 
   if (donnees.montantCentimes <= 0) {
-    throw erreurs.montantInvalide('Le montant doit etre superieur a zero.')
+    throw erreurs.montantInvalide('Le montant doit être supérieur à zéro.')
   }
 
   // 3. Transaction : controle du solde + insertion atomique.
@@ -180,7 +180,7 @@ export async function ajouterPaiement(
 
     if (!controle.autorise) {
       throw erreurs.montantInvalide(
-        `Ce paiement depasserait le prix total du traitement de ${(controle.depassement / 100).toLocaleString('fr-FR')} DA. Corrigez le montant ou le prix du traitement.`,
+        `Ce paiement dépasserait le prix total du traitement de ${(controle.depassement / 100).toLocaleString('fr-FR')} DA. Corrigez le montant ou le prix du traitement.`,
       )
     }
 
@@ -386,13 +386,13 @@ export async function corrigerPaiement(
   if (!paiement) throw erreurs.introuvable('Paiement')
 
   if (paiement.statut === 'ANNULE') {
-    throw erreurs.conflit('Ce paiement a deja ete annule.')
+    throw erreurs.conflit('Ce paiement a déjà été annulé.')
   }
 
   // Verifications specifiques au type de correction.
   if (donnees.type === 'CORRECTION_MONTANT') {
     if (donnees.nouveauMontantCentimes === undefined || donnees.nouveauMontantCentimes <= 0) {
-      throw erreurs.montantInvalide('Indiquez un nouveau montant superieur a zero.')
+      throw erreurs.montantInvalide('Indiquez un nouveau montant supérieur à zéro.')
     }
     // Le nouveau montant ne doit pas faire depasser le prix du traitement en
     // tenant compte du reste des paiements valides.
@@ -413,7 +413,7 @@ export async function corrigerPaiement(
     })
     if (!controle.autorise) {
       throw erreurs.montantInvalide(
-        `Le montant corrige depasserait le prix total du traitement de ${(controle.depassement / 100).toLocaleString('fr-FR')} DA.`,
+        `Le montant corrigé dépasserait le prix total du traitement de ${(controle.depassement / 100).toLocaleString('fr-FR')} DA.`,
       )
     }
   }

@@ -7,6 +7,8 @@ import { t } from '@content/index'
 import { ChampSelection } from '@/components/ui/champ'
 import { Pagination } from '@/components/patients/liste-patients'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
+import { useContenu } from '@/components/langue/fournisseur-langue'
 
 /**
  * =============================================================================
@@ -46,6 +48,7 @@ const TAILLE_PAGE = 30
 export function JournalActivite(): React.JSX.Element {
   const [page, setPage] = useState(1)
   const [action, setAction] = useState('')
+  const contenu = useContenu()
 
   const parametres = new URLSearchParams({ page: String(page), taille: String(TAILLE_PAGE) })
   if (action) parametres.set('action', action)
@@ -69,7 +72,12 @@ export function JournalActivite(): React.JSX.Element {
             }}
             options={(donnees?.actionsDisponibles ?? []).map((valeur) => ({
               valeur,
-              libelle: valeur,
+              /* La valeur stockee reste la cle de filtre ; le LIBELLE affiche est
+                 traduit dans la langue active (repli : la valeur brute). */
+              libelle:
+                (contenu.journalActivite.libellesActions as Record<string, string> | undefined)?.[
+                  valeur
+                ] ?? valeur,
             }))}
           />
         </div>
@@ -114,9 +122,15 @@ export function JournalActivite(): React.JSX.Element {
                 {donnees.entrees.map((entree) => (
                   <tr key={entree.id}>
                     <td data-etiquette={t('journalActivite.horodatage')}>
-                      {new Date(entree.createdAt).toLocaleString('fr-FR')}
+                      {new Date(entree.createdAt).toLocaleString(localeDates())}
                     </td>
-                    <td data-etiquette={t('journalActivite.action')}>{entree.action}</td>
+                    <td data-etiquette={t('journalActivite.action')}>
+                      {/* La valeur stockée (français) reste la donnée ; seul le
+                          libellé AFFICHÉ suit la langue active. */}
+                      {(contenu.journalActivite.libellesActions as Record<string, string> | undefined)?.[
+                        entree.action
+                      ] ?? entree.action}
+                    </td>
                     <td data-etiquette={t('journalActivite.utilisateur')}>
                       {entree.userEmail ?? '—'}
                     </td>

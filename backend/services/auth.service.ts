@@ -43,10 +43,16 @@ export interface ResultatConnexion {
   }
   token: string
   csrfToken: string
+  /**
+   * Vrai si l'utilisateur se connecte avec le mot de passe initial (jamais
+   * changé) : le client DOIT alors le faire changer avant toute autre action.
+   * Détecté par `passwordChangedAt == epoch 0` (sentinelle posée par le seed).
+   */
+  doitChangerMotDePasse: boolean
 }
 
 const MESSAGE_ECHEC_GENERIQUE =
-  'Identifiants incorrects. Verifiez votre email et votre mot de passe.'
+  'Identifiants incorrects. Vérifiez votre email et votre mot de passe.'
 
 /**
  * Authentifie le medecin.
@@ -161,6 +167,7 @@ export async function login(
     user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role },
     token,
     csrfToken,
+    doitChangerMotDePasse: user.passwordChangedAt.getTime() <= 0,
   }
 }
 

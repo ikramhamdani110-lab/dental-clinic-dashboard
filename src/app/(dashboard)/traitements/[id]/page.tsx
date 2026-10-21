@@ -25,7 +25,7 @@ export default async function PageTraitement({
   if (!resultat.success) notFound()
 
   return (
-    <PagePrivee titre={t('traitements.titre')}>
+    <PagePrivee cleTitre="traitements.titre">
       <DetailTraitement traitementId={resultat.data} />
     </PagePrivee>
   )

@@ -58,3 +58,65 @@ coverage/
 
 .vercel
 .env*
+
+# -----------------------------------------------------------------------------
+#  Application de bureau (Electron) — jamais versionne :
+#  - resources/ : la copie assemblee du bundle (node.exe, Next standalone,
+#    binaires PostgreSQL, argon2). Lourd et regenerable via `npm run desktop:prepare`.
+#  - dist/ : installateurs NSIS + blockmap produits par electron-builder.
+#  - .desktop-test/ : cluster PostgreSQL de test local (donnees synthetiques).
+# -----------------------------------------------------------------------------
+desktop/resources/
+desktop/dist/
+desktop/*.log
+.desktop-test/
+
+# Recettes de build et de QA — artefacts locaux uniquement
+qa/
+build-desk.txt
+build-desktop.txt
+build-output.log
+build.log
+.devlog.err.txt
+.devlog.out.txt
+.dev-*.txt
+.prod*log
+prod-server.log
+prod-server.err.log
+dev-server.log
+dev.log
+qa-*.txt
+qa-*.json
+qa-*.mjs
+.l3.txt
+.dbrun.cmd
+.devrun.cmd
+.start-demo-pg.cmd
+.c-diag.mjs
+.db-check.mjs
+.db-probe*.mjs
+.patch-anim.mjs
+.audit-*.mjs
+.ref-*.png
+.lh-*.log
+.perf-*.txt
+.pgstat*.txt
+.cookies*.txt
+*.cmd.tmp
+
+# Log de build desktop et artefacts d'audit ad hoc
+.desktop-build.log
+.qa-*
+.qa-*.txt
+.qa-*.json
+.audit-*.mjs
+lh-*.log
+patch-anim.mjs
+tmp-*.mjs
+tmp-*.cjs
+db-check.mjs
+qa-captures/
+assets/
+build-*.txt
+audit-*.mjs
+.start-demo-pg.cmd

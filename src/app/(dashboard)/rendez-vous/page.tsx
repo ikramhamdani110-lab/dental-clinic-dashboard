@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function PageRendezVous(): Promise<React.JSX.Element> {
   return (
-    <PagePrivee titre={t('rendezVous.titre')}>
+    <PagePrivee cleTitre="rendezVous.titre">
       <PlanningRendezVous />
     </PagePrivee>
   )

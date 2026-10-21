@@ -7,11 +7,12 @@ import { t, contenu } from '@content/index'
 import { formaterMontant } from '@backend/domain/finance'
 
 import { BadgeSolde, BadgeStatutPaiement, BadgeStatutRendezVous } from '@/components/ui/badge-statut'
-import { LienBouton } from '@/components/ui/bouton'
+import { Bouton, LienBouton } from '@/components/ui/bouton'
 import { FormulairePaiementPatient } from '@/components/patients/formulaire-paiement-patient'
 import { Pagination } from '@/components/patients/liste-patients'
 import { formaterAgePatient } from '@/lib/age'
 import { useRequete } from '@/lib/hooks/use-requete'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
@@ -123,6 +124,32 @@ export function FichePatient({ patientId }: { patientId: string }): React.JSX.El
    */
   const [rafraichissementPaiements, setRafraichissementPaiements] = useState(0)
 
+  /**
+   * Export PDF du dossier — le document est produit PAR LE SERVEUR (route
+   * privée /api/patients/:id/pdf), a partir des memes services que la fiche.
+   * Telechargement par iframe cache : aucune navigation, aucune donnée dans
+   * l'URL, aucun stockage local.
+   */
+  const [exportPdfEnCours, setExportPdfEnCours] = useState(false)
+  const exporterDossierPdf = useCallback(() => {
+    setExportPdfEnCours(true)
+    const cadre = document.createElement('iframe')
+    cadre.style.display = 'none'
+    // EXIGENCE PRODUIT : le dossier est TOUJOURS imprime en FRANCAIS, quelle
+    // que soit la langue affichee dans l'interface. La route ne lit aucun
+    // parametre de langue ; ce choix serveur ne peut pas etre contourne.
+    cadre.src = `/api/patients/${patientId}/pdf`
+    cadre.onload = () => {
+      window.setTimeout(() => cadre.remove(), 30_000)
+      setExportPdfEnCours(false)
+    }
+    cadre.onerror = () => {
+      cadre.remove()
+      setExportPdfEnCours(false)
+    }
+    document.body.appendChild(cadre)
+  }, [patientId])
+
   const { donnees, chargement, erreur, recharger } = useRequete<{ patient: Patient; solde: Solde }>(
     `/api/patients/${patientId}`,
   )
@@ -233,6 +260,15 @@ export function FichePatient({ patientId }: { patientId: string }): React.JSX.El
           <LienBouton href={`/patients/${patient.id}/modifier`} variante="discret" taille="petite">
             {t('commun.modifier')}
           </LienBouton>
+          {/* Export du dossier complet en PDF — meme donnees que cette fiche. */}
+          <Bouton
+            variante="discret"
+            taille="petite"
+            onClick={exporterDossierPdf}
+            disabled={exportPdfEnCours}
+          >
+            {exportPdfEnCours ? 'Export en cours…' : 'Exporter le dossier en PDF'}
+          </Bouton>
         </div>
       </section>
 
@@ -431,7 +467,7 @@ function OngletRendezVous({ patientId }: { patientId: string }): React.JSX.Eleme
 
 /** Date en clair : « 24 septembre 2026 ». */
 function dateLongue(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', {
+  return new Date(iso).toLocaleDateString(localeDates(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -544,7 +580,7 @@ function OngletPaiements({
             {donnees.paiements.map((paiement) => (
               <tr key={paiement.id}>
                 <td data-etiquette={t('paiements.datePaiement')}>
-                  {new Date(paiement.datePaiement).toLocaleDateString('fr-FR')}
+                  {new Date(paiement.datePaiement).toLocaleDateString(localeDates())}
                 </td>
                 <td data-etiquette={t('paiements.traitementAssocie')}>
                   {paiement.treatment?.typeTraitement ?? '—'}

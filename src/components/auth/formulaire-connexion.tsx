@@ -58,10 +58,20 @@ export function FormulaireConnexion(): React.JSX.Element {
     setEnCours(true)
 
     try {
-      await requeteApi('/api/auth/login', {
-        methode: 'POST',
-        corps: { email, password: motDePasse },
-      })
+      const reponse = await requeteApi<{ doitChangerMotDePasse?: boolean }>(
+        '/api/auth/login',
+        {
+          methode: 'POST',
+          corps: { email, password: motDePasse },
+        },
+      )
+      // Premier accès (mot de passe initial jamais changé) : forcer le choix
+      // d'un nouveau mot de passe AVANT l'accès au reste de l'application.
+      if (reponse?.doitChangerMotDePasse) {
+        router.push('/premiere-connexion')
+        router.refresh()
+        return
+      }
       // Connexion reussie : redirection vers le tableau de bord.
       router.push('/tableau-de-bord')
       router.refresh()

@@ -12,13 +12,22 @@
  *  Variables requises (voir `.env.example`) :
  *    DOCTOR_EMAIL, DOCTOR_NAME, DOCTOR_INITIAL_PASSWORD
  *
+ *  Optionnelle :
+ *    FORCE_FIRST_LOGIN_PASSWORD_CHANGE=true
+ *      Pose la sentinelle `passwordChangedAt = epoch 0` : le login renvoie
+ *      alors `doitChangerMotDePasse = true` et le tableau de bord redirige
+ *      vers /premiere-connexion jusqu'au changement effectif. A utiliser au
+ *      premier deploiement pour le mot de passe initial fourni au cabinet.
+ *
  *  SECURITE
  *    - Le mot de passe n'est jamais passe en argument de ligne de commande (il
  *      apparaitrait dans l'historique du shell et dans la liste des processus) :
  *      il est lu dans l'environnement.
  *    - Le mot de passe est hache avec Argon2id, jamais stocke en clair (§6).
- *    - Le script est IDEMPOTENT : relance, il met a jour le compte existant
- *      sans creer de doublon.
+ *    - Le script est IDEMPOTENT SANS ETRE DESTRUCTIF : relance, il ne fait rien
+ *      si le compte existe deja — il ne reinitialise JAMAIS le mot de passe
+ *      d'un compte reel existant. Pour reinitialiser un mot de passe oublie,
+ *      supprimer d'abord explicitement le compte (action manuelle assumee).
  *
  *  Ce script ne cree AUCUN patient, AUCUN rendez-vous, AUCUN paiement : la base
  *  de production ne contient jamais de fausses donnees (§52).
@@ -53,12 +62,34 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  if (motDePasse.length < 12) {
+  // Le mot de passe INITIAL peut etre court : il est provisoire et DOIT etre
+  // change a la premiere connexion. C'est le NOUVEAU mot de passe (form
+  // /premiere-connexion, changementMotDePasseSchema) qui reste soumis au
+  // minimum de 12 caracteres.
+  if (motDePasse.length < 1) {
     process.stderr.write(
-      'DOCTOR_INITIAL_PASSWORD doit contenir au moins 12 caracteres. Le seed est interrompu.\n',
+      'DOCTOR_INITIAL_PASSWORD doit contenir au moins 1 caractere. Le seed est interrompu.\n',
     )
     process.exit(1)
   }
+
+  if (motDePasse.length >= 12) {
+    process.stderr.write(
+      [
+        'ATTENTION : DOCTOR_INITIAL_PASSWORD fait au moins 12 caracteres.',
+        'Il devrait etre un mot de passe PROVISOIRE court, obligeant l\'utilisateur',
+        'a choisir son propre mot de passe a la premiere connexion.',
+        '',
+      ].join('\n'),
+    )
+  }
+
+  // Sentinelle de premiere connexion : `passwordChangedAt = epoch 0` signifie
+  // « cet utilisateur n'a JAMAIS change son mot de passe ». Le login renvoie
+  // alors `doitChangerMotDePasse = true` et le layout du tableau de bord
+  // redirige vers /premiere-connexion jusqu'au changement effectif.
+  const changerMotDePasseInitial = process.env.FORCE_FIRST_LOGIN_PASSWORD_CHANGE === 'true'
+  const dateChangement = changerMotDePasseInitial ? new Date(0) : new Date()
 
   const valeurHachee = await argon2.hash(pepper ? `${motDePasse}${pepper}` : motDePasse, {
     type: argon2.argon2id,
@@ -76,30 +107,37 @@ async function main(): Promise<void> {
   })
 
   if (existant) {
-    await prisma.user.update({
-      where: { id: existant.id },
-      data: {
-        displayName: nom,
-        passwordHash: valeurHachee,
-        role: 'MEDECIN',
-        isActive: true,
-        failedLoginCount: 0,
-        lockedUntil: null,
-        passwordChangedAt: new Date(),
-      },
-    })
-    process.stdout.write(`Compte medecin mis a jour : ${emailNormalise}\n`)
-  } else {
-    await prisma.user.create({
-      data: {
-        email: emailNormalise,
-        displayName: nom,
-        role: 'MEDECIN',
-        passwordHash: valeurHachee,
-        isActive: true,
-      },
-    })
-    process.stdout.write(`Compte medecin cree : ${emailNormalise}\n`)
+    // COMPTE EXISTANT : on ne touche a RIEN. Le seed ne doit JAMAIS reinitialiser
+    // le mot de passe (ni le statut, ni la sentinelle) d'un compte reel deja
+    // en service — sinon une simple relance du seed reabaisserait la sentinelle
+    // et invaliderait le mot de passe choisi par le medecin.
+    process.stdout.write(
+      `Compte medecin deja existant : ${emailNormalise} — aucune modification (seed non destructif).\n`,
+    )
+    return
+  }
+
+  await prisma.user.create({
+    data: {
+      email: emailNormalise,
+      displayName: nom,
+      role: 'MEDECIN',
+      passwordHash: valeurHachee,
+      isActive: true,
+      passwordChangedAt: dateChangement,
+    },
+  })
+  process.stdout.write(`Compte medecin cree : ${emailNormalise}\n`)
+
+  if (changerMotDePasseInitial) {
+    process.stdout.write(
+      [
+        '',
+        'Le mot de passe initial devra etre change a la PREMIERE connexion',
+        '(sentinelle posee : le medecin sera redirige vers /premiere-connexion).',
+        '',
+      ].join('\n'),
+    )
   }
 
   process.stdout.write(

@@ -4,7 +4,7 @@ import { t } from '@content/index'
 
 import { PagePrivee } from '@/components/layout/page-privee'
 import { ListePaiements } from '@/components/paiements/liste-paiements'
-import { LienBouton } from '@/components/ui/bouton'
+import { EntetePaiements } from '@/components/paiements/entete-paiements'
 
 /** Liste des paiements (§16). */
 export const metadata: Metadata = {
@@ -14,18 +14,13 @@ export const metadata: Metadata = {
 
 export default async function PagePaiements(): Promise<React.JSX.Element> {
   return (
-    <PagePrivee titre={t('paiements.titre')}>
-      <div className="entete-page">
-        <div className="entete-page-haut">
-          <div>
-            <h2 className="entete-page-titre">{t('paiements.titre')}</h2>
-            <p className="entete-page-sous-titre">{t('paiements.aucun')}</p>
-          </div>
-          <LienBouton href="/paiements/nouveau" variante="principal">
-            {t('paiements.nouveau')}
-          </LienBouton>
-        </div>
-      </div>
+    <PagePrivee cleTitre="paiements.titre">
+      {/*
+        L'entête est un composant CLIENT : `t()` y est résolu au rendu dans la
+        langue active. En composant serveur, les libellés restaient figés en
+        français lorsque le médecin basculait l'interface en arabe.
+      */}
+      <EntetePaiements />
       <ListePaiements />
     </PagePrivee>
   )

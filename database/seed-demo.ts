@@ -148,9 +148,20 @@ function decaleJours(n: number): Date {
   return d
 }
 
+/**
+ * Date PASSEE, `h` mois en arriere, au jour `m` du mois.
+ *
+ * Le mois COURANT (`h = 0`) ne produit pas toujours une date passee : au
+ * 8 octobre, « le 28 du mois courant » est le 28 octobre, donc DANS LE FUTUR.
+ * Or l'appelant s'en sert comme date de PAIEMENT, et la contrainte
+ * `payments_date_plausible_check` refuse une date de paiement future : le seed
+ * echouait les jours 1 a 27 du mois. On borne donc le mois courant a la date du
+ * jour, en conservant l'heure aleatoire.
+ */
 function mois(h: number, m: number): Date {
   const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth() - h, m, entre(9, 16), entre(0, 3) * 15, 0, 0)
+  const jourBorne = h === 0 ? Math.min(m, d.getDate()) : m
+  return new Date(d.getFullYear(), d.getMonth() - h, jourBorne, entre(9, 16), entre(0, 3) * 15, 0, 0)
 }
 
 /** Numero fictif : prefixe reserved + indicatif, jamais attribuable. */

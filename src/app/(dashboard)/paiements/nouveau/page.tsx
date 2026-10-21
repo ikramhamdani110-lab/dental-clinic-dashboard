@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function PageNouveauPaiement(): Promise<React.JSX.Element> {
   return (
-    <PagePrivee titre={t('paiements.nouveau')}>
+    <PagePrivee cleTitre="paiements.nouveau">
       {/* `useSearchParams` exige une frontiere Suspense : le formulaire lit les
           parametres d'URL pour pre-selectionner le patient et le traitement. */}
       <Suspense fallback={<p className="etat-vide-texte">{t('tableaux.chargement')}</p>}>

@@ -1,14 +1,17 @@
 'use client'
 
-import { useEffect } from 'react'
+import Link from 'next/link'
+import { useCallback, useEffect, useState } from 'react'
 
 import { t } from '@content/index'
 
 import { formaterMontant } from '@backend/domain/finance'
 
+import { Bouton } from '@/components/ui/bouton'
 import { useRequete } from '@/lib/hooks/use-requete'
 import { surModification } from '@/lib/evenements-donnees'
 import { TONS_STATUT_RENDEZ_VOUS } from '@/components/ui/badge-statut'
+import { localeDates } from '@/lib/locale-dates'
 
 /**
  * =============================================================================
@@ -93,6 +96,32 @@ export function DonneesTableauBord(): React.JSX.Element {
   const { donnees, chargement, erreur, recharger } =
     useRequete<DonneesTableauBord>('/api/dashboard')
 
+  // Export PDF : le navigateur télécharge le document produit PAR LE SERVEUR
+  // (route privée /api/dashboard/pdf). Le medecin reste sur son écran : le
+  // téléchargement se fait dans un iframe caché, sans navigation ni pop-up,
+  // donc sans risque de fermer la session ni de bloquer le rendu.
+  const [exportEnCours, setExportEnCours] = useState(false)
+  const exporterPdf = useCallback(() => {
+    setExportEnCours(true)
+    const cadre = document.createElement('iframe')
+    cadre.style.display = 'none'
+    // EXIGENCE PRODUIT : le PDF est TOUJOURS imprime en FRANCAIS, quelle que
+    // soit la langue affichee dans l'interface. La route ne lit aucun parametre
+    // de langue ; ce choix serveur ne peut pas etre contourne par l'URL.
+    cadre.src = '/api/dashboard/pdf'
+    cadre.onload = () => {
+      // Le téléchargement est lancé par l'en-tête Content-Disposition ; le
+      // cadre est retiré juste après, l'écriture du fichier se poursuit.
+      window.setTimeout(() => cadre.remove(), 30_000)
+      setExportEnCours(false)
+    }
+    cadre.onerror = () => {
+      cadre.remove()
+      setExportEnCours(false)
+    }
+    document.body.appendChild(cadre)
+  }, [])
+
   // Relit les indicateurs des qu'un paiement est enregistre ailleurs dans
   // l'application, sans action du medecin ni rechargement de page.
   useEffect(() => surModification('paiements', recharger), [recharger])
@@ -122,6 +151,14 @@ export function DonneesTableauBord(): React.JSX.Element {
       className="tableau-bord-donnees"
       style={{ display: 'flex', flexDirection: 'column', gap: 'var(--espace-5)' }}
     >
+      {/* Export PDF — action claire, sans navigation : le document est produit
+          par le serveur a partir des MEMES valeurs que celles affichees ici. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Bouton variante="secondaire" taille="petite" onClick={exporterPdf} disabled={exportEnCours}>
+          {exportEnCours ? t('tableauDeBord.exportEnCours') : t('tableauDeBord.exporterPdf')}
+        </Bouton>
+      </div>
+
       {/* ── 1. LES CINQ INDICATEURS ──────────────────────────────────────────── */}
       <section className="grille-statistiques" aria-label={t('tableauDeBord.patientsDuJour')}>
         <Statistique
@@ -129,7 +166,22 @@ export function DonneesTableauBord(): React.JSX.Element {
           valeur={String(donnees.rendezVousDuJour.length)}
           detail={t('tableauDeBord.rendezVousDuJourAide')}
         />
-        <Statistique
+        {/**
+          * CARTE « NOUVEAUX PATIENTS » — CLIQUABLE.
+          *
+          * Elle amène DIRECTEMENT vers la liste « Nouveaux rendez-vous » du
+          * planning : la section « créé aujourd'hui » du tableau de bord et la
+          * liste cible partagent exactement la MÊME source de données
+          * (rendez-vous dont `createdAt` tombe aujourd'hui, calculé par
+          * GET /api/dashboard). Aucune liste n'est dupliquée : la navigation
+          * transmet juste le focus voulu au planning existant.
+          *
+          * Un `<Link>` réel (pas un `<div onClick>`) garantit la navigation au
+          * clavier : focus visible, activation par Entrée, et ouverture dans un
+          * nouvel onglet si besoin. Le rendu reste identique à `Statistique`.
+          */}
+        <StatistiqueCliquable
+          href="/rendez-vous?vue=nouvelles-entrees"
           etiquette={t('tableauDeBord.nouveauxPatients')}
           valeur={String(donnees.nouveauxPatientsJour)}
           detail={t('tableauDeBord.nouveauxPatientsAide')}
@@ -175,7 +227,7 @@ export function DonneesTableauBord(): React.JSX.Element {
                     changement est purement visuel — la date et l'heure stockees
                     en base sont inchangees.
                   */}
-                  <th scope="col">{t('rendezVous.date')}</th>
+                  <th scope="col">{t('commun.date')}</th>
                   <th scope="col">{t('rendezVous.patient')}</th>
                   <th scope="col">{t('rendezVous.traitement')}</th>
                   <th scope="col">{t('rendezVous.statut')}</th>
@@ -184,8 +236,8 @@ export function DonneesTableauBord(): React.JSX.Element {
               <tbody>
                 {donnees.rendezVousDuJour.map((rdv) => (
                   <tr key={rdv.id}>
-                    <td data-etiquette={t('rendezVous.date')}>
-                      {new Date(rdv.dateDebut).toLocaleDateString('fr-FR', {
+                    <td data-etiquette={t('commun.date')}>
+                      {new Date(rdv.dateDebut).toLocaleDateString(localeDates(), {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
@@ -242,7 +294,7 @@ export function DonneesTableauBord(): React.JSX.Element {
               <thead>
                 <tr>
                   <th scope="col">{t('rendezVous.patient')}</th>
-                  <th scope="col">{t('rendezVous.date')}</th>
+                  <th scope="col">{t('commun.date')}</th>
                   <th scope="col">{t('rendezVous.traitement')}</th>
                   <th scope="col">{t('rendezVous.statut')}</th>
                 </tr>
@@ -256,8 +308,8 @@ export function DonneesTableauBord(): React.JSX.Element {
                         <span className="liste-compacte-detail">{rdv.telephone}</span>
                       </span>
                     </td>
-                    <td data-etiquette={t('rendezVous.date')}>
-                      {new Date(rdv.dateDebut).toLocaleDateString('fr-FR', {
+                    <td data-etiquette={t('commun.date')}>
+                      {new Date(rdv.dateDebut).toLocaleDateString(localeDates(), {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
@@ -277,6 +329,38 @@ export function DonneesTableauBord(): React.JSX.Element {
         )}
       </section>
     </div>
+  )
+}
+
+/**
+ * Variante CLIQUABLE de `Statistique`.
+ *
+ * Rendue comme un VRAI lien (`<a>` via next/link) englobant toute la carte :
+ * focus clavier natif, activation par Entrée, et un indice visuel discret au
+ * survol/focus (un filet et une légère élévation) pour signifier que la carte
+ * est cliquable. La structure interne est identique à `Statistique`.
+ */
+function StatistiqueCliquable({
+  href,
+  etiquette,
+  valeur,
+  detail,
+}: {
+  href: string
+  etiquette: string
+  valeur: string
+  detail?: string
+}): React.JSX.Element {
+  return (
+    <Link
+      href={href}
+      className="statistique statistique-lien"
+      style={{ textDecoration: 'none', color: 'inherit' }}
+    >
+      <span className="statistique-etiquette">{etiquette}</span>
+      <span className="statistique-valeur">{valeur}</span>
+      {detail ? <span className="statistique-detail">{detail}</span> : null}
+    </Link>
   )
 }
 

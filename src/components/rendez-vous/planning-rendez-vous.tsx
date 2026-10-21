@@ -10,6 +10,7 @@ import { useNotifications } from '@/components/ui/notifications'
 import { signalerModification } from '@/lib/evenements-donnees'
 import { Bouton, LienBouton } from '@/components/ui/bouton'
 import { ApiError, messageErreur, requeteApi } from '@/lib/api-client'
+import { localeDates } from '@/lib/locale-dates'
 
 /** Valeur sentinelle représentant « pas de filtre de statut » (afficher tous). */
 const STATUT_TOUS = '' as const
@@ -70,13 +71,20 @@ type Vue = 'jour' | 'semaine' | 'mois'
  * comparent la date du rendez-vous a l'instant present pour reecrire son
  * statut. Le seul chemin vers « Fait », « Reprogramme » ou « Absent » est ce
  * selecteur.
+ *
+ * FONCTION, ET NON CONSTANTE DE MODULE : les libelles sont resolus AU RENDU,
+ * dans la langue active. Une constante de module figeait le texte FRANCAIS au
+ * chargement du fichier — avant tout changement de langue — et l'arabe n'était
+ * jamais appliqué à ces options.
  */
-const OPTIONS_STATUT = [
-  { valeur: 'PLANIFIE', libelle: t('rendezVous.statuts.PLANIFIE') },
-  { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
-  { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
-  { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
-]
+function OPTIONS_STATUT() {
+  return [
+    { valeur: 'PLANIFIE', libelle: t('rendezVous.statuts.PLANIFIE') },
+    { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
+    { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
+    { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
+  ]
+}
 
 /**
  * Options pour le FILTRE de statut dans la barre d'outils du planning.
@@ -88,14 +96,19 @@ const OPTIONS_STATUT = [
  *
  * Filtre ET date travaillent ensemble : « Reprogrammé + aujourd'hui » affiche
  * uniquement les rendez-vous reprogrammés du jour sélectionné.
+ *
+ * Fonction pour la même raison que `OPTIONS_STATUT` : résolution au rendu,
+ * dans la langue active.
  */
-const OPTIONS_FILTRE_STATUT = [
-  { valeur: STATUT_TOUS, libelle: 'Tous' },
-  { valeur: 'PLANIFIE', libelle: t('rendezVous.statuts.PLANIFIE') },
-  { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
-  { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
-  { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
-]
+function OPTIONS_FILTRE_STATUT() {
+  return [
+    { valeur: STATUT_TOUS, libelle: t('commun.tous') },
+    { valeur: 'PLANIFIE', libelle: t('rendezVous.statuts.PLANIFIE') },
+    { valeur: 'TERMINE', libelle: t('rendezVous.statuts.TERMINE') },
+    { valeur: 'ABSENT', libelle: t('rendezVous.statuts.ABSENT') },
+    { valeur: 'REPROGRAMME', libelle: t('rendezVous.statuts.REPROGRAMME') },
+  ]
+}
 
 export function PlanningRendezVous(): React.JSX.Element {
   const [vue, setVue] = useState<Vue>('jour')
@@ -279,9 +292,9 @@ export function PlanningRendezVous(): React.JSX.Element {
           <div style={{ minWidth: '10rem' }}>
             <ChampSelection
               nom="filtre-statut-planning"
-              etiquette="Statut"
+              etiquette={t('commun.statut')}
               value={filtreStatut}
-              options={OPTIONS_FILTRE_STATUT}
+              options={OPTIONS_FILTRE_STATUT()}
               onChange={(evenement) => setFiltreStatut(evenement.target.value)}
             />
           </div>
@@ -355,7 +368,7 @@ export function PlanningRendezVous(): React.JSX.Element {
                         inchangee — la planification, la detection de conflit et
                         les filtres de date continuent de l'utiliser.
                       */}
-                      {new Date(rdv.dateDebut).toLocaleDateString('fr-FR', {
+                      {new Date(rdv.dateDebut).toLocaleDateString(localeDates(), {
                         weekday: 'short',
                         day: '2-digit',
                         month: '2-digit',
@@ -390,7 +403,7 @@ export function PlanningRendezVous(): React.JSX.Element {
                         nom={`statut-${rdv.id}`}
                         etiquette=""
                         value={rdv.statut}
-                        options={OPTIONS_STATUT}
+                        options={OPTIONS_STATUT()}
                         onChange={(evenement) => void changerStatut(rdv.id, evenement.target.value)}
                         {...(enCoursId === rdv.id
                           ? { erreur: t('commun.enregistrementEnCours'), disabled: true }
@@ -431,7 +444,7 @@ export function PlanningRendezVous(): React.JSX.Element {
                           }}
                         >
                           <span className="statistique-detail">
-                            {t('confirmation.supprimerRendezVous')}
+                        {t('confirmations.supprimerRendezVous')}
                             <br />
                             <span className="encadre-avertissement">
                               {t('rendezVous.supprimerAide')}
@@ -504,10 +517,11 @@ export function bornesPeriode(vue: Vue, reference: Date): { debut: Date; fin: Da
   return { debut, fin }
 }
 
-/** Libelle lisible de la periode. */
+/** Libelle lisible de la periode — dans la langue active. */
 function titrePeriode(vue: Vue, reference: Date): string {
+  const locale = localeDates()
   if (vue === 'jour') {
-    return reference.toLocaleDateString('fr-FR', {
+    return reference.toLocaleDateString(locale, {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -516,7 +530,7 @@ function titrePeriode(vue: Vue, reference: Date): string {
   }
   if (vue === 'semaine') {
     const { debut, fin } = bornesPeriode(vue, reference)
-    return `${debut.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} — ${fin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    return `${debut.toLocaleDateString(locale, { day: 'numeric', month: 'short' })} — ${fin.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}`
   }
-  return reference.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  return reference.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
 }

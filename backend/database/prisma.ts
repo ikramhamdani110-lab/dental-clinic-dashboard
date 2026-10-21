@@ -117,7 +117,7 @@ export async function checkDatabaseHealth(): Promise<EtatBase> {
     await prisma.$queryRaw`SELECT 1`
     return { healthy: true, latencyMs: Date.now() - startedAt }
   } catch (erreur) {
-    logger.error('Base de donnees injoignable', { erreur })
+    logger.error('Base de données injoignable', { erreur })
     return { healthy: false, latencyMs: Date.now() - startedAt, cause: 'BASE_INDISPONIBLE' }
   }
 }

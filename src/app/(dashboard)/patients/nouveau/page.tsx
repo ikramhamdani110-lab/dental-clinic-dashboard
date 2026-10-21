@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function PageNouveauPatient(): Promise<React.JSX.Element> {
   return (
-    <PagePrivee titre={t('patients.nouveau')}>
+    <PagePrivee cleTitre="patients.nouveau">
       <nav className="fil-ariane" aria-label={t('accessibilite.filAriane')}>
         <Link href="/patients">{t('patients.titre')}</Link>
         <span aria-hidden="true">/</span>
