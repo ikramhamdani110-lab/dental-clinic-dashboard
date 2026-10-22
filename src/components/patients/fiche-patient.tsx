@@ -8,6 +8,7 @@ import { formaterMontant } from '@backend/domain/finance'
 
 import { BadgeSolde, BadgeStatutPaiement, BadgeStatutRendezVous } from '@/components/ui/badge-statut'
 import { Bouton, LienBouton } from '@/components/ui/bouton'
+import { telechargerPdf } from '@/components/pdf/telecharger-pdf'
 import { FormulairePaiementPatient } from '@/components/patients/formulaire-paiement-patient'
 import { Pagination } from '@/components/patients/liste-patients'
 import { formaterAgePatient } from '@/lib/age'
@@ -127,27 +128,21 @@ export function FichePatient({ patientId }: { patientId: string }): React.JSX.El
   /**
    * Export PDF du dossier — le document est produit PAR LE SERVEUR (route
    * privée /api/patients/:id/pdf), a partir des memes services que la fiche.
-   * Telechargement par iframe cache : aucune navigation, aucune donnée dans
-   * l'URL, aucun stockage local.
+   * Telechargement par `fetch` + blob : la reponse porte `X-Frame-Options:
+   * DENY`, un iframe cache serait refuse par le navigateur et le clic ne
+   * ferait rien. Voir `telechargerPdf` pour le detail.
    */
   const [exportPdfEnCours, setExportPdfEnCours] = useState(false)
+  const [erreurExportPdf, setErreurExportPdf] = useState<string | null>(null)
   const exporterDossierPdf = useCallback(() => {
+    setErreurExportPdf(null)
     setExportPdfEnCours(true)
-    const cadre = document.createElement('iframe')
-    cadre.style.display = 'none'
     // EXIGENCE PRODUIT : le dossier est TOUJOURS imprime en FRANCAIS, quelle
     // que soit la langue affichee dans l'interface. La route ne lit aucun
     // parametre de langue ; ce choix serveur ne peut pas etre contourne.
-    cadre.src = `/api/patients/${patientId}/pdf`
-    cadre.onload = () => {
-      window.setTimeout(() => cadre.remove(), 30_000)
-      setExportPdfEnCours(false)
-    }
-    cadre.onerror = () => {
-      cadre.remove()
-      setExportPdfEnCours(false)
-    }
-    document.body.appendChild(cadre)
+    telechargerPdf(`/api/patients/${patientId}/pdf`, 'dossier-patient')
+      .catch(() => setErreurExportPdf(t('erreurs.erreurInterne')))
+      .finally(() => setExportPdfEnCours(false))
   }, [patientId])
 
   const { donnees, chargement, erreur, recharger } = useRequete<{ patient: Patient; solde: Solde }>(
@@ -270,6 +265,11 @@ export function FichePatient({ patientId }: { patientId: string }): React.JSX.El
             {exportPdfEnCours ? 'Export en cours…' : 'Exporter le dossier en PDF'}
           </Bouton>
         </div>
+        {erreurExportPdf && (
+          <p role="alert" className="encadre-erreur-texte" style={{ marginTop: 'var(--espace-2)' }}>
+            {erreurExportPdf}
+          </p>
+        )}
       </section>
 
       {/* Onglets : deux sections seulement */}

@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { t } from '@content/index'
 
+import { telechargerPdf } from '@/components/pdf/telecharger-pdf'
+
 import { formaterMontant } from '@backend/domain/finance'
 
 import { Bouton } from '@/components/ui/bouton'
@@ -96,30 +98,26 @@ export function DonneesTableauBord(): React.JSX.Element {
   const { donnees, chargement, erreur, recharger } =
     useRequete<DonneesTableauBord>('/api/dashboard')
 
-  // Export PDF : le navigateur télécharge le document produit PAR LE SERVEUR
-  // (route privée /api/dashboard/pdf). Le medecin reste sur son écran : le
-  // téléchargement se fait dans un iframe caché, sans navigation ni pop-up,
-  // donc sans risque de fermer la session ni de bloquer le rendu.
+  // Export PDF : le document est produit PAR LE SERVEUR (route privée
+  // /api/dashboard/pdf), récupéré par `fetch` puis téléchargé via un blob.
+  // POURQUOI PAS UN IFRAME : la réponse porte `X-Frame-Options: DENY` (en-tête
+  // de sécurité global de l'application). Le navigateur refuse donc de charger
+  // la réponse dans un cadre et le téléchargement ne démarre jamais — le clic
+  // semblait ne rien faire. Le passage par `fetch` + blob contourne le problème
+  // SANS affaiblir la sécurité : la requête part avec le cookie de session
+  // (same-origin), le document ne transite que par la mémoire du navigateur et
+  // une réponse d'erreur (401/403/500) est détectée et affichée.
   const [exportEnCours, setExportEnCours] = useState(false)
+  const [erreurExport, setErreurExport] = useState<string | null>(null)
   const exporterPdf = useCallback(() => {
+    setErreurExport(null)
     setExportEnCours(true)
-    const cadre = document.createElement('iframe')
-    cadre.style.display = 'none'
     // EXIGENCE PRODUIT : le PDF est TOUJOURS imprime en FRANCAIS, quelle que
     // soit la langue affichee dans l'interface. La route ne lit aucun parametre
     // de langue ; ce choix serveur ne peut pas etre contourne par l'URL.
-    cadre.src = '/api/dashboard/pdf'
-    cadre.onload = () => {
-      // Le téléchargement est lancé par l'en-tête Content-Disposition ; le
-      // cadre est retiré juste après, l'écriture du fichier se poursuit.
-      window.setTimeout(() => cadre.remove(), 30_000)
-      setExportEnCours(false)
-    }
-    cadre.onerror = () => {
-      cadre.remove()
-      setExportEnCours(false)
-    }
-    document.body.appendChild(cadre)
+    telechargerPdf('/api/dashboard/pdf', 'tableau-de-bord-sahed-dental-clinic')
+      .catch(() => setErreurExport(t('erreurs.erreurInterne')))
+      .finally(() => setExportEnCours(false))
   }, [])
 
   // Relit les indicateurs des qu'un paiement est enregistre ailleurs dans
@@ -153,7 +151,12 @@ export function DonneesTableauBord(): React.JSX.Element {
     >
       {/* Export PDF — action claire, sans navigation : le document est produit
           par le serveur a partir des MEMES valeurs que celles affichees ici. */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--espace-3)', alignItems: 'center' }}>
+        {erreurExport && (
+          <p role="alert" className="encadre-erreur-texte">
+            {erreurExport}
+          </p>
+        )}
         <Bouton variante="secondaire" taille="petite" onClick={exporterPdf} disabled={exportEnCours}>
           {exportEnCours ? t('tableauDeBord.exportEnCours') : t('tableauDeBord.exporterPdf')}
         </Bouton>
