@@ -36,6 +36,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // PDFKit resout ses polices standard via des « subpath imports » (#fs, #zlib,
+  // #standard-fonts/*) definis dans SON package.json. Le bundler Next.js ne
+  // prend pas en charge ces imports # : sur Vercel, la premiere generation PDF
+  // echouait avec « Cannot find module '#standard-fonts/Helvetica' » (HTTP 500
+  // sur /api/*/pdf). En le declarant externe, pdfkit est charge depuis
+  // node_modules avec son manifeste intact et les imports # fonctionnent.
+  serverExternalPackages: ['pdfkit'],
   // Sortie autonome : necessaire a la distribution de bureau. Le dossier
   // `.next/standalone` contient un serveur auto-suffisant embarque dans
   // l'installateur Windows (aucun Node.js requis chez l'utilisateur final).

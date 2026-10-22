@@ -83,4 +83,16 @@ describe('Export PDF — en-têtes des routes API', () => {
     // La correction n'affaiblit PAS la sécurité : l'en-tête anti-framing reste.
     expect(config).toContain("value: 'DENY'")
   })
+
+  it('pdfkit est déclaré externe au bundle serveur (subpath imports #)', () => {
+    // CAUSE RACINE n°2 (production Vercel) : PDFKit resout ses polices via des
+    // subpath imports (#standard-fonts/Helvetica...) definis dans SON
+    // package.json. Le bundler Next.js ne prend pas en charge les imports # :
+    // quand pdfkit est inliné dans le bundle, la première génération PDF
+    // échoue sur Vercel avec « Cannot find module '#standard-fonts/Helvetica' »
+    // (HTTP 500). `serverExternalPackages` force le chargement depuis
+    // node_modules, où le manifeste de pdfkit reste intact.
+    const config = lireFichier('next.config.ts')
+    expect(config).toContain("serverExternalPackages: ['pdfkit']")
+  })
 })
