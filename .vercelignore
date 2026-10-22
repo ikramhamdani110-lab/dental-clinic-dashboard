@@ -1,1 +1,25 @@
+# Secrets — JAMAIS deployes dans le bundle
 .env*
+!.env.example
+# Dependances et builds — reinstalles/construits par Vercel
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Application de bureau — hors perimetre du deploiement web
+desktop/
+electron-builder.config.cjs
+# Artefacts locaux (sauvegardes, tests, logs) — jamais publies
+backups/
+*.dump
+*.zip
+*.log
+qa/
+coverage/
+.desktop-test/
+.demo-pg/
+storage/
+documents-storage/
+.git/
