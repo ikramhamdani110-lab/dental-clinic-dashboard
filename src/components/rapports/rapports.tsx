@@ -8,7 +8,8 @@ import { t, tf } from '@content/index'
 import { formaterMontant } from '@backend/domain/finance'
 
 import { Bouton, LienBouton } from '@/components/ui/bouton'
-import { ChampDate, ChampSelection } from '@/components/ui/champ'
+import { CalendrierDates } from '@/components/ui/calendrier'
+import { ChampSelection } from '@/components/ui/champ'
 import { Pagination } from '@/components/patients/liste-patients'
 import { useRequete } from '@/lib/hooks/use-requete'
 import { localeDates } from '@/lib/locale-dates'
@@ -136,26 +137,38 @@ const ChampsDatesPersonnalisees = memo(function ChampsDatesPersonnalisees({
   onChangeAu: (valeur: string) => void
   onAfficher: () => void
 }): React.JSX.Element {
+  // Validation cote client : « Du » doit preceder « Au ». Le message s'affiche
+  // des que les deux bornes sont connues et incoherentes, et le bouton reste
+  // inactif tant que la periode n'est pas valide.
+  const periodeInvalide = Boolean(du && au && du > au)
+
   return (
     <>
-      <div style={{ minWidth: '10rem' }}>
-        <ChampDate
+      <div style={{ minWidth: '12rem' }}>
+        <CalendrierDates
           nom="periode-du"
           etiquette={t('rapports.du')}
           valeur={du}
           onChangeIso={onChangeDu}
           requis
+          maxIso={au || undefined}
         />
       </div>
-      <div style={{ minWidth: '10rem' }}>
-        <ChampDate
+      <div style={{ minWidth: '12rem' }}>
+        <CalendrierDates
           nom="periode-au"
           etiquette={t('rapports.au')}
           valeur={au}
           onChangeIso={onChangeAu}
           requis
+          minIso={du || undefined}
         />
       </div>
+      {periodeInvalide ? (
+        <p role="alert" className="champ-erreur">
+          {t('commun.datesIncoherentes')}
+        </p>
+      ) : null}
       {/*
         « Afficher » APPLIQUE reellement la periode : les bornes sont
         enregistrees, ce qui change les parametres de requete et
@@ -169,7 +182,7 @@ const ChampsDatesPersonnalisees = memo(function ChampsDatesPersonnalisees({
         type="button"
         variante="secondaire"
         onClick={onAfficher}
-        disabled={!du || !au}
+        disabled={!du || !au || periodeInvalide}
       >
         {t('rapports.afficher')}
       </Bouton>

@@ -138,10 +138,12 @@ describe('Rapports — « Personnaliser » n’est pas une erreur', () => {
     expect(rapports).toContain('if (!du || !au) return')
   })
 
-  it('laisse le composant ChampDate intact et editable', () => {
-    // Le composant de saisie existant n'est ni remplace ni neutralise.
-    expect(rapports).toContain('import { ChampDate, ChampSelection }')
-    expect(rapports).not.toMatch(/ChampDate[^}]*readOnly/)
-    expect(rapports).not.toMatch(/ChampDate[^}]*disabled/)
+  it('la periode personnalisee se choisit au calendrier (pas de frappe)', () => {
+    // Évolution produit : les dates de période personnalisée se sélectionnent
+    // via un CALENDRIER (jour → mois → année, 2026 par défaut) — la saisie
+    // manuelle libre n'est plus exposée sur cette page.
+    expect(rapports).toContain('CalendrierDates')
+    // Le composant de saisie existe toujours pour les AUTRES écrans (rendez-vous…).
+    expect(lire('src/components/ui/champ.tsx')).toContain('export function ChampDate')
   })
 })
