@@ -34,7 +34,20 @@ const schema = z
     /** Sel applicatif du hachage Argon2id. Optionnel mais recommande. */
     PASSWORD_PEPPER: z.string().min(16).optional(),
 
-    APP_URL: z.string().url('APP_URL doit être une URL absolue valide.'),
+    /**
+     * URL publique de l'application. OPTIONNELLE depuis le correctif «
+     * preview Vercel » : le déploiement preview n'hérite pas de cette variable
+     * (observé en production log — « APP_URL : Required » bloquait TOUTE
+     * requête authentifiée, dont login et export PDF). Aucune autre partie du
+     * code ne la lit : elle ne sert qu'à détecter un hôte local pour assouplir
+     * COOKIE_SECURE (application de bureau). Le site web n'en dépend pas, et
+     * la règle « Secure en production » continue d'être appliquée par la
+     * superRefine ci-dessous, indépendamment de cette valeur.
+     */
+    APP_URL: z
+      .string()
+      .url('APP_URL doit être une URL absolue valide.')
+      .optional(),
     COOKIE_DOMAIN: z.string().optional(),
     COOKIE_SECURE: z
       .enum(['true', 'false'])
@@ -76,6 +89,11 @@ const schema = z
     // navigateur embarqué et rendraient la connexion impossible. Le reste de
     // la machine n'etant pas exposé, le risque est equivalent au mode dev.
     const hoteLocal = (() => {
+      // APP_URL est optionnelle (correctif preview Vercel) : si elle est absente,
+      // nous ne sommes PAS sur une application de bureau locale (c'est un
+      // déploiement web) — le hôte n'est pas local, COOKIE_SECURE doit rester
+      // requis en production.
+      if (!value.APP_URL) return false
       try {
         const hote = new URL(value.APP_URL).hostname
         return hote === 'localhost' || hote === '127.0.0.1' || hote === '[::1]'
