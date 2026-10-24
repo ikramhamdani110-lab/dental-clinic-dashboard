@@ -16,8 +16,14 @@ const dossierStandalone = path.resolve(dossierScript, '..', 'standalone')
 const dossierMigrations = path.resolve(dossierScript, '..', 'prisma', 'migrations')
 
 // Le client Prisma vit dans standalone\node_modules : on l'importe par chemin.
+// ATTENTION : l'entree du paquet est `default.js` (re-export de
+// `.prisma/client/default`) — importer `index.js` echoue avec
+// ERR_MODULE_NOT_FOUND : `@prisma/client` n'a pas de fichier `index.js`.
 const cheminClient =
-  'file:///' + path.join(dossierStandalone, 'node_modules', '@prisma', 'client', 'index.js').replace(/\\/g, '/')
+  'file:///' +
+    path
+      .join(dossierStandalone, 'node_modules', '@prisma', 'client', 'default.js')
+      .replace(/\\/g, '/')
 const { PrismaClient } = await import(cheminClient)
 
 const prisma = new PrismaClient()

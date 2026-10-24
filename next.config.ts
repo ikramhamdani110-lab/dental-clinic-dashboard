@@ -43,6 +43,15 @@ const nextConfig: NextConfig = {
   // sur /api/*/pdf). En le declarant externe, pdfkit est charge depuis
   // node_modules avec son manifeste intact et les imports # fonctionnent.
   serverExternalPackages: ['pdfkit'],
+  // Les standard fonts de PDFKit sont resolves par des subpath imports (#) que
+  // l'analyse statique de Next ne suit pas : sans l'inclusion explicite
+  // ci-dessous, le trace de fichiers omet `js/standard-fonts/*.cjs` (et
+  // `js/data/*`), et la premiere generation PDF echoue A L'EXECUTION avec
+  // « Cannot find module '#standard-fonts/Helvetica' » — à la fois sur Vercel
+  // et dans l'application de bureau embarquée.
+  outputFileTracingIncludes: {
+    '/api/**': ['./node_modules/pdfkit/js/standard-fonts/**/*', './node_modules/pdfkit/js/data/**/*'],
+  },
   // Sortie autonome : necessaire a la distribution de bureau. Le dossier
   // `.next/standalone` contient un serveur auto-suffisant embarque dans
   // l'installateur Windows (aucun Node.js requis chez l'utilisateur final).
