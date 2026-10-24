@@ -50,7 +50,15 @@ const nextConfig: NextConfig = {
   // « Cannot find module '#standard-fonts/Helvetica' » — à la fois sur Vercel
   // et dans l'application de bureau embarquée.
   outputFileTracingIncludes: {
-    '/api/**': ['./node_modules/pdfkit/js/standard-fonts/**/*', './node_modules/pdfkit/js/data/**/*'],
+    '/api/**': [
+      './node_modules/pdfkit/js/standard-fonts/**/*',
+      './node_modules/pdfkit/js/data/**/*',
+      // Polices TTF du projet (Noto Sans / Noto Naskh Arabic) — chargées par
+      // PDFKit via un chemin résolu depuis la racine du paquet (backend/pdf).
+      // Sans cette inclusion, le trace serverless Vercel ne les copie pas et
+      // la génération échoue avec ENOENT assets/fonts/NotoSans-Regular.ttf.
+      './assets/fonts/**/*',
+    ],
   },
   // Sortie autonome : necessaire a la distribution de bureau. Le dossier
   // `.next/standalone` contient un serveur auto-suffisant embarque dans

@@ -31,7 +31,9 @@
  */
 
 import PDFDocument from 'pdfkit'
-import { resolve } from 'node:path'
+import { existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const NOM_CLINIQUE = 'Sahed Dental Clinic'
 export const NOM_CLINIQUE_ARABE = 'عيادة الدكتور ساهد'
@@ -94,10 +96,24 @@ export function creerDocumentPdf(options: OptionsEnTete): PDFKit.PDFDocument {
 }
 
 // ── Polices intégrées ─────────────────────────────────────────────────────────
-// Les fichiers TTF vivent dans `assets/fonts` ; le chemin est resolu depuis la
-// racine du projet, identique en developpement et en production (`next start`).
+// Les fichiers TTF vivent dans `assets/fonts`. Le chemin est résolu depuis la
+// RACINE DU PAQUET (import.meta.url), PAS depuis process.cwd() :
+//  - en dev et en `next start`, cwd = racine du projet → les deux chemins sont
+//    identiques ;
+//  - sur Vercel (serverless), cwd = /var/task mais le bundle compilé vit dans
+//    /var/task/.next/server/... — un chemin basé sur cwd pointait hors du
+//    bundle et produisait ENOENT « assets/fonts/NotoSans-Regular.ttf »
+//    (erreur production observée sur les routes /api/*/pdf).
+// On remonte donc depuis CE fichier : backend/pdf → backend → racine.
+
+const RACINE_PAQUET = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 function cheminPolice(fichier: string): string {
+  // 1. Chemin bundle-relatif (production serverless et next start).
+  const candidatBundle = resolve(RACINE_PAQUET, 'assets', 'fonts', fichier)
+  if (existsSync(candidatBundle)) return candidatBundle
+  // 2. Repli historique : cwd-relatif (certains environnements copient
+  //    assets/fonts à côté du binaire — installations de bureau).
   return resolve(process.cwd(), 'assets', 'fonts', fichier)
 }
 
