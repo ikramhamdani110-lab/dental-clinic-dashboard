@@ -119,8 +119,8 @@ function cheminPolice(fichier: string): string {
   //   1. cwd/assets/fonts — /var/task sur Vercel, racine du projet en dev et
   //      `next start`, runtime/ de bureau. Couvre TOUS les environnements où
   //      les polices sont copiées à la racine du processus.
-  //   2. cwd/../../assets/fonts et cwd/../assets/fonts — déploiements où la
-  //      police vit à côté du bundle compilé (layouts intermédiaires).
+  //   2. cwd/../assets/fonts — déploiements où la police vit à côté du bundle.
+  //   3. cwd/.next/assets/fonts — layouts intermédiaires.
   const candidats = [
     resolve(process.cwd(), 'assets', 'fonts', fichier),
     resolve(process.cwd(), '..', 'assets', 'fonts', fichier),
@@ -137,11 +137,38 @@ function cheminPolice(fichier: string): string {
   )
 }
 
-const POLICES = {
-  latin: cheminPolice('NotoSans-Regular.ttf'),
-  latinGras: cheminPolice('NotoSans-Bold.ttf'),
-  arabe: cheminPolice('NotoNaskhArabic-Regular.ttf'),
-  arabeGras: cheminPolice('NotoNaskhArabic-Bold.ttf'),
+/**
+ * Chemins de polices résolus À LA DEMANDE, pas au chargement du module.
+ *
+ * Pourquoi le paresseux est OBLIGATOIRE : `POLICES` était évalué au chargement
+ * du module, donc pendant « Collecting page data » du build Vercel — où les
+ * fichiers tracés ne sont pas encore déployés. Résultat : le build ENTIER
+ * échouait (Build error occurred) alors que le problème ne concerne que
+ * l'exécution. Résolu paresseusement, l'échec éventuel n'arrive que lors d'une
+ * vraie génération PDF, où il est géré par le handler (500 + journal).
+ */
+let policesCache: {
+  latin: string
+  latinGras: string
+  arabe: string
+  arabeGras: string
+} | null = null
+
+function polices(): {
+  latin: string
+  latinGras: string
+  arabe: string
+  arabeGras: string
+} {
+  if (!policesCache) {
+    policesCache = {
+      latin: cheminPolice('NotoSans-Regular.ttf'),
+      latinGras: cheminPolice('NotoSans-Bold.ttf'),
+      arabe: cheminPolice('NotoNaskhArabic-Regular.ttf'),
+      arabeGras: cheminPolice('NotoNaskhArabic-Bold.ttf'),
+    }
+  }
+  return policesCache
 }
 
 export type PoliceStyle = 'normale' | 'gras'
@@ -165,18 +192,18 @@ export function appliquerPolice(
   style: PoliceStyle = 'normale',
 ): void {
   if (contientArabe(fragment)) {
-    doc.font(style === 'gras' ? POLICES.arabeGras : POLICES.arabe)
+    doc.font(style === 'gras' ? polices().arabeGras : polices().arabe)
   } else {
-    doc.font(style === 'gras' ? POLICES.latinGras : POLICES.latin)
+    doc.font(style === 'gras' ? polices().latinGras : polices().latin)
   }
 }
 
 /** Applique la police par defaut de la langue (pour l'en-tete, les filets...). */
 export function policeDefaut(doc: PDFKit.PDFDocument, style: PoliceStyle = 'normale'): void {
   if (langueDe(doc) === 'ar') {
-    doc.font(style === 'gras' ? POLICES.arabeGras : POLICES.arabe)
+    doc.font(style === 'gras' ? polices().arabeGras : polices().arabe)
   } else {
-    doc.font(style === 'gras' ? POLICES.latinGras : POLICES.latin)
+    doc.font(style === 'gras' ? polices().latinGras : polices().latin)
   }
 }
 
@@ -234,12 +261,12 @@ function piedDePage(doc: PDFKit.PDFDocument): void {
     // paginationner ; ici on écrit la chaîne en opérateurs bruts, SANS toucher
     // au flux de mise en page — impossible de créer une page fantôme.
     const libelle = `${NOM_CLINIQUE} - page ${i + 1} / ${gamme.count}`
-    doc.font(POLICES.latin)
+    doc.font(polices().latin)
     const largeur = doc.widthOfString(libelle)
     const y = yPied + 8 // ligne de base (PDFKit mesure le haut du texte)
     doc
       .save()
-      .font(POLICES.latin)
+      .font(polices().latin)
       .fontSize(8)
       .fillColor('#777777')
       .translate(FORMAT_A4.largeur - MARGE - largeur, y)
