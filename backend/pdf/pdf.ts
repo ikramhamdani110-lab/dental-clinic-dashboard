@@ -32,8 +32,7 @@
 
 import PDFDocument from 'pdfkit'
 import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
 export const NOM_CLINIQUE = 'Sahed Dental Clinic'
 export const NOM_CLINIQUE_ARABE = 'عيادة الدكتور ساهد'
@@ -106,15 +105,36 @@ export function creerDocumentPdf(options: OptionsEnTete): PDFKit.PDFDocument {
 //    (erreur production observée sur les routes /api/*/pdf).
 // On remonte donc depuis CE fichier : backend/pdf → backend → racine.
 
-const RACINE_PAQUET = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+//
+// SUR VERCEL, `import.meta.url` est REÉCRIT PAR LE COMPILATEUR avec le chemin
+// D'ORIGINE DE LA MACHINE DE BUILD (ex. file:///C:/Users/.../backend/pdf.ts)
+// — observé dans le bundle compilé (route.js : « fileURLToPath("file:///C:/...") »).
+// Ce chemin n'existe pas dans la lambda : il ne peut JAMAIS servir de base.
+// La seule racine fiable en serverless est process.cwd() (= /var/task), où
+// Vercel copie les fichiers tracés, y compris `assets/fonts/**/*` (déclaré dans
+// outputFileTracingIncludes de next.config.ts).
 
 function cheminPolice(fichier: string): string {
-  // 1. Chemin bundle-relatif (production serverless et next start).
-  const candidatBundle = resolve(RACINE_PAQUET, 'assets', 'fonts', fichier)
-  if (existsSync(candidatBundle)) return candidatBundle
-  // 2. Repli historique : cwd-relatif (certains environnements copient
-  //    assets/fonts à côté du binaire — installations de bureau).
-  return resolve(process.cwd(), 'assets', 'fonts', fichier)
+  // Candidats, du plus fiable au plus spécifique :
+  //   1. cwd/assets/fonts — /var/task sur Vercel, racine du projet en dev et
+  //      `next start`, runtime/ de bureau. Couvre TOUS les environnements où
+  //      les polices sont copiées à la racine du processus.
+  //   2. cwd/../../assets/fonts et cwd/../assets/fonts — déploiements où la
+  //      police vit à côté du bundle compilé (layouts intermédiaires).
+  const candidats = [
+    resolve(process.cwd(), 'assets', 'fonts', fichier),
+    resolve(process.cwd(), '..', 'assets', 'fonts', fichier),
+    resolve(process.cwd(), '.next', 'assets', 'fonts', fichier),
+  ]
+  for (const candidat of candidats) {
+    if (existsSync(candidat)) return candidat
+  }
+  // Aucune police trouvée : lever une erreur EXPLICITE (jamais un PDF avec des
+  // glyphes manquants) — le message va dans les journaux serveur, le client
+  // reçoit l'erreur générique 500.
+  throw new Error(
+    `Police PDF introuvable : ${fichier} (candidats testés : ${candidats.join(', ')})`,
+  )
 }
 
 const POLICES = {

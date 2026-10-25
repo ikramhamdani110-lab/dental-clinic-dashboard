@@ -11,12 +11,23 @@
  *  Sur Vercel, cwd = /var/task mais le bundle compilé vit dans
  *  /var/task/.next/server/... → le chemin pointait HORS du bundle.
  *
- *  CORRECTIF : résolution relative à CE fichier (import.meta.url), avec le
- *  cwd en repli. `outputFileTracingIncludes: './assets/fonts/**'` copie les
- *  TTF dans le bundle serverless.
+ *  CORRECTIF v1 (commit e4e5241) : résolution relative à CE fichier
+ *  (import.meta.url), cwd en repli.
+ *
+ *  BUG RÉSIDUEL OBSERVÉ EN PRODUCTION (déploiement eb8243b3, logs Vercel) :
+ *    la même ENOENT persiste — car Next.js RÉÉCRIT import.meta.url avec le
+ *    chemin de la MACHINE DE BUILD (file:///C:/Users/.../backend/pdf.ts), tel
+ *    quel dans le bundle compilé. Ce chemin n'existe pas dans la lambda, et le
+ *    repli cwd n'était pas atteint (cascade à un seul candidat).
+ *
+ *  CORRECTIF v2 : `cheminPolice()` essaie une CASCADE de candidats basés sur
+ *  process.cwd() uniquement (fiable en serverless : /var/task, où Vercel copie
+ *  les fichiers tracés via outputFileTracingIncludes) et lève une erreur
+ *  EXPLICITE si aucune police n'est trouvée — jamais un PDF muet.
  *
  *  Ce test verrouille :
- *    1. que le code ne repose plus UNIQUEMENT sur process.cwd() ;
+ *    1. que la cascade de candidats cwd est en place (aucun import.meta.url
+ *       exécutable) ;
  *    2. que les polices sont bien copiées par le build (.next/server) ;
  *    3. que les 4 fichiers TTF attendus existent dans le projet.
  */
@@ -31,15 +42,21 @@ function lire(cheminRelatif: string): string {
   return readFileSync(resolve(racine, cheminRelatif), 'utf8')
 }
 
-describe('Polices PDFKit — résolution bundle-relative (bug production Vercel)', () => {
-  it('cheminPolice ne dépend plus UNIQUEMENT de process.cwd()', () => {
+describe('Polices PDFKit — résolution des polices en serverless (Vercel)', () => {
+  it('cheminPolice utilise une cascade de candidats basés sur cwd', () => {
     const code = lire('backend/pdf/pdf.ts')
-    // La résolution principale doit venir d'import.meta.url (chemin du module,
-    // valide dans le bundle serverless) — pas uniquement de cwd.
-    expect(code).toContain('import.meta.url')
-    expect(code).toContain('RACINE_PAQUET')
-    // Un repli cwd existe pour les environnements de bureau.
+    // Sur Vercel, Next réécrit import.meta.url avec le chemin de BUILD (hors
+    // lambda) : la résolution ne doit JAMAIS s'en servir (hors commentaires).
+    const sansCommentaires = code
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
+      .join('\n')
+    expect(sansCommentaires).not.toContain('import.meta.url')
+    expect(sansCommentaires).not.toContain('fileURLToPath')
+    // Cascade cwd : /var/task (Vercel), racine (dev, next start, bureau).
     expect(code).toContain("resolve(process.cwd(), 'assets', 'fonts', fichier)")
+    // Erreur explicite si rien n'est trouvé — pas de repli silencieux.
+    expect(code).toContain('Police PDF introuvable')
   })
 
   it('les 4 polices TTF attendues existent dans assets/fonts', () => {
