@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "dev:demo": "node scripts/demo-env.mjs next dev -p 3000",
-    "build": "prisma generate --schema database/prisma/schema.prisma && next build",
+    "build": "node scripts/copier-polices.mjs && next build",
     "start": "next start -p 3000",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
@@ -29,8 +29,7 @@
     "corbeille:purger": "node database/scripts/purge-corbeille.mjs",
     "desktop:build": "cross-env BUILD_TARGET=desktop next build && node desktop/prepare.mjs",
     "desktop:start": "node desktop/dev-launch.mjs",
-    "desktop:installer": "electron-builder --config electron-builder.config.cjs",
-    "prebuild": "node scripts/copier-polices.mjs"
+    "desktop:installer": "electron-builder --config electron-builder.config.cjs"
   },
   "dependencies": {
     "@prisma/client": "6.1.0",
