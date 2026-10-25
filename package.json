@@ -29,7 +29,8 @@
     "corbeille:purger": "node database/scripts/purge-corbeille.mjs",
     "desktop:build": "cross-env BUILD_TARGET=desktop next build && node desktop/prepare.mjs",
     "desktop:start": "node desktop/dev-launch.mjs",
-    "desktop:installer": "electron-builder --config electron-builder.config.cjs"
+    "desktop:installer": "electron-builder --config electron-builder.config.cjs",
+    "prebuild": "node scripts/copier-polices.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.1.0",

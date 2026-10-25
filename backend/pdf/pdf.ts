@@ -116,12 +116,15 @@ export function creerDocumentPdf(options: OptionsEnTete): PDFKit.PDFDocument {
 
 function cheminPolice(fichier: string): string {
   // Candidats, du plus fiable au plus spécifique :
-  //   1. cwd/assets/fonts — /var/task sur Vercel, racine du projet en dev et
-  //      `next start`, runtime/ de bureau. Couvre TOUS les environnements où
-  //      les polices sont copiées à la racine du processus.
-  //   2. cwd/../assets/fonts — déploiements où la police vit à côté du bundle.
-  //   3. cwd/.next/assets/fonts — layouts intermédiaires.
+  //   1. node_modules/pdfkit/fonts — REPOUSE PAR VERCEL : node_modules est
+  //      TOUJOURS intégralement copié dans la lambda (pdfkit y est, en
+  //      paquet externe). Les polices y sont placées par le script
+  //      `scripts/copier-polices.cjs`, exécuté par le hook `prebuild`.
+  //   2. cwd/assets/fonts /var/task sur Vercel (si le tracing copie les
+  //      assets), racine du projet en dev et `next start`, runtime/ bureau.
+  //   3. cwd/../assets/fonts et cwd/.next/assets/fonts — layouts intermédiaires.
   const candidats = [
+    resolve(process.cwd(), 'node_modules', 'pdfkit', 'fonts', fichier),
     resolve(process.cwd(), 'assets', 'fonts', fichier),
     resolve(process.cwd(), '..', 'assets', 'fonts', fichier),
     resolve(process.cwd(), '.next', 'assets', 'fonts', fichier),
