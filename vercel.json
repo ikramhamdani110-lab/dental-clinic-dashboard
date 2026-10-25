@@ -1,5 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node scripts/copier-polices.mjs && next build",
-  "framework": null
+  "installCommand": "npm install && node scripts/copier-polices.mjs"
 }
