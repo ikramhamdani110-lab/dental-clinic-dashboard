@@ -116,7 +116,17 @@ tmp-*.mjs
 tmp-*.cjs
 db-check.mjs
 qa-captures/
-assets/
+# assets/ reste ignoré SAUF les polices PDF : les PDF du cabinet sont composés
+# avec Noto Sans / Noto Naskh Arabic — sans elles, la lambda Vercel ne peut pas
+# générer les documents (ENOENT assets/fonts, bug production confirmé dans les
+# logs). Ce sont des polices libres (SIL OFL), sans aucune donnée patient.
+assets/*
+!assets/fonts/
+assets/fonts/*
+!assets/fonts/NotoSans-Regular.ttf
+!assets/fonts/NotoSans-Bold.ttf
+!assets/fonts/NotoNaskhArabic-Regular.ttf
+!assets/fonts/NotoNaskhArabic-Bold.ttf
 build-*.txt
 audit-*.mjs
 .start-demo-pg.cmd
