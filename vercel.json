@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install && node scripts/copier-polices.mjs"
+  "installCommand": "npm install && npx prisma generate --schema database/prisma/schema.prisma && node scripts/copier-polices.mjs"
 }
