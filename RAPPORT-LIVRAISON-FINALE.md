@@ -26,20 +26,18 @@ Aucun force-push utilisé.
 git push origin repo-cleanup-publication
 ```
 
-✅ **CLÔTURE DÉFINITIVE — PUSH 100 % CONFIRMÉ.**
+✅ **CLÔTURE DÉFINITIVE — PUSH 100 % CONFIRMÉ (91bbe6c).**
 
-Dernier push réussi, sortie Git réelle :
+Dernier push, sortie Git réelle :
 ```
 To https://github.com/ikramhamdani110-lab/dental-clinic-dashboard
-   97d9821..f7806e9  repo-cleanup-publication -> repo-cleanup-publication
+   f7806e9..91bbe6c  repo-cleanup-publication -> repo-cleanup-publication
 ```
+`git status -sb` : aucun écart local/remote. **Tout est sur GitHub.**
 
-**`git status -sb` ne montre AUCUN écart** entre local et `origin/` —
-tout l'historique (code + documentation) est sur GitHub, tête à `f7806e9`.
-
-Récapitulatif des coupures survenues : le réseau vers github.com:443 a été
-intermittent pendant la session ; chaque fois, le push a été réexécuté jusqu'au
-succès. **Aucun force-push n'a jamais été utilisé.**
+Récapitulatif : le réseau vers github.com:443 a été intermittent pendant la
+session (plusieurs coupures de 20 s+) ; chaque fois le push a été réexécuté
+jusqu'au succès. **Aucun force-push n'a jamais été utilisé.**
 
 Historique final poussé (branche `repo-cleanup-publication`) :
 - `41caeb2` — audit : correction scripts QA + rapport final
