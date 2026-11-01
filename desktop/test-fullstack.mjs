@@ -3,7 +3,7 @@
 // =============================================================================
 //  Démarre la base, applique les migrations + seed, lance le serveur Next de
 //  resources\standalone sur 127.0.0.1, puis teste : santé, login, patients,
-//  rendez-vous, paiements, rapports. Arrête tout proprement à la fin.
+//  rendez-vous, paiements. Arrête tout proprement à la fin.
 // =============================================================================
 
 import path from 'node:path'
@@ -13,7 +13,7 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const racine = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
-const APP_ROOT = path.join(racine, 'desktop', 'resources')
+const APP_ROOT = path.join(racine, 'desktop', 'runtime')
 const DATA_DIR = path.join(racine, '.desktop-test', 'clinique')
 const PG_DIR = path.join(DATA_DIR, 'pg')
 const DB_PORT = 54329
@@ -84,9 +84,9 @@ console.log('[1] PG embarqué démarré (fresh =', fresh, ')')
 const env = {
   ...process.env, DATABASE_URL,
   PASSWORD_PEPPER: 'desktop-local-pepper-sahed-2026-secret',
-  DOCTOR_EMAIL: 'sahed@gmail.dz',
+  DOCTOR_EMAIL: 'medecin@cabinet.local',
   DOCTOR_NAME: 'Dr. Sahed',
-  DOCTOR_INITIAL_PASSWORD: 'sahed2026',
+  DOCTOR_INITIAL_PASSWORD: process.env.DOCTOR_INITIAL_PASSWORD ?? '',
   FORCE_FIRST_LOGIN_PASSWORD_CHANGE: 'true',
   NODE_ENV: 'production',
 }
@@ -125,13 +125,13 @@ console.log('[3] Serveur Next démarré sur', BASE)
 // --- 4. Login ---------------------------------------------------------------
 const mdpInvalide = await requete(BASE + '/api/auth/login', {
   method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'sahed@gmail.dz', password: 'MAUVAIS' }),
+  body: JSON.stringify({ email: 'medecin@cabinet.local', password: 'MAUVAIS' }),
 })
 console.log('[4a] Login mot de passe invalide →', mdpInvalide.status, '(attendu 401)')
 
 const login = await requete(BASE + '/api/auth/login', {
   method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'sahed@gmail.dz', password: 'sahed2026' }),
+  body: JSON.stringify({ email: 'medecin@cabinet.local', password: process.env.DOCTOR_INITIAL_PASSWORD ?? '' }),
 })
 console.log('[4b] Login valide →', login.status, '(attendu 200/2xx)')
 if (login.status >= 300) {
@@ -164,7 +164,6 @@ async function tester(nom, chemin) {
 const patients = await tester('Patients', '/api/patients?page=1')
 await tester('Rendez-vous', '/api/appointments?page=1')
 await tester('Paiements', '/api/payments?page=1')
-await tester('Rapports revenus', '/api/reports/revenue')
 await tester('Tableau de bord', '/api/dashboard')
 
 // --- 6. Écriture : créer un patient ----------------------------------------
@@ -201,7 +200,7 @@ if (idPatient) {
   })
   console.log('[6b] Création rendez-vous →', rdv.status, '(attendu 201/200)')
   if (rdv.status >= 300) console.log('   corps:', rdv.corps.slice(0, 400))
-  const corpsRdv = JSON.parse(rdv.corps || '{}')
+  const _corpsRdv = JSON.parse(rdv.corps || '{}')
   // Un paiement est rattaché à un TRAITEMENT : on en crée un d'abord.
   const traitement = await requete(BASE + '/api/treatments', {
     method: 'POST',

@@ -33,31 +33,44 @@ const lire = (chemin: string): string => readFileSync(`${racine}${chemin}`, 'utf
 const tableauDeBord = lire('src/components/dashboard/donnees-tableau-bord.tsx')
 const contenu = JSON.parse(lire('content/fr.json')) as Record<string, never>
 const planning = lire('src/components/rendez-vous/planning-rendez-vous.tsx')
-const rapports = lire('src/components/rapports/rapports.tsx')
 
 const libellesStatuts = (contenu as unknown as { rendezVous: { statuts: Record<string, string> } })
   .rendezVous.statuts
 
-describe('Tableau de bord — montants restant dus par les patients', () => {
-  it('n’affiche plus « Credit a recevoir »', () => {
-    const libelle = (contenu as unknown as { tableauDeBord: Record<string, string> }).tableauDeBord
-      .creditARecevoir
-    expect(libelle).toBe('Montants restant dus par les patients')
+describe('Tableau de bord — AUCUN indicateur financier pour la secretaire', () => {
+  it('n’affiche ni paiements du jour ni montants restant dus', () => {
+    // Exigence : la secretaire ne voit AUCUN chiffre financier. Les indicateurs
+    // « Paiements du jour » et « Credit a recevoir » ont ete retires.
+    expect(tableauDeBord).not.toContain('revenusJourCentimes')
+    expect(tableauDeBord).not.toContain('totalRestantCentimes')
+    expect(tableauDeBord).not.toContain('paiementsDuJour')
+    expect(tableauDeBord).not.toContain('creditARecevoir')
   })
 
-  it('affiche le nombre de paiements sous le montant', () => {
-    // La ligne secondaire porte le compte : elle doit trainer le nombre renvoyé
-    // par l'API, pas une valeur codede en dur.
-    expect(tableauDeBord).toContain('donnees.nombrePaiementsTotal')
-    expect(tableauDeBord).toContain("t('tableauDeBord.nombrePaiementsAide')")
-  })
-
-  it('reste base sur le calcul existant, sans formule repetee', () => {
+  it('le service du tableau de bord ne calcule plus de revenus ni de reste du', () => {
     const service = lire('backend/services/reports.service.ts')
-    // Le montant vient toujours du service de paiements : pas de soustraction
-    // facture_moins_paiement introduite dans l'interface ou ailleurs.
-    expect(service).toContain('totalRestantARecevoir()')
-    expect(tableauDeBord).not.toMatch(/prixTotalCentimes\s*-/)
+    expect(service).not.toContain('revenusJourCentimes')
+    expect(service).not.toContain('revenusSemaineCentimes')
+    // L'interface TableauBordDonnees ne porte plus aucun champ financier :
+    // le bloc retourne par donneesTableauBord ne contient ni revenus ni totalRestant.
+    expect(service).not.toMatch(/revenusJourCentimes:\s*revenus/)
+    expect(service).not.toMatch(/totalRestantCentimes:\s*restant/)
+  })
+
+  it('l’API dashboard passe toujours par routePrivee', () => {
+    const route = lire('src/app/api/dashboard/route.ts')
+    expect(route).toContain('routePrivee')
+  })
+
+  it('la vue financiere n’appartient plus a l’interface de secretaire', () => {
+    // La vue financiere (« Rapports ») vit sur le site prive du medecin (/finances).
+    // Le rail secretaire ne reference plus cette entree.
+    const rail = lire('src/components/layout/rail-navigation.tsx')
+    expect(rail).not.toContain("'/rapports'")
+    expect(rail).toContain('RETIRE')
+    // Le middleware ne protege plus une entree de navigation inexistante.
+    const middleware = lire('src/middleware.ts')
+    expect(middleware).not.toMatch(/^\s*'\/rapports',?$/m)
   })
 })
 
@@ -118,32 +131,5 @@ describe('Rendez-vous — suppression', () => {
     // En cas d'erreur, la liste est rechargee : l'element y figure toujours.
     expect(planning).toContain('notifications.erreur(')
     expect(planning).toContain('supprimerReussie')
-  })
-})
-
-describe('Rapports — « Personnaliser » n’est pas une erreur', () => {
-  it('distingue « periode en attente de dates » de « requete en echec »', () => {
-    // Le bug : `erreur || !synthese` faisait passer « pas encore de requete »
-    // pour un echec, affichant « Une erreur interne est survenue ».
-    expect(rapports).toContain('enAttente')
-    expect(rapports).toContain('rapports.periodeEnAttente')
-    // Le garde-fou doit preceder le test d'erreur.
-    const ordre = rapports.indexOf('if (enAttente)')
-    expect(ordre).toBeGreaterThan(-1)
-    expect(ordre).toBeLessThan(rapports.indexOf('if (erreur || !synthese)'))
-  })
-
-  it('n’emet aucune requete tant que les deux dates ne sont pas saisies', () => {
-    expect(rapports).toContain('periodeExploitable ? `/api/reports/revenue?rapport=synthese')
-    expect(rapports).toContain('if (!du || !au) return')
-  })
-
-  it('la periode personnalisee se choisit au calendrier (pas de frappe)', () => {
-    // Évolution produit : les dates de période personnalisée se sélectionnent
-    // via un CALENDRIER (jour → mois → année, 2026 par défaut) — la saisie
-    // manuelle libre n'est plus exposée sur cette page.
-    expect(rapports).toContain('CalendrierDates')
-    // Le composant de saisie existe toujours pour les AUTRES écrans (rendez-vous…).
-    expect(lire('src/components/ui/champ.tsx')).toContain('export function ChampDate')
   })
 })
