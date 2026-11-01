@@ -5,16 +5,25 @@
 | Élément | Valeur |
 |---|---|
 | Branche | `repo-cleanup-publication` |
-| Dernier commit local | `4a6c9db` — deploy: génération du client Prisma pendant l'installation Vercel |
-| Commit précédent | `41caeb2` — audit: correction scripts QA + rapport final |
+| Dernier commit | docs : évaluation architecture offline/sync/maj + guide Dr. Sahed |
+| Commit précédent | docs : consolidation rapport de livraison |
 | Remote | `origin` → github.com/ikramhamdani110-lab/dental-clinic-dashboard |
-| Remote à jour | ✔ `git fetch origin` exécuté ; aucun commit distant non fusionné (`HEAD..origin/main` vide) |
+| Historique antérieur | `41caeb2` (audit + fixes QA) et `4a6c9db` (prisma generate) déjà poussés et confirmés (« Everything up-to-date ») |
 
-✅ **PUSH CONFIRMÉ** — sortie réelle de Git :
+⚠️ **DERNIER PUSH EN ATTENTE — coupure réseau vers GitHub**
 
+Le push du tout dernier commit (documentation offline) échoue actuellement :
 ```
-To https://github.com/ikramhamdani110-lab/dental-clinic-dashboard
-   e795cd9..ead4faa  repo-cleanup-publication -> repo-cleanup-publication
+fatal: unable to access 'https://github.com/...': Failed to connect to
+github.com port 443 after 21s: Could not connect to server
+```
+`Test-NetConnection github.com -Port 443` → `TcpTestSucceeded: False` : coupure
+réseau **depuis cette machine** vers GitHub, pas un problème d'identifiants.
+Aucun force-push utilisé.
+
+**À exécuter dès le retour du réseau :**
+```powershell
+git push origin repo-cleanup-publication
 ```
 
 Historique final poussé (branche `repo-cleanup-publication`) :
