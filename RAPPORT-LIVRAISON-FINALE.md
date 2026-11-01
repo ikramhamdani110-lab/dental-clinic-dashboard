@@ -10,7 +10,7 @@
 | Remote | `origin` → github.com/ikramhamdani110-lab/dental-clinic-dashboard |
 | Historique antérieur | `41caeb2` (audit + fixes QA) et `4a6c9db` (prisma generate) déjà poussés et confirmés (« Everything up-to-date ») |
 
-⚠️ **DERNIERS PUSHES INTERMITTENTS — coupure réseau récurrente vers GitHub** *(un push a réussi entre deux coupures : `67fc282..43cfe67` ; les deux derniers commits de docs restent locaux, voir note en fin de section)*
+⚠️ **PUSHES INTERMITTENTS PUIS RÉSOLUS — tout l'historique est poussé** *(détail en fin de section)*
 
 Le push du tout dernier commit (documentation offline) échoue actuellement :
 ```
@@ -26,18 +26,17 @@ Aucun force-push utilisé.
 git push origin repo-cleanup-publication
 ```
 
-✅ **RÉSOLUTION PARTIELLE** : le réseau vers GitHub est **intermittent**. Un push
-a réussi entre deux coupures (confirmé : `67fc282..43cfe67`) ; les **deux
-dermiers commits de documentation** (`16a07a5` — état du push dans le rapport,
-et le correctif de libellé) restent **locaux** : coupure récurrente
-« Failed to connect to github.com port 443 after 21s ».
+✅ **RÉSOLUTION FINALE — TOUT L'HISTORIQUE EST SUR GITHUB.**
 
-**À exécuter dès le retour durable du réseau :**
-```powershell
-git push origin repo-cleanup-publication
+Le réseau vers GitHub est intermittent ; un script de relance automatique a
+tenté le push à intervalles réguliers :
 ```
-Aucun force-push n'a jamais été utilisé ; tous les commits restent en sécurité
-localement.
+PUSH REUSSI (essai 2) :
+To https://github.com/ikramhamdani110-lab/dental-clinic-dashboard
+   43cfe67..97d9821  repo-cleanup-publication -> repo-cleanup-publication
+```
+`git status -sb` ne mentionne plus aucun écart avec l'origine : **la branche
+locale et le remote sont alignés**. Aucun force-push n'a jamais été utilisé.
 
 Historique final poussé (branche `repo-cleanup-publication`) :
 - `41caeb2` — audit : correction scripts QA + rapport final
