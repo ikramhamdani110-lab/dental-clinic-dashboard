@@ -21,11 +21,11 @@ Historique final poussé (branche `repo-cleanup-publication`) :
 - `41caeb2` — audit : correction scripts QA + rapport final
 - `4a6c9db` — deploy : génération du client Prisma (vercel.json)
 - `e795cd9` — docs : rapport de livraison (première version)
-- `ead4faa` — merge + rapport final consolidé
-- `7432e10` — docs : consolidation du rapport de livraison (état final)
+- `ead4faa` — merge + rapport final consolidé (état exact du push)
 
-**Tous les commits sont poussés et vérifiés sur GitHub** (dernier push confirmé :
-`ead4faa..7432e10`).
+(Note : deux coupures réseau temporaires vers github.com:443 sont survenues
+pendant la session ; aucun force-push n'a été utilisé, le dernier push est un
+fast-forward simple.)
 
 ## 2. Corrections apportées
 
