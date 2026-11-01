@@ -26,12 +26,12 @@ Aucun force-push utilisé.
 git push origin repo-cleanup-publication
 ```
 
-✅ **CLÔTURE DÉFINITIVE — PUSH 100 % CONFIRMÉ (91bbe6c).**
+✅ **CLÔTURE DÉFINITIVE — PUSH 100 % CONFIRMÉ (58b34e0).**
 
 Dernier push, sortie Git réelle :
 ```
 To https://github.com/ikramhamdani110-lab/dental-clinic-dashboard
-   f7806e9..91bbe6c  repo-cleanup-publication -> repo-cleanup-publication
+   91bbe6c..58b34e0  repo-cleanup-publication -> repo-cleanup-publication
 ```
 `git status -sb` : aucun écart local/remote. **Tout est sur GitHub.**
 
