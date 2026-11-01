@@ -72,19 +72,25 @@ bouton « Connexion ». Après 5 échecs, le compte se verrouille 15 minutes
 - Fonctionne **sans internet** : tout le trafic est local (127.0.0.1) — vérifié
   par inspection complète du code et tests d'exécution (audit §4/§5).
 
-## 4. Données de test / démonstration — classification (à valider par vous)
+## 4. Données de test / démonstration — inventaire (option C appliquée)
 
-Base **production web (Neon)** — état relevé en lecture seule :
+> **Option C retenue : RIEN n'a été supprimé ni modifié.** Inventaire établi en
+> lecture seule le 2026-11-01. Sauvegarde vérifiée :
+> `backups/sahed_clinic-2026-11-01T15-33-08.dump` (422 Ko, restauration testée).
 
-| Table | Volume | Contenu relevé |
-|---|---|---|
-| users | 2 comptes actifs | 1 médecin + 1 secrétaire (`demo@cabinet.local`) |
-| patients | **17** | noms à consonance réelle, sans marqueur « test/demo » visible dans les champs |
-| rendez-vous / traitements / paiements | présents, rattachés aux 17 patients | cohérents entre eux |
+### 4.1 Comptes utilisateurs
 
-Base **desktop** : aucune installation locale détectée sur ce poste de
-développement (`%APPDATA%\Clinique Sahed` absent) — la base du médecin sera
-créée à la première installation chez lui.
+| Email | Rôle | Nom affiché | État | Créé | Déjà connecté |
+|---|---|---|---|---|---|
+| `audit@cabinet.dz` | MEDECIN | Dr Audit | actif, mot de passe changé | 2026-10-08 | oui |
+| `ikram@cabinet.dz` | MEDECIN | Dr. Ikram | actif, mot de passe changé | 2026-09-28 | oui |
+
+⚠️ **Le compte `demo@cabinet.local` N'EXISTE PAS en production** — il n'existe
+que sur le cluster de démonstration local. La §1 de ce rapport est corrigée :
+l'email de connexion réel du site public est l'un des deux comptes ci-dessus
+(à trancher avec vous, cf. §7).
+
+### 4.2 Les 17 patients (identité minimale — aucun détail médical exposé)
 
 **Position : je ne supprime RIEN sans votre confirmation explicite.**
 Les 17 patients ne portent aucun marqueur évident de test ; je ne peux pas
@@ -92,18 +98,57 @@ distinguer avec certitude données réelles / données de démonstration. Confor
 à votre règle (« If you cannot confidently distinguish test data from real
 records, stop and ask me for approval »), voici les options :
 
-- **Option A (recommandée si la base n'a jamais servi en réel)** : vous me
-  confirmez par écrit « la base Neon contient uniquement des données de
-  démonstration » → je supprime alors patients/rendez-vous/traitements/paiements
-  (backup déjà fait et vérifié, cf. §4 bis).
-- **Option B** : vous m'indiquez la liste exacte des enregistrements à supprimer.
-- **Option C** : ne rien supprimer — le Dr. Sahed masque/supprime lui-même ce
-  qu'il reconnaît comme faux depuis l'interface (corbeille restaurable 24 h).
+### 4.2. Les 17 patients (identité minimale)
 
-**4 bis. Sauvegarde déjà effectuée et vérifiée :**
-`backups/sahed_clinic-2026-11-01T15-33-08.dump` (422 Ko, 17 patients relus lors
-du test de restauration sur le cluster de démonstration isolé). Toute opération
-de nettoyage approuvée sera précédée d'une sauvegarde fraîche.
+| Créé le | Patient | Téléphone | RDV | Soins | Paiem. | Encaissé | Corbeille |
+|---|---|---|---|---|---|---|---|
+| 2026-10-08 | Amine Benali | 0550 12 34 56 | 1 | 1 | 3 | 6 068 DA | non |
+| 2026-10-08 | Yasmine Haddad | 0661 98 76 54 | 1 | 1 | 1 | 15 000 DA | non |
+| 2026-10-08 | Mohamed Cherif | 0770 44 22 11 | 1 | 1 | 0 | 0 | non |
+| 2026-10-08 | Nadia Ziani | 0555 33 77 99 | 1 | 1 | 1 | 35 000 DA | non |
+| 2026-10-08 | Karim Bouzid | 0699 11 55 33 | 1 | 1 | 0 | 0 | non |
+| 2026-10-08 | Salima Meziane | 0771 22 88 44 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Omar Larbi | 0550 66 12 78 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Linda Ferhat | 0661 45 90 12 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Rachid Slimani | 0770 09 43 21 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Fatima Zohra Kaci | 0555 78 65 43 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Walid Benaissa | 0699 34 21 87 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Amina Taleb | 0771 87 65 32 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Youcef Djebbar | 0550 90 12 34 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Samira Aissaoui | 0661 23 45 67 | 0 | 0 | 0 | 0 | non |
+| 2026-10-08 | Nabil Hamdi | 0770 56 78 90 | 0 | 0 | 0 | 0 | non |
+| 2026-10-20 | **Qa DBGZ** | 0700112233 | 0 | 1 | 0 | 0 | non |
+| 2026-10-20 | **Qa SOLDBG** | 0700112299 | 0 | 1 | 1 | 500 DA | **oui** |
+
+### 4.3 Ce qui distingue objectivement test / réel
+
+**Groupe T1 — artefacts QA identifiables (2 patients) :** « Qa DBGZ » et
+« Qa SOLDBG », créés le 2026-10-20. Le préfixe **« Qa »** est la convention du
+projet pour les données de test (clés d'idempotence `qa-…` des scripts QA) ;
+téléphones au même gabarit (07001122xx). Ce sont des traces de QA, pas des
+patients réels.
+
+**Groupe A1 — 15 patients du 2026-10-08 :** créés en une seule session,
+numéros algériens réalistes, 5 avec historique cohérent. **Aucun marqueur
+objectif de test** — démonstration saisie en bloc OU premier échantillon réel :
+seul vous ou le Dr. Sahed pouvez trancher (aucun critère textuel, d'ancienneté
+ou d'apparence ne suffit — règle respectée).
+
+**Agrégats** : 5 rendez-vous (2 TERMINE, 2 PLANIFIE, 1 ABSENT) · 7 traitements
+(Consultation ×2, Traitement de canal, Couronne céramique, Soin de carie,
+Détartrage, Extraction) · 6 paiements, total **56 568,00 DA** · 0 document ·
+26 entrées corbeille · 449 lignes de journal · 249 sessions.
+
+### 4.4 Découpage proposé (à valider — aucune action faite)
+
+| Groupe | Contenu | Proposition |
+|---|---|---|
+| **T1** | 2 patients « Qa … » du 20/10 (+ soins/paiements/corbeille associés) | Supprimables sur votre accord explicite (artefacts QA objectifs) |
+| **A1** | 15 patients du 08/10 | **À confirmer avec le Dr. Sahed** (réels ou démo ?) |
+| **U1** | comptes `audit@` / `ikram@` | À conserver, ou renommer sur instruction |
+
+Base **desktop** : aucune installation détectée sur ce poste — la base du
+cabinet sera créée à la première installation chez le Dr. Sahed.
 
 ## 5. Identifiants et sécurité (transmission)
 
