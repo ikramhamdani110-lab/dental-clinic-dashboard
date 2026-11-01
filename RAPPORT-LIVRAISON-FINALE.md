@@ -23,7 +23,8 @@ Historique final poussé (branche `repo-cleanup-publication`) :
 - `e795cd9` — docs : rapport de livraison (première version)
 - `ead4faa` — merge + rapport final consolidé
 - `03ca11a` — merge final après coupures réseau
-- `2e91336` — docs : historique de push complet ← **tête actuelle poussée**
+- `2e91336` — docs : historique de push complet
+- `6ba1deb` — docs : tête de branche exacte ← **tête actuelle poussée**
 
 (Note : deux coupures réseau temporaires vers github.com:443 sont survenues
 pendant la session ; aucun force-push n'a été utilisé, tous les pushes sont
