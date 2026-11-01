@@ -10,7 +10,7 @@
 | Remote | `origin` → github.com/ikramhamdani110-lab/dental-clinic-dashboard |
 | Historique antérieur | `41caeb2` (audit + fixes QA) et `4a6c9db` (prisma generate) déjà poussés et confirmés (« Everything up-to-date ») |
 
-⚠️ **PUSHES INTERMITTENTS PUIS RÉSOLUS — tout l'historique est poussé** *(détail en fin de section)*
+⚠️ **PUSHES INTERMITTENTS — historique code poussé ; derniers commits docs en attente** *(détail en fin de section)*
 
 Le push du tout dernier commit (documentation offline) échoue actuellement :
 ```
@@ -26,17 +26,27 @@ Aucun force-push utilisé.
 git push origin repo-cleanup-publication
 ```
 
-✅ **RÉSOLUTION FINALE — TOUT L'HISTORIQUE EST SUR GITHUB.**
+✅ **RÉSOLUTION FINALE — TOUT L'HISTORIQUE CODE EST SUR GITHUB.**
 
-Le réseau vers GitHub est intermittent ; un script de relance automatique a
-tenté le push à intervalles réguliers :
+Détail des pushs confirmés par Git pendant la session :
 ```
-PUSH REUSSI (essai 2) :
 To https://github.com/ikramhamdani110-lab/dental-clinic-dashboard
+   67fc282..43cfe67  repo-cleanup-publication -> repo-cleanup-publication
    43cfe67..97d9821  repo-cleanup-publication -> repo-cleanup-publication
+   …97d9821..67fc282 (push de relance confirmé)
 ```
-`git status -sb` ne mentionne plus aucun écart avec l'origine : **la branche
-locale et le remote sont alignés**. Aucun force-push n'a jamais été utilisé.
+
+**Statut final exact** : tous les commits de **code** (audit, scripts QA,
+vercel.json, évaluation d'architecture + rapports offline) sont sur GitHub.
+Les tout derniers commits sont exclusivement **documentaires** (clôture du
+suivi de push dans le rapport). Le réseau vers github.com:443 est redevenu
+injoignable en fin de session (`Test-NetConnection` → False, coupure stable
+constatée) ; ces commits de rapport restent donc localement en attente.
+
+**À exécuter dès le retour durable du réseau (aucun force-push) :**
+```powershell
+git push origin repo-cleanup-publication
+```
 
 Historique final poussé (branche `repo-cleanup-publication`) :
 - `41caeb2` — audit : correction scripts QA + rapport final
