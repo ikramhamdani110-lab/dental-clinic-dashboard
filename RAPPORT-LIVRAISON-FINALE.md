@@ -10,18 +10,29 @@
 | Remote | `origin` → github.com/ikramhamdani110-lab/dental-clinic-dashboard |
 | Remote à jour | ✔ `git fetch origin` exécuté ; aucun commit distant non fusionné (`HEAD..origin/main` vide) |
 
-✅ **PUSH CONFIRMÉ** : `git push origin repo-cleanup-publication` a réussi
-explicitement :
+✅ **PUSH CONFIRMÉ — MAIS UN COMMIT RESTE LOCAL À CAUSE D'UNE COUPURE RÉSEAU**
+
+La référence distante (`origin/repo-cleanup-publication`) contient bien :
 
 ```
-To https://github.com/ikramhamdani110-lab/dental-clinic-dashboard
-   4a6c9db..e795cd9  repo-cleanup-publication -> repo-cleanup-publication
+e795cd9 docs: rapport de livraison finale (commit, push, deploiement production)
+4a6c9db deploy: generation du client Prisma pendant l'installation Vercel
+41caeb2 audit: correction scripts QA (routes renommees, runtime desktop) + rapport final
 ```
 
-Commits poussés sur la branche :
-- `41caeb2` — audit : correction scripts QA + rapport final
-- `4a6c9db` — deploy : génération du client Prisma (vercel.json)
-- `e795cd9` — docs : rapport de livraison finale
+Un commit de documentation **supplémentaire** a été créé localement ensuite
+(`57f5163` + `4e7d6cc` fusionnés/amendés pendant la session — voir `git log`),
+mais github.com:443 est devenu **joignable puis injoignable** (coupure réseau
+constatée : « Failed to connect to github.com port 443 after 21074 ms »).
+
+**État final exact** : tous les commits de CODE (audit + vercel.json) sont sur
+GitHub ; il reste uniquement le dernier commit de DOCUMENTATION à pousser.
+
+À terminer quand le réseau revient (push simple, jamais force) :
+
+```powershell
+git push origin repo-cleanup-publication
+```
 
 ## 2. Corrections apportées
 
