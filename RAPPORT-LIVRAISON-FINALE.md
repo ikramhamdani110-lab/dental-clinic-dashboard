@@ -10,7 +10,8 @@
 | Remote | `origin` → github.com/ikramhamdani110-lab/dental-clinic-dashboard |
 | Historique antérieur | `41caeb2` (audit + fixes QA) et `4a6c9db` (prisma generate) déjà poussés et confirmés (« Everything up-to-date ») |
 
-⚠️ **DERNIER PUSH EN ATTENTE — coupure réseau vers GitHub**
+⚠️ **DERNIER PUSH EN ATTENTE — coupure réseau vers GitHub** *(résolu depuis : le
+push suivant a réussi, voir note en fin de section)*
 
 Le push du tout dernier commit (documentation offline) échoue actuellement :
 ```
@@ -25,6 +26,13 @@ Aucun force-push utilisé.
 ```powershell
 git push origin repo-cleanup-publication
 ```
+
+✅ **RÉSOLUTION** : le réseau est revenu — push réussi et confirmé par Git :
+```
+To https://github.com/ikramhamdani110-lab/dental-clinic-dashboard
+   67fc282..43cfe67  repo-cleanup-publication -> repo-cleanup-publication
+```
+**Tout l'historique est maintenant sur GitHub.**
 
 Historique final poussé (branche `repo-cleanup-publication`) :
 - `41caeb2` — audit : correction scripts QA + rapport final
