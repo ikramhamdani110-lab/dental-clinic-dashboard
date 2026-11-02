@@ -1,0 +1,26 @@
+-- =============================================================================
+--  AGE DU PATIENT — colonne manquante dans le schema migre
+-- =============================================================================
+--
+--  POURQUOI CETE MIGRATION EXISTE
+--
+--  `schema.prisma` declare `Patient.age` (age en annees revolues, saisi au
+--  cabinet), et l'interface — formulaire de creation, liste des patients, fiche
+--  — s'appuie entierement sur ce champ. Mais AUCUNE migration ne l'a jamais
+--  ajoute a la base : la colonne est declaree cote Prisma sans exister en SQL.
+--
+--  Consequence : une base installee a partir des migrations seules ne peut pas
+--  faire tourner l'application, qui echoue des la premiere lecture de patient
+--  (« column patients.age does not exist »).
+--
+--  La colonne est AJOUTEE, jamais renommee ni recreee : `dateNaissance` est
+--  conservee (les patients deja enregistres la possedent, et elle reste la
+--  donnee la plus precise lorsqu'elle est connue). L'age saisi prime pour
+--  l'affichage ; a defaut, l'age est derive de la date de naissance.
+--
+--  NULLABLE : un patient ancien peut n'avoir ni age saisi ni date de naissance,
+--  ce qui doit rester possible.
+-- =============================================================================
+
+-- AlterTable
+ALTER TABLE "patients" ADD COLUMN "age" INTEGER;
