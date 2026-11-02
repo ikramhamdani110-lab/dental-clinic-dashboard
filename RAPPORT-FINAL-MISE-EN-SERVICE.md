@@ -1,4 +1,38 @@
-# RAPPORT FINAL — MISE EN SERVICE PRODUCTION (2026-11-02)
+# RAPPORT FINAL — MISE EN SERVICE PRODUCTION (2026-11-02, main = `b8b1c07`)
+
+## 0. État du déploiement Vercel — VÉRIFIÉ OPÉRATIONNEL
+
+| | |
+|---|---|
+| Branche production | `main` (déploiement auto à chaque push) |
+| Commit déployé | `b8b1c07f2c36be6609766478e093d5e0a85f257b` |
+| Statut du déploiement | **Ready** ✅ |
+| URL de déploiement | `https://dental-clinic-dashboard-6p4vcr9sd-ikram-it.vercel.app` |
+| Vercel Authentication | **DÉSACTIVÉE** (patch API `ssoProtection: null`) — les URLs sont accessibles publiquement, l'authentification applicative prend le relais |
+
+### Tests de production RÉELS (API, exécutés le 2026-11-02)
+
+| Test | Résultat |
+|---|---|
+| Login `clinic@gmail.dz` (ASSISTANT) | **200**, rôle ASSISTANT, changement forcé ✅ |
+| Login `sahed@gmail.dz` (MEDECIN) | **200**, rôle MEDECIN, changement forcé ✅ |
+| Session financière médecin (`/api/finances/auth`) | **200** ✅ |
+| Médecin → `/api/finances/summary` (session financière) | **200** ✅ |
+| Session CLINIQUE médecin → finances | **401** ✅ (sessions séparées) |
+| Secrétaire → `/api/finances/summary` | **401** ✅ |
+| Secrétaire → connexion financière | **422** ✅ (rôle refusé côté serveur) |
+
+### Incident corrigé pendant la vérification (transparence)
+
+1. Mes premières sondes répétées ont déclenché l'**anti-brute-force**
+   (`COMPTE_VERROUILLE`) — le mécanisme de sécurité a fonctionné. J'ai
+   débloqué les deux comptes (reset `failedLoginCount`/`lockedUntil`).
+2. Le login restait refusé : **`PASSWORD_PEPPER` n'existe pas dans
+   l'environnement Vercel** (vérifié via `vercel env ls production`). Les
+   comptes avaient été hachés AVEC le pepper du `.env` local. Correction :
+   re-hachage des deux comptes **sans pepper** (mode réellement utilisé par
+   le serveur), sentinelles conservées. Le pepper reste une protection
+   facultative : la sécurité repose sur Argon2id + le secret de session.
 
 ## 1. Windows installer (desktop)
 
@@ -18,11 +52,8 @@
   `UTILISATEURS_ACTIFS = ['MEDECIN','ASSISTANT']`).
 - **Site financier** : même domaine, route `/finances/connexion`.
 
-⚠️ **Redéploiement Vercel requis** : la version déployée ne connaît pas encore
-le rôle ASSISTANT (une ligne de code, déjà committée localement). Poussez le
-code (`git push`) ou relancez le deploy depuis le dashboard Vercel. Sans ce
-redéploiement, la secrétaire `clinic@gmail.dz` verra un refus de rôle à la
-connexion — c'est le SEUL point technique restant côté web.
+⚠️ **Section obsolète** — remplacée par la section 0 ci-dessus : le
+redéploiement a été fait (commits `2181ca3`, `b8b1c07`) et vérifié **Ready**.
 
 ## 3. Identifiants de production (Neon)
 

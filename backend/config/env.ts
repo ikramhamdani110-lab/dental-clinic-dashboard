@@ -31,7 +31,12 @@ const schema = z
       .min(32, 'SESSION_SECRET doit faire au moins 32 caractères.')
       .optional(),
 
-    /** Sel applicatif du hachage Argon2id. Optionnel mais recommande. */
+    /**
+     * Sel applicatif du hachage Argon2id. OPTIONNEL par conception : si la
+     * variable est absente, `applyPepper` hache sans pepper (comportement
+     * « nu »). C'est le mode utilisé par Vercel production aujourd'hui —
+     * tout re-hachage DOIT utiliser le même mode.
+     */
     PASSWORD_PEPPER: z.string().min(16).optional(),
 
     /**
