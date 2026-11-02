@@ -1,4 +1,4 @@
-/**
+﻿/**
  * =============================================================================
  *  PDF DU TABLEAU DE BORD (§25, §45)
  * =============================================================================
@@ -21,7 +21,6 @@
  *    premiere A4, sans jamais devenir illisibles ni se chevaucher.
  */
 
-import { formaterMontant } from '@backend/domain/finance'
 import {
   appliquerPolice,
   creerDocumentPdf,
@@ -202,25 +201,9 @@ export async function pdfTableauDeBord(langue: LanguePdf = 'fr'): Promise<Buffer
   ligneIndicateur(doc, libelle(langue, 'rdvJour'), `${donnees.rendezVousDuJour.length}`)
   ligneIndicateur(doc, libelle(langue, 'nouveauxPatients'), `${donnees.nouveauxPatientsJour}`)
   ligneIndicateur(doc, libelle(langue, 'patientsVenus'), `${donnees.patientsVenusJour}`)
-  ligneIndicateur(
-    doc,
-    `${libelle(langue, 'payeAujourdhui')} - ${donnees.nombrePaiementsJour} ${
-      donnees.nombrePaiementsJour > 1
-        ? libelle(langue, 'paiementsPluriel')
-        : libelle(langue, 'paiements')
-    }`,
-    formaterMontant(donnees.revenusJourCentimes),
-  )
-  ligneIndicateur(
-    doc,
-    `${libelle(langue, 'restantDus')} - ${donnees.nombrePaiementsTotal} ${
-      donnees.nombrePaiementsTotal > 1
-        ? libelle(langue, 'paiementsPluriel')
-        : libelle(langue, 'paiements')
-    }`,
-    formaterMontant(donnees.totalRestantCentimes),
-    { alerte: donnees.totalRestantCentimes > 0 },
-  )
+  // §secretaire-v2 : indicateurs financiers retirés du PDF (payé aujourd'hui,
+  // restant dû) — cohérent avec le tableau de bord écran. Les chiffres
+  // d'argent vivent sur le site privé du médecin.
 
   // ── RENDEZ-VOUS DU JOUR ────────────────────────────────────────────────────
   titreSection(doc, `${libelle(langue, 'rendezVousDuJour')} - ${donnees.rendezVousDuJour.length}`)

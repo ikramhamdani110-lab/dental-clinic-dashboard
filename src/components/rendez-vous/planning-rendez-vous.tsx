@@ -1,12 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { t } from '@content/index'
 
-import { BadgeStatutRendezVous } from '@/components/ui/badge-statut'
+import {
+  BadgeStatutRendezVous,
+  TONS_STATUT_RENDEZ_VOUS,
+} from '@/components/ui/badge-statut'
 import { ChampSelection } from '@/components/ui/champ'
 import { useNotifications } from '@/components/ui/notifications'
+import { useRequete } from '@/lib/hooks/use-requete'
+import { libelleStatutJour } from '@/components/dashboard/donnees-tableau-bord'
 import { signalerModification } from '@/lib/evenements-donnees'
 import { Bouton, LienBouton } from '@/components/ui/bouton'
 import { ApiError, messageErreur, requeteApi } from '@/lib/api-client'
@@ -110,7 +115,18 @@ function OPTIONS_FILTRE_STATUT() {
   ]
 }
 
-export function PlanningRendezVous(): React.JSX.Element {
+export function PlanningRendezVous({
+  cibleNouvellesEntrees = false,
+}: {
+  /**
+   * Vient du tableau de bord : la carte « Nouveaux patients » a ete cliquee.
+   * La section « Nouveaux rendez-vous » est affichee EN HAUT de la page, mise
+   * en evidence et reçoit le focus au chargement. La donnee affichee reste
+   * CELLE DU TABLEAU DE BORD (GET /api/dashboard) : aucune deuxieme liste,
+   * aucune logique de calcul dupliquée — le serveur est la seule source.
+   */
+  cibleNouvellesEntrees?: boolean
+}): React.JSX.Element {
   const [vue, setVue] = useState<Vue>('jour')
   const [reference, setReference] = useState(() => new Date())
   const [rendezVous, setRendezVous] = useState<RendezVous[]>([])
@@ -269,6 +285,17 @@ export function PlanningRendezVous(): React.JSX.Element {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--espace-4)' }}>
+      {/*
+        * ARRIVEE DEPUIS LE TABLEAU DE BORD — la carte « Nouveaux patients » a
+        * ete cliquee. La liste « Nouveaux rendez-vous » est montee ICI, en haut,
+        * avec le focus clavier initial : le medecin voit immediatement ce qu'il
+        * cherchait. La donnee provient de GET /api/dashboard — la MEME requete
+        * et le MEME calcul que le tableau de bord, jamais une copie locale.
+        */}
+      {cibleNouvellesEntrees ? (
+        <NouveauxRendezVousFocalises />
+      ) : null}
+
       <div className="barre-outils">
         <div className="barre-outils-groupe">
           <Bouton variante="secondaire" taille="petite" onClick={() => naviguer(-1)}>
@@ -533,4 +560,124 @@ function titrePeriode(vue: Vue, reference: Date): string {
     return `${debut.toLocaleDateString(locale, { day: 'numeric', month: 'short' })} — ${fin.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}`
   }
   return reference.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+}
+
+/**
+ * =============================================================================
+ *  SECTION « NOUVEAUX RENDEZ-VOUS » — REUSE DE LA DONNEE DU TABLEAU DE BORD
+ * =============================================================================
+ *
+ *  Affichee uniquement quand le medecin arrive du tableau de bord via la carte
+ *  « Nouveaux patients » (`?vue=nouvelles-entrees`).
+ *
+ *  CE QUI EST REUTILISE — ET CE QUI NE L'EST PAS
+ *
+ *    - la DONNEE : GET /api/dashboard, le MEME endpoint que le tableau de bord.
+ *      La logique de calcul (rendez-vous CREES aujourd'hui, filtre sur
+ *      `createdAt`) reste entierement cote serveur : aucune duplication.
+ *
+ *    - la STRUCTURE d'affichage : la meme grille Patient / Date / Traitement /
+ *      Statut que la carte du tableau de bord, avec la meme traduction des
+ *      statuts (`libelleStatutJour` + `TONS_STATUT_RENDEZ_VOUS`).
+ *
+ *  La section reçoit le focus au montage (`tabIndex={-1}` + `focus()`), pour
+ *  que le clavier et les lecteurs d'ecran annoncent « Nouveaux rendez-vous »
+ *  des l'arrivee sur la page — pas seulement un survol visuel.
+   */
+
+ interface RendezVousCreeAujourdhui {
+  id: string
+  patient: string
+  telephone: string
+  dateDebut: string
+  dateFin: string
+  statut: string
+  motif: string | null
+}
+
+interface DonneesTableauBord {
+  rendezVousCreesAujourdhui: RendezVousCreeAujourdhui[]
+}
+
+function NouveauxRendezVousFocalises(): React.JSX.Element {
+  const { donnees, chargement, erreur } = useRequete<DonneesTableauBord>('/api/dashboard')
+  const reference = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    // Le focus annonce la section aux lecteurs d'ecran des l'arrivee.
+    reference.current?.focus()
+  }, [])
+
+  const rendezVous = donnees?.rendezVousCreesAujourdhui ?? []
+
+  return (
+    <section
+      ref={reference}
+      tabIndex={-1}
+      className="carte"
+      aria-labelledby="titre-nouveaux-rdv-planning"
+      style={{ outline: 'none', borderColor: 'var(--accent, var(--texte-principal))' }}
+    >
+      <div className="carte-entete">
+        <h2 className="carte-titre" id="titre-nouveaux-rdv-planning">
+          {t('tableauDeBord.nouveauxRendezVousCrees')} — {rendezVous.length}
+        </h2>
+      </div>
+
+      {chargement ? (
+        <div className="etat-vide">
+          <span className="rotation" aria-hidden="true" />
+          <p className="etat-vide-texte">{t('tableaux.chargement')}</p>
+        </div>
+      ) : erreur ? (
+        <div className="encadre-erreur" role="alert">
+          <p>{erreur}</p>
+        </div>
+      ) : rendezVous.length === 0 ? (
+        <div className="etat-vide">
+          <p className="etat-vide-texte">{t('tableauDeBord.aucunNouveauRendezVousCree')}</p>
+        </div>
+      ) : (
+        <div className="tableau-conteneur">
+          <table className="tableau tableau-cartes">
+            <thead>
+              <tr>
+                <th scope="col">{t('rendezVous.patient')}</th>
+                <th scope="col">{t('rendezVous.date')}</th>
+                <th scope="col">{t('rendezVous.traitement')}</th>
+                <th scope="col">{t('rendezVous.statut')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rendezVous.map((rdv) => (
+                <tr key={rdv.id}>
+                  <td data-etiquette={t('rendezVous.patient')}>
+                    <span className="liste-compacte-principal">
+                      <span className="liste-compacte-titre">{rdv.patient}</span>
+                      <span className="liste-compacte-detail">{rdv.telephone}</span>
+                    </span>
+                  </td>
+                  <td data-etiquette={t('rendezVous.date')}>
+                    {new Date(rdv.dateDebut).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </td>
+                  <td data-etiquette={t('rendezVous.traitement')}>{rdv.motif ?? '—'}</td>
+                  <td data-etiquette={t('rendezVous.statut')}>
+                    <span
+                      className={`badge badge-${TONS_STATUT_RENDEZ_VOUS[rdv.statut] ?? 'neutre'}`}
+                    >
+                      {t(`rendezVous.statuts.${libelleStatutJour(rdv.statut)}`)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
 }

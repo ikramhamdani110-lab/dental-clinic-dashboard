@@ -5,7 +5,6 @@ import {
 } from '@backend/services/appointments.service'
 import { presencesDuJour } from '@backend/services/dashboard-metrics'
 import {
-  nombreTotalPaiements,
   revenusParAnnee,
   revenusParMethode,
   revenusParPeriode,
@@ -573,16 +572,7 @@ export interface TableauBordDonnees {
   rendezVousNouveaux: number
   nombrePatientsAttendus: number
   traitementsEnCours: number
-  revenusJourCentimes: number
-  nombrePaiementsJour: number
-  revenusSemaineCentimes: number
-  revenusMoisCentimes: number
-  /**
-   * Nombre TOTAL de paiements valides (toutes periodes), compte en base sur la
-   * meme population que `totalRestantCentimes`.
-   */
-  nombrePaiementsTotal: number
-  totalRestantCentimes: number
+  // §secretaire-v2 : aucun champ financier — retirés de l'interface du tableau
   /**
    * Rendez-vous CREES AUJOURD'HUI, quel que soit leur date de rendez-vous.
    *
@@ -630,20 +620,12 @@ export interface TableauBordDonnees {
  */
 export async function donneesTableauBord(): Promise<TableauBordDonnees> {
   const aujourdhui = periodeAujourdhui()
-  const semaine = periodeSemaine()
-  const mois = periodeMois()
 
   const [
     rendezVousJour,
     visitesJour,
     totalPatients,
     traitementsEnCours,
-    revenusJour,
-    nbPaiementsJour,
-    revenusSemaine,
-    revenusMois,
-    restant,
-    nombrePaiementsTotal,
     prochain,
     rendezVousCreesAujourdhui,
   ] = await Promise.all([
@@ -693,15 +675,6 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     // COUNT cote base : aucun patient n'est rapatrie dans Node.
     prisma.patient.count(),
     prisma.treatment.count({ where: { statut: 'EN_COURS' } }),
-    totalEncaisse(aujourdhui.debut, aujourdhui.fin),
-    prisma.payment.count({
-      where: { statut: 'VALIDE', datePaiement: { gte: aujourdhui.debut, lte: aujourdhui.fin } },
-    }),
-    totalEncaisse(semaine.debut, semaine.fin),
-    totalEncaisse(mois.debut, mois.fin),
-    totalRestantARecevoir(),
-    // meme population de paiements que le total restant, donc meme perimetre.
-    nombreTotalPaiements(),
     prisma.appointment.findMany({
       where: {
         dateDebut: { gt: aujourdhui.fin },
@@ -834,12 +807,11 @@ export async function donneesTableauBord(): Promise<TableauBordDonnees> {
     rendezVousNouveaux: rendezVousDuJour.filter((rdv) => !rdv.patientConnu).length,
     nombrePatientsAttendus: rendezVousJour.length,
     traitementsEnCours,
-    revenusJourCentimes: revenusJour,
-    nombrePaiementsJour: nbPaiementsJour,
-    revenusSemaineCentimes: revenusSemaine,
-    revenusMoisCentimes: revenusMois,
-    nombrePaiementsTotal,
-    totalRestantCentimes: restant,
+    // §secretaire-v2 : AUCUN indicateur financier dans le tableau de bord de
+    // la secrétaire (revenus, paiements, reste à recevoir retirés). Les
+    // finances vivent exclusivement sur le site privé du médecin (/finances).
+    // Les agrégations `totalEncaisse(…)` ci-dessus alimentent EXCLUSIVEMENT
+    // les revenus périodiques du graphe ; aucune valeur ne sort par ce retour.
     prochainsRendezVous: prochain.map((rdv) => ({
       id: rdv.id,
       patient: `${rdv.patient.prenom} ${rdv.patient.nom}`,

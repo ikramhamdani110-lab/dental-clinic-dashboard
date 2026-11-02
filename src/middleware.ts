@@ -44,7 +44,6 @@ const PREFIXES_PRIVES = [
   '/ordonnances',
   '/odontogramme',
   '/documents',
-  '/rapports',
   '/journal-activite',
   '/parametres',
 ]

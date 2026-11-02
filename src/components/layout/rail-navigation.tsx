@@ -55,7 +55,9 @@ interface EntreeRail {
 }
 
 /**
- * Ordre impose : Patients, Rendez-vous, Rapports.
+ * Ordre impose : Patients, Rendez-vous.
+ * §secretaire-v2 : l'entrée « Rapports » est RETIRÉE du rail — la vue
+ * financière vit exclusivement sur le site privé du médecin (/finances).
  *
  * Le Tableau de bord n'est PAS dans cette liste : il reste joignable par la
  * marque du rail (le monogramme « DS » en haut), qui ramene a l'accueil de
@@ -65,7 +67,7 @@ interface EntreeRail {
 const ENTREES: Array<{ href: string; cleLibelle: string; icone: NomIcone }> = [
   { href: '/patients', cleLibelle: 'navigation.patients', icone: 'patients' },
   { href: '/rendez-vous', cleLibelle: 'navigation.rendezVous', icone: 'calendrier' },
-  { href: '/rapports', cleLibelle: 'navigation.rapports', icone: 'rapports' },
+  // Le lien « Rapports » a ete retire : la vue financiere vit sur /finances.
 ]
 
 export function RailNavigation(): React.JSX.Element {

@@ -667,3 +667,14 @@ export function versErreursChamps(error: z.ZodError): ErreurChamp[] {
     message: issue.message,
   }))
 }
+
+// Les schemas financiers vivent dans finances-schemas.ts et sont réexportés
+// ici : les routes /api/finances/* importent depuis un seul module.
+export {
+  revenuManuelCreationSchema,
+  revenuManuelModificationSchema,
+  depenseCreationSchema,
+  depenseModificationSchema,
+  transactionPersonnelleCreationSchema,
+  transactionPersonnelleModificationSchema,
+} from './finances-schemas'

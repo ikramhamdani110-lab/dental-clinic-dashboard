@@ -97,8 +97,6 @@ describe('Calendrier — conversion ISO ↔ Date', () => {
 })
 
 describe('Calendrier — bornes de la grille d’années', () => {
-  const ANNEE_MINIMALE = 2026
-
   it('la première année proposée est 2026', () => {
     const code = lireFichier('src/components/ui/calendrier.tsx')
     expect(code).toContain('ANNEE_MINIMALE = 2026')

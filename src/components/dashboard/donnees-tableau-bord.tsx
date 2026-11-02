@@ -7,8 +7,6 @@ import { t } from '@content/index'
 
 import { telechargerPdf } from '@/components/pdf/telecharger-pdf'
 
-import { formaterMontant } from '@backend/domain/finance'
-
 import { Bouton } from '@/components/ui/bouton'
 import { useRequete } from '@/lib/hooks/use-requete'
 import { surModification } from '@/lib/evenements-donnees'
@@ -20,14 +18,11 @@ import { localeDates } from '@/lib/locale-dates'
  *  TABLEAU DE BORD — LES CINQ INDICATEURS DU JOUR ET LES DEUX LISTES
  * =============================================================================
  *
- *  Contenu VOLONTAIREMENT LIMITE a ce dont le medecin a besoin au quotidien :
+ *  Contenu VOLONTAIREMENT LIMITE a ce dont le SECRETAIRE a besoin au quotidien :
  *
  *    1. Rendez-vous du jour   — patients attendus sur un creneau planifie ;
  *    2. Nouveaux patients     — premieres visites enregistrees aujourd'hui ;
- *    3. Patients du jour      — TOUTES les personnes venues au cabinet ;
- *    4. Paiements du jour     — argent REELLEMENT encaisse aujourd'hui ;
- *    5. Montants restant dus — montants encore dus par les patients, avec le
- *       nombre de paiements qui les reductions.
+ *    3. Patients du jour      — TOUTES les personnes venues au cabinet.
  *
  *  Puis deux listes :
  *    - les rendez-vous d'AUJOURD'HUI, avec leur statut lisible ;
@@ -35,10 +30,10 @@ import { localeDates } from '@/lib/locale-dates'
  *
  *  CE QUI A ETE RETIRE, ET POURQUOI
  *
- *  Le medecin n'a pas besoin, sur son ecran d'accueil, d'un graphique de revenus
- *  mensuels ni d'un decompte de traitements en cours : ces informations vivent
- *  dans les sections dediees (Rapports, Patients). Un tableau de bord charge de
- *  tout devient un ecran que l'on survole au lieu d'un ecran que l'on lit.
+ *  Les indicateurs FINANCIERS (paiements du jour, montants restant dus, revenus
+ *  du jour / semaine / mois) ont ete RETIRES : ces chiffres appartiennent au
+ *  medecin seul et vivent desormais UNIQUEMENT sur le site financier prive
+ *  (/finances), protege par une session dediee (voir src/app/(finances)).
  *
  *  AUCUNE VALEUR N'EST CODEE EN DUR : tout provient de GET /api/dashboard, qui
  *  agrege en base. L'interface ne calcule aucun total et ne telecharge aucune
@@ -86,11 +81,6 @@ interface DonneesTableauBord {
   totalPatients: number
   patientsVenusJour: number
   nouveauxPatientsJour: number
-  revenusJourCentimes: number
-  nombrePaiementsJour: number
-  totalRestantCentimes: number
-  /** Nombre total de paiements valides — meme population que le montant restant. */
-  nombrePaiementsTotal: number
   rendezVousCreesAujourdhui: RendezVousCreeAujourdhui[]
 }
 
@@ -193,17 +183,6 @@ export function DonneesTableauBord(): React.JSX.Element {
           etiquette={t('tableauDeBord.patientsDuJour')}
           valeur={String(donnees.patientsVenusJour)}
           detail={t('tableauDeBord.patientsDuJourAide')}
-        />
-        <Statistique
-          etiquette={t('tableauDeBord.paiementsDuJour')}
-          valeur={formaterMontant(donnees.revenusJourCentimes)}
-          detail={`${donnees.nombrePaiementsJour} ${t('tableauDeBord.paiementsRecus').toLowerCase()}`}
-        />
-        <Statistique
-          etiquette={t('tableauDeBord.creditARecevoir')}
-          valeur={formaterMontant(donnees.totalRestantCentimes)}
-          detail={`${donnees.nombrePaiementsTotal} ${t('tableauDeBord.nombrePaiementsAide')}`}
-          attention={donnees.totalRestantCentimes > 0}
         />
       </section>
 
