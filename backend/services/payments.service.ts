@@ -60,6 +60,10 @@ export async function calcTotalPaye(
 
   const resultat = new Map<string, number>()
   for (const groupe of groupes) {
+    // groupBy sur une colonne désormais nullable : les ACOMPTES (null) ne
+    // correspondent jamais au filtre `in`, mais Prisma type la clé nullable —
+    // on saute explicitement ce cas.
+    if (groupe.treatmentId === null) continue
     resultat.set(groupe.treatmentId, groupe._sum.montantCentimes ?? 0)
   }
   return resultat
@@ -95,7 +99,12 @@ export async function calculerSoldeTraitement(
 
 export interface DonneesPaiement {
   patientId: string
-  treatmentId: string
+  /**
+   * NULL = ACOMPTE (§paiements-avance, §secretaire-v2) : argent reçu du
+   * patient AVANT tout traitement. Le paiement appartient alors au patient
+   * (crédit) et n'est affecté à aucun soin.
+   */
+  treatmentId: string | null
   treatmentVisitId: string | null
   montantCentimes: number
   datePaiement: Date
@@ -137,14 +146,65 @@ export async function ajouterPaiement(
     select: { id: true, treatmentId: true },
   })
   if (existant) {
-    const solde = await calculerSoldeTraitement(existant.treatmentId)
+    const reste = existant.treatmentId
+      ? (await calculerSoldeTraitement(existant.treatmentId)).resteAPayerCentimes
+      : 0 // acompte : reste de traitement sans objet
     return {
       id: existant.id,
-      resteAPayerCentimes: solde.resteAPayerCentimes,
+      resteAPayerCentimes: reste,
       dejaEnregistre: true,
     }
   }
 
+  if (donnees.montantCentimes <= 0) {
+    throw erreurs.montantInvalide('Le montant doit être supérieur à zéro.')
+  }
+
+  // ═════════════════
+  //  CAS 1 — ACOMPTE (§paiements-avance) : AUCUN traitement rattaché.
+  //
+  //  L'argent appartient au PATIENT. Pas de controle de dépassement (il n'y
+  //  a pas de traitement, donc pas de prix) — et surtout PAS de faux
+  //  traitement créé pour le satisfaire.
+  // ═════════════════
+  if (!donnees.treatmentId) {
+    const patient = await prisma.patient.findUnique({
+      where: { id: donnees.patientId },
+      select: { id: true },
+    })
+    if (!patient) throw erreurs.introuvable('Patient')
+
+    const acompte = await prisma.payment.create({
+      data: {
+        patientId: donnees.patientId,
+        // treatmentId ABSENT → colonne NULL : c'est la marque d'un acompte.
+        montantCentimes: donnees.montantCentimes,
+        datePaiement: donnees.datePaiement,
+        ...(donnees.methode ? { methode: donnees.methode } : {}),
+        notes: donnees.notes,
+        idempotencyKey: donnees.idempotencyKey,
+        createdById: contexte.userId ?? '',
+      },
+      select: { id: true },
+    })
+
+    await journaliser(contexte, ACTIONS.PAIEMENT_AJOUTE, {
+      entityType: 'Paiement',
+      entityId: acompte.id,
+      metadata: {
+        patientId: donnees.patientId,
+        montantCentimes: donnees.montantCentimes,
+        nature: 'ACOMPTE',
+      },
+    })
+
+    return { id: acompte.id, resteAPayerCentimes: 0, dejaEnregistre: false }
+  }
+
+  // ═════════════════
+  //  CAS 2 — PAIEMENT AFFECTÉ À UN TRAITEMENT EXISTANT (comportement
+  //  historique, inchangé) : contrôle de dépassement en transaction.
+  // ═════════════════
   // 2. Verifications de coherence du traitement.
   const traitement = await prisma.treatment.findUnique({
     where: { id: donnees.treatmentId },
@@ -221,6 +281,90 @@ export async function ajouterPaiement(
   }
 }
 
+// ---------------------------------------------------------------------------
+//  AFFECTATION D'UN ACOMPTE À UN TRAITEMENT (§paiements-avance)
+// ---------------------------------------------------------------------------
+
+/**
+ * Affecte un ACOMPTE (paiement sans traitement) à un traitement existant.
+ *
+ * GARANTIES FINANCIÈRES :
+ *   - AUCUN second paiement n'est créé : c'est la LIGNE EXISTANTE qui est
+ *     mise à jour (`treatmentId` passe de NULL au traitement choisi). L'argent
+ *     ne peut donc jamais être compté deux fois — le total des paiements
+ *     VALIDE du cabinet reste inchangé.
+ *   - La DATE et le MONTANT originaux sont préservés (c'est le jour où
+ *     l'argent est entré qui compte).
+ *   - Le contrôle anti-dépassement est refait au moment de l'affectation :
+ *     un acompte plus gros que le prix du traitement est REFUSÉ (le reste
+ *     demeure un crédit patient).
+ *   - Traçabilité : une entrée d'audit note l'affectation.
+ */
+export async function affecterAcompte(
+  paiementId: string,
+  treatmentId: string,
+  contexte: JournalContext,
+): Promise<{ resteAPayerCentimes: number }> {
+  const paiement = await prisma.payment.findUnique({ where: { id: paiementId } })
+  if (!paiement) throw erreurs.introuvable('Paiement')
+
+  // Seul un ACOMPTE peut être affecté : un paiement déjà rattaché ne bouge pas.
+  if (paiement.treatmentId) {
+    throw erreurs.validation('Ce paiement est déjà affecté à un traitement.')
+  }
+  if (paiement.statut !== 'VALIDE') {
+    throw erreurs.validation('Seul un paiement valide peut être affecté.')
+  }
+
+  const traitement = await prisma.treatment.findUnique({
+    where: { id: treatmentId },
+    select: { id: true, patientId: true, prixTotalCentimes: true },
+  })
+  if (!traitement) throw erreurs.introuvable('Traitement')
+
+  // Cohérence patient : on ne peut affecter qu'au patient d'origine.
+  if (traitement.patientId !== paiement.patientId) {
+    throw erreurs.validation('Ce traitement n’appartient pas au patient de l’acompte.')
+  }
+
+  const resultat = await prisma.$transaction(async (tx) => {
+    const agregat = await tx.payment.aggregate({
+      where: { treatmentId, statut: 'VALIDE' },
+      _sum: { montantCentimes: true },
+    })
+    const controle = verifierAbsenceDepassement({
+      prixTotalCentimes: traitement.prixTotalCentimes,
+      totalDejaPayeCentimes: agregat._sum.montantCentimes ?? 0,
+      nouveauMontantCentimes: paiement.montantCentimes,
+    })
+    if (!controle.autorise) {
+      throw erreurs.montantInvalide(
+        `L'acompte dépasserait le prix du traitement de ${(controle.depassement / 100).toLocaleString('fr-FR')} DA. Il reste un crédit patient de ce montant.`,
+      )
+    }
+
+    // LA LIGNE EXISTANTE est rattachée : aucun second paiement, jamais.
+    await tx.payment.update({
+      where: { id: paiementId },
+      data: { treatmentId },
+    })
+
+    return { resteApresPaiement: controle.resteApresPaiement }
+  })
+
+  await journaliser(contexte, ACTIONS.PAIEMENT_AFFECTE, {
+    entityType: 'Paiement',
+    entityId: paiementId,
+    metadata: {
+      treatmentId,
+      patientId: paiement.patientId,
+      montantCentimes: paiement.montantCentimes,
+    },
+  })
+
+  return { resteAPayerCentimes: resultat.resteApresPaiement }
+}
+
 // -----------------------------------------------------------------------------
 //  LISTE DES PAIEMENTS (§26)
 // -----------------------------------------------------------------------------
@@ -248,8 +392,10 @@ export interface PaiementListe {
   notes: string | null
   patientId: string
   patient: { nom: string; prenom: string }
-  treatmentId: string
-  treatment: { typeTraitement: string }
+  /** NULL = ACOMPTE (§paiements-avance) : argent du patient sans traitement. */
+  treatmentId: string | null
+  /** Libellé du traitement, ou « Acompte » quand treatmentId est null. */
+  treatment: { typeTraitement: string } | null
   createdAt: Date
 }
 
@@ -323,7 +469,8 @@ export async function listerPaiements(
     patientId: ligne.patientId,
     patient: ligne.patient,
     treatmentId: ligne.treatmentId,
-    treatment: ligne.treatment,
+    // ACOMPTES : treatment est null — on le rend explicite à l'affichage.
+    treatment: ligne.treatment ? { typeTraitement: ligne.treatment.typeTraitement } : null,
     createdAt: ligne.createdAt,
   }))
 
@@ -395,7 +542,11 @@ export async function corrigerPaiement(
       throw erreurs.montantInvalide('Indiquez un nouveau montant supérieur à zéro.')
     }
     // Le nouveau montant ne doit pas faire depasser le prix du traitement en
-    // tenant compte du reste des paiements valides.
+    // tenant compte du reste des paiements valides. Un ACOMPTE (sans
+    // traitement) ne passe jamais par cette branche : garde explicite.
+    if (!paiement.treatmentId) {
+      throw erreurs.validation('Un acompte sans traitement ne peut pas être corrigé en montant.')
+    }
     const agregat = await prisma.payment.aggregate({
       where: { treatmentId: paiement.treatmentId, statut: 'VALIDE', id: { not: paiementId } },
       _sum: { montantCentimes: true },
@@ -976,8 +1127,15 @@ export async function detecterDepassements(): Promise<
 
   if (groupes.length === 0) return []
 
+  // Les ACOMPTES (treatmentId null) ne peuvent pas être en anomalie : ils ne
+  // sont rattachés à aucun traitement, donc sans prix à dépasser.
+  const groupesAvecTraitement = groupes.filter(
+    (groupe): groupe is typeof groupe & { treatmentId: string } => groupe.treatmentId !== null,
+  )
+  if (groupesAvecTraitement.length === 0) return []
+
   const traitements = await prisma.treatment.findMany({
-    where: { id: { in: groupes.map((groupe) => groupe.treatmentId) } },
+    where: { id: { in: groupesAvecTraitement.map((groupe) => groupe.treatmentId) } },
     select: { id: true, prixTotalCentimes: true },
   })
 
@@ -988,7 +1146,7 @@ export async function detecterDepassements(): Promise<
     prixTotalCentimes: number
     totalPayeCentimes: number
   }> = []
-  for (const groupe of groupes) {
+  for (const groupe of groupesAvecTraitement) {
     const prix = prixParId.get(groupe.treatmentId)
     const paye = groupe._sum.montantCentimes ?? 0
     if (prix !== undefined && paye > prix) {
