@@ -392,11 +392,6 @@ model Appointment {
   /// colonnes maintenues par déclencheur : lue mais jamais écrite.
   creneau String? @ignore
 
-  /// Statut de synchronisation (sync). Jamais expose a l'UI de planification :
-  /// sert uniquement a marquer les RDV dont le push a ete rejete pour
-  /// chevauchement (statut CONFLIT_A_ARBITRER).
-  syncStatut String @default("VALIDE")
-
   /// Motif d'annulation / d'absence, conserve pour l'historique.
   motifStatut String?
 
