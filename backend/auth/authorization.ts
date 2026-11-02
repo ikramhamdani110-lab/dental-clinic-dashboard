@@ -23,9 +23,12 @@ import { erreurs } from '@backend/errors/app-error'
 
 /**
  * Roles reellement autorises a utiliser l'application.
- * V1 : le medecin uniquement.
+ * MEDECIN : tableau de bord complet + finances privees.
+ * ASSISTANT : workflows secretaire (patients, RDV, traitements, paiements).
+ *            L'isolation des finances reste servie par `connexionFinanciere`
+ *            (refus de tout role != MEDECIN) et les sessions dediees.
  */
-export const UTILISATEURS_ACTIFS: readonly UserRole[] = ['MEDECIN'] as const
+export const UTILISATEURS_ACTIFS: readonly UserRole[] = ['MEDECIN', 'ASSISTANT'] as const
 
 /** Verifie qu'un role est active. */
 export function estRoleActif(role: UserRole): boolean {

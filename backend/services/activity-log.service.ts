@@ -27,6 +27,9 @@ export const ACTIONS = {
   CONNEXION_ECHOUEE: 'Tentative de connexion echouee',
   DECONNEXION: 'Deconnexion',
   SESSION_REVOQUEE: 'Session revoquee',
+  APPAREIL_APPAIRE: 'Appareil appaire',
+  APPAREIL_REVOQUE: 'Appareil revoke',
+  SYNC_CONFLIT_ARBITRE: 'Conflit de synchronisation arbitre',
   MOT_DE_PASSE_MODIFIE: 'Mot de passe modifie',
   MOT_DE_PASSE_REINITIALISE: 'Mot de passe reinitialise',
 
@@ -77,6 +80,19 @@ export const ACTIONS = {
 
   SUPPRESSION_DEFINITIVE: 'Suppression definitive',
   PARAMETRES_MODIFIES: 'Parametres modifies',
+  // Espace financier prive du medecin (/finances) — session dediee.
+  CONNEXION_FINANCIERE: 'Connexion espace financier',
+  DECONNEXION_FINANCIERE: 'Deconnexion espace financier',
+  REVENU_MANUEL_CREE: 'Revenu manuel cree',
+  REVENU_MANUEL_MODIFIE: 'Revenu manuel modifie',
+  REVENU_MANUEL_SUPPRIME: 'Revenu manuel supprime',
+  DEPENSE_CREEE: 'Depense creee',
+  DEPENSE_MODIFIEE: 'Depense modifiee',
+  DEPENSE_SUPPRIMEE: 'Depense supprimee',
+  PAIEMENT_AFFECTE: 'Acompte affecte a un traitement',
+  TRANSACTION_PERSONNELLE_CREEE: 'Transaction personnelle creee',
+  TRANSACTION_PERSONNELLE_MODIFIEE: 'Transaction personnelle modifiee',
+  TRANSACTION_PERSONNELLE_SUPPRIMEE: 'Transaction personnelle supprimee',
 } as const
 
 export type ActionJournal = (typeof ACTIONS)[keyof typeof ACTIONS]

@@ -17,6 +17,22 @@ import { PrismaClient } from '@prisma/client'
  */
 export const INTEGRATION_DB_URL = process.env.TEST_DATABASE_URL ?? ''
 
+/**
+ * Garde-fou : refuse toute base dont le nom ressemble a la base reelle du
+ * cabinet. Les tests d'integration effacent les donnees : par principe, ils ne
+ * doivent jamais pouvoir cibler `sahed_clinic` ou toute base non-jetable.
+ */
+const NOMS_INTERDITS = ['sahed_clinic', 'sahed_prod', 'production', 'cabinet']
+if (INTEGRATION_DB_URL.length > 0) {
+  const nomBase = new URL(INTEGRATION_DB_URL).pathname.replace(/^\//, '')
+  if (NOMS_INTERDITS.includes(nomBase)) {
+    throw new Error(
+      `TEST_DATABASE_URL interdit : "${nomBase}" est une base d'exploitation. ` +
+        'Utilisez une base jetable dediee aux tests.',
+    )
+  }
+}
+
 /** Vrai si une base d'integration est configuree. */
 export const hasIntegrationDb = INTEGRATION_DB_URL.length > 0
 
@@ -51,6 +67,12 @@ export async function truncateAll(): Promise<void> {
   const db = dbClient()
   await db.$executeRawUnsafe(`
     TRUNCATE TABLE
+      "sync_events",
+      "sync_seen_operations",
+      "sync_conflicts",
+      "sync_queue",
+      "sync_state",
+      "device_sessions",
       "payment_corrections",
       "payments",
       "prescription_items",
@@ -67,6 +89,9 @@ export async function truncateAll(): Promise<void> {
       "login_attempts",
       "password_reset_tokens",
       "sessions",
+      "manual_incomes",
+      "expenses",
+      "finance_sessions",
       "patients",
       "users",
       "settings"

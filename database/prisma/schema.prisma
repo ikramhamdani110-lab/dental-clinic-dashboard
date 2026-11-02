@@ -74,16 +74,21 @@ model User {
 
   sessions          Session[]
   activityLogs      ActivityLog[]
-  createdPayments   Payment[]             @relation("PaymentCreatedBy")
-  correctedPayments PaymentCorrection[]   @relation("CorrectionCreatedBy")
-  medicalRecords    MedicalRecord[]       @relation("MedicalRecordAuthor")
-  prescriptions     Prescription[]        @relation("PrescriptionAuthor")
-  odontogram        OdontogramEntry[]     @relation("OdontogramAuthor")
-  documents         Document[]            @relation("DocumentAuthor")
+  createdPayments   Payment[]               @relation("PaymentCreatedBy")
+  correctedPayments PaymentCorrection[]     @relation("CorrectionCreatedBy")
+  medicalRecords    MedicalRecord[]         @relation("MedicalRecordAuthor")
+  prescriptions     Prescription[]          @relation("PrescriptionAuthor")
+  odontogram        OdontogramEntry[]       @relation("OdontogramAuthor")
+  documents         Document[]              @relation("DocumentAuthor")
   reschedules       AppointmentReschedule[] @relation("RescheduleChangedBy")
   appointments      Appointment[]
-  trashEntries      TrashEntry[]          @relation("TrashDeletedBy")
+  trashEntries      TrashEntry[]            @relation("TrashDeletedBy")
   passwordResets    PasswordResetToken[]
+  manualIncomes     ManualIncome[]          @relation("ManualIncomeCreatedBy")
+  expenses          Expense[]               @relation("ExpenseCreatedBy")
+  personalTx        PersonalTransaction[]   @relation("PersonalTransactionCreatedBy")
+  financeSessions   FinanceSession[]        @relation("FinanceSessionUser")
+  deviceSessions    DeviceSession[]         @relation("DeviceSessionUser")
 
   @@map("users")
 }
@@ -116,12 +121,43 @@ model Session {
   @@map("sessions")
 }
 
+/// Session DEDIEE au site financier prive du medecin (/finances).
+///
+/// Volontairement SEPAREE de la session clinique (`sessions`) : le site
+/// financier ne peut jamais etre ouvert par la session de l'application de
+/// bureau, et reciproquement. Les deux mondes ne partagent AUCUN cookie.
+model FinanceSession {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation("FinanceSessionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 du jeton. Le jeton en clair n'est jamais stocke.
+  tokenHash String @unique
+
+  /// SHA-256 du jeton CSRF associe a la session financiere.
+  csrfTokenHash String
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("finance_sessions")
+}
+
 /// Journal des tentatives de connexion — sert au rate limiting et a l'audit.
 model LoginAttempt {
-  id         String   @id @default(uuid()) @db.Uuid
+  id         String  @id @default(uuid()) @db.Uuid
   email      String
   ipAddress  String
-  successful Boolean  @default(false)
+  successful Boolean @default(false)
 
   /// Raison technique uniquement, conservee cote serveur. Le message renvoye a
   /// l'interface reste generique (§6).
@@ -183,7 +219,7 @@ model Patient {
   age Int?
 
   dateNaissance DateTime?
-  sexe          Sexe    @default(NON_PRECISE)
+  sexe          Sexe      @default(NON_PRECISE)
 
   telephone           String
   telephoneSecondaire String?
@@ -245,6 +281,10 @@ model Treatment {
   prixTotalCentimes Int
 
   statut StatutTraitement @default(PLANIFIE)
+
+  /// Statut de synchronisation (sync). `A_ARBITRER` = conflit non résolu :
+  /// traitement verrouillé en lecture seule jusqu'à arbitrage médecin.
+  syncStatut String @default("VALIDE")
 
   dateDebut DateTime?
   dateFin   DateTime?
@@ -341,13 +381,29 @@ model Appointment {
 
   statut StatutRendezVous @default(PLANIFIE)
 
+  /// Statut de synchronisation (sync). `CONFLIT_A_ARBITRER` = le push de ce
+  /// RDV a ete rejete pour chevauchement de creneau et attend un arbitrage
+  /// humain (voir migration 20261101000000 et PLAN-SYNC-OFFLINE-B.md §1.5bis).
+  syncStatut String @default("VALIDE")
+
+  /// Intervalle tstzrange demi-ouvert '[dateDebut, dateFin)' recalculé par un
+  /// déclencheur PostgreSQL (voir migration 20261101000000). Utilisé par la
+  /// contrainte d'exclusion anti-chevauchement. Prisma ne gère pas les
+  /// colonnes maintenues par déclencheur : lue mais jamais écrite.
+  creneau String? @ignore
+
+  /// Statut de synchronisation (sync). Jamais expose a l'UI de planification :
+  /// sert uniquement a marquer les RDV dont le push a ete rejete pour
+  /// chevauchement (statut CONFLIT_A_ARBITRER).
+  syncStatut String @default("VALIDE")
+
   /// Motif d'annulation / d'absence, conserve pour l'historique.
   motifStatut String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  visit      TreatmentVisit?
+  visit       TreatmentVisit?
   reschedules AppointmentReschedule[]
 
   @@index([dateDebut])
@@ -408,8 +464,20 @@ model Payment {
   patientId String  @db.Uuid
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
 
-  treatmentId String    @db.Uuid
-  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Restrict)
+  ///
+  /// TRAITEMENT LIÉ — DÉSORMAIS NULLABLE (§paiements-avance, §secretaire-v2).
+  ///
+  /// `null` = ACOMPTE : argent réellement reçu par le cabinet AVANT tout
+  /// traitement. Il appartient au PATIENT (crédit), pas à un soin. Il n'est
+  /// jamais converti en « faux traitement » — la caisse reste exacte.
+  ///
+  /// Rattachement ultérieur (affectation à un traitement) se fait par une
+  /// opérion explicite et TRAÇABLE : on écrit le nouveau `treatmentId` dans
+  /// la ligne EXISTANTE, sans créer un second paiement — l'argent ne peut
+  /// donc jamais être compté deux fois.
+  ///
+  treatmentId String?    @db.Uuid
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: Restrict)
 
   /// Visite concernee, lorsqu'elle est connue (§13, §16).
   treatmentVisitId String?         @db.Uuid
@@ -426,6 +494,12 @@ model Payment {
   /// destructrice, le champ n'est simplement plus demande.
   methode MethodePaiement @default(ESPECES)
   statut  StatutPaiement  @default(VALIDE)
+
+  /// Statut de synchronisation (sync). `VALIDE` par defaut ; `A_ARBITRER`
+  /// signifie que ce paiement est en conflit de synchronisation et qu'il est
+  /// EXCLU de tous les calculs financiers jusqu'a resolution (voir
+  /// backend/services/finances.service.ts). Jamais expose au formulaire.
+  syncStatut String @default("VALIDE")
 
   notes String?
 
@@ -743,4 +817,287 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+// -----------------------------------------------------------------------------
+//  FINANCES PRIVEES DU MEDECIN — entrees manuelles et depenses
+// -----------------------------------------------------------------------------
+//
+//  Deux tables ADDITIVES, distinctes de `payments` :
+//
+//    - ManualIncome : argent recu HORS du circuit normal d'encaissement.
+//      Elles ne doublent JAMAIS un paiement deja enregistre par l'application
+//      de bureau : la prevention passe par la DISTINCTION des deux populations
+//      dans les totaux (revenus calcules sur payments VALIDE d'un cote,
+//      revenus manuels de l'autre), et par la regle d'usage documentee — une
+//      encaissement clinique se saisit dans l'application de bureau.
+//
+//    - Expense : depenses du cabinet (materiel, fournitures, loyer...).
+//
+//  Aucune table existante n'est modifiee. Les montants restent des CENTIMES
+//  ENTIERS, meme regle que les paiements.
+// -----------------------------------------------------------------------------
+
+model ManualIncome {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Montant en centimes. Strictement positif (verifie cote serveur).
+  montantCentimes Int
+
+  date DateTime
+
+  /// Catégorie libre (ex. « location salle », « revente produit »).
+  categorie String
+
+  description String?
+  notes       String?
+
+  createdById String @db.Uuid
+  createdBy   User   @relation("ManualIncomeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  /// Cle d'anti-doublon fournie par le formulaire : UNIQUE en base. Un second
+  /// envoi du meme formulaire ne cree pas une seconde ligne, exactement comme
+  /// la cle d'idempotence des paiements.
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([categorie])
+  @@map("manual_incomes")
+}
+
+model Expense {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Montant en centimes. Strictement positif (verifie cote serveur).
+  montantCentimes Int
+
+  date DateTime
+
+  /// Catégorie (EQUIPEMENT, FOURNITURES, LOYER, UTILITES, SALAIRES,
+  /// MAINTENANCE, AUTRE — liste libre, validee cote serveur).
+  categorie String
+
+  description String?
+  notes       String?
+
+  createdById String @db.Uuid
+  createdBy   User   @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  /// Cle d'anti-doublon fournie par le formulaire : UNIQUE en base.
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([categorie])
+  @@map("expenses")
+}
+
+// -----------------------------------------------------------------------------
+//  TRANSACTIONS PERSONNELLES DU MEDECIN — tres distinctes des finances du cabinet
+// -----------------------------------------------------------------------------
+//
+//  Table ADDITIVE. Elle ne reagit JAMAIS avec :
+//    - `payments` (paiements clinique enregistres par la secretaire) ;
+//    - `manual_incomes` / `expenses` (finances du cabinet) ;
+//    - les soldes patients (calcules sur traitements/paiements).
+//
+//  Une transaction personnelle appartient a UNE seule des trois natures :
+//
+//    - REVENUE      : argent personnel RECUT (+). Entre dans le solde personnel.
+//    - DEPENSE      : argent personnel DEPENSE (-). Entre dans le solde personnel.
+//    - DETTE_PERSONNELLE : argent personnellement DU (le medecin doit) ou DOU
+//      (on lui doit), selon `direction`. N'entre JAMAIS dans le solde personnel :
+//      ce n'est ni un revenu recu ni une depense effectuee.
+//
+//  La distinction direction/montant est explicite pour eviter toute convention
+//  de signe cachee : le montant est toujours strictement positif, la lecture
+//  depend uniquement de `nature` + `direction`.
+// -----------------------------------------------------------------------------
+
+model PersonalTransaction {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Montant en centimes, STRICTEMENT POSITIF (meme regle que les paiements).
+  /// Le signe n'est jamais stocke : la lecture depend de `nature`.
+  montantCentimes Int
+
+  /// Nature de la transaction personnelle.
+  nature PersonalNature
+
+  /// Pour DETTE_PERSONNELLE uniquement : DO (le medecin doit a un tiers) ou
+  /// DU_PAR_UN_TIERS (un tiers doit au medecin). IGNORE pour REVENUE/DEPENSE.
+  direction PersonalDirection?
+
+  /// Titre requis (ex. « Cadeau famille », « Remboursement laboratoire »).
+  titre String
+
+  date DateTime
+
+  /// Note libre, optionnelle.
+  note String?
+
+  createdById String @db.Uuid
+  createdBy   User   @relation("PersonalTransactionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  /// Cle d'anti-doublon : UNIQUE en base, meme mecanisme que `payments` et
+  /// `manual_incomes`. Un double envoi du formulaire ne cree pas deux lignes.
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([nature])
+  @@index([createdById])
+  @@map("personal_transactions")
+}
+
+enum PersonalNature {
+  REVENUE
+  DEPENSE
+  DETTE_PERSONNELLE
+
+  @@map("personal_nature")
+}
+
+enum PersonalDirection {
+  /// Le medecin DOIT cet argent a un tiers.
+  DO
+  /// Un tiers DOIT cet argent au medecin.
+  DU_PAR_UN_TIERS
+
+  @@map("personal_direction")
+}
+
+// =============================================================================
+//  SYNCHRONISATION OFFLINE-FIRST (Option B) — tables ADDITIVES
+// =============================================================================
+//  Ces tables supportent la synchronisation bidirectionnelle entre
+//  l'application de bureau (base embarquee) et la base centrale Neon.
+//  Aucune table existante n'est modifiee : voir la migration
+//  20261101000000_sync_offline_first pour les details SQL (contraintes,
+//  colonnes generees, index partiels).
+// =============================================================================
+
+/// Curseur de tirage (pull) par appareil et table metier. Persiste pour que
+/// la reprise apres crash/panne reprenne EXACTEMENT ou elle s'etait arretee.
+model SyncState {
+  id           String    @id @default(uuid()) @db.Uuid
+  deviceId     String    @db.Uuid
+  tableName    String
+  lastPulledAt DateTime  @default(now())
+  lastPushedAt DateTime?
+
+  @@unique([deviceId, tableName])
+  @@index([deviceId])
+  @@map("sync_state")
+}
+
+/// Idempotence stricte : un `operationId` donne ne peut produire d'effet
+/// qu'une seule fois. Un rejeu (ack perdu, retry applicatif, crash) renvoie
+/// `alreadyApplied = true` sans toucher aux donnees.
+model SyncSeenOperation {
+  operationId    String   @id @default(uuid()) @db.Uuid
+  deviceId       String   @db.Uuid
+  entityType     String
+  receivedAt     DateTime @default(now())
+  alreadyApplied Boolean  @default(false)
+
+  @@index([deviceId])
+  @@map("sync_seen_operations")
+}
+
+/// Journal serveur de la synchronisation (audit et diagnostic).
+/// `outcome` : APPLIED | ALREADY_APPLIED | CONFLICT | REJECTED | REVOKED |
+///             MIGRATION_BLOCKED.
+model SyncEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  deviceId    String   @db.Uuid
+  operationId String?  @db.Uuid
+  direction   String
+  entityType  String
+  entityId    String?  @db.Uuid
+  outcome     String
+  detail      String?
+  createdAt   DateTime @default(now())
+
+  @@index([deviceId, createdAt])
+  @@index([outcome, createdAt])
+  @@map("sync_events")
+}
+
+/// Conflit conserve en DOUBLE version. Jamais resolu automatiquement pour
+/// les donnees medicales ou financieres : `resolution` reste `PENDING`
+/// jusqu'a un arbitrage humain journalise.
+model SyncConflict {
+  id               String    @id @default(uuid()) @db.Uuid
+  entityType       String
+  entityId         String    @db.Uuid
+  fieldName        String?
+  localValue       String?
+  remoteValue      String?
+  localUpdatedAt   DateTime?
+  remoteUpdatedAt  DateTime?
+  deviceId         String    @db.Uuid
+  resolution       String    @default("PENDING")
+  resolvedById     String?   @db.Uuid
+  resolvedAt       DateTime?
+  resolutionChoice String?
+  archivedPayload  String?
+  createdAt        DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([resolution])
+  @@map("sync_conflicts")
+}
+
+/// Appairage et revocation des appareils. Le jeton n'est jamais stocke en
+/// clair : uniquement son SHA-256. La revocation est verifiee DANS la
+/// transaction de push (SELECT FOR SHARE) — jamais de course critique.
+model DeviceSession {
+  id                 String    @id @default(uuid()) @db.Uuid
+  deviceId           String    @db.Uuid
+  userId             String    @db.Uuid
+  user               User      @relation("DeviceSessionUser", fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash          String    @unique
+  recoveryPhraseHash String?
+  recoverySalt       String?
+  label              String?
+  createdAt          DateTime  @default(now())
+  lastSeenAt         DateTime  @default(now())
+  revokedAt          DateTime?
+  revokedReason      String?
+
+  @@index([deviceId])
+  @@index([userId])
+  @@map("device_sessions")
+}
+
+/// File d'attente LOCALE de l'appareil. Persistee en base embarquee :
+/// survit a un crash, a un redemarrage et a une coupure secteur. Chaque
+/// operation a un statut explicite : PENDING | SYNCING | SYNCHRONIZED |
+/// CONFLICT | REJECTED. Une operation en echec NE BLOQUE PAS les suivantes.
+model SyncQueueEntry {
+  operationId    String    @id @default(uuid()) @db.Uuid
+  deviceId       String    @db.Uuid
+  entityType     String
+  entityId       String    @db.Uuid
+  operation      String
+  payload        String
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  lastError      String?
+  conflictDetail String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  synchronizedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([deviceId])
+  @@map("sync_queue")
 }

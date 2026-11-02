@@ -24,8 +24,12 @@ const config = [
       '.dist/**',
       // Sortie du packager desktop (Next standalone embarque, electron-builder).
       'desktop/resources/**',
+      'desktop/runtime/**',
       'desktop/dist/**',
       'desktop/ico/**',
+      // Moteur de sync desktop : CommonJS autonome charge par le main process
+      // Electron, hors du build Next — lint via node --check uniquement.
+      'desktop/sync/**',
       '.local/**',
       '.tmp/**',
       '.preview/**',
@@ -36,8 +40,16 @@ const config = [
       // Scripts de QA / audit exécutés à la main hors application : ils ne
       // sont pas livrés et utilisent la console comme canal de sortie.
       'qa/**',
+      'desktop/reinitialiser-compte.cjs',
+      '.check-*.cjs',
+      '.test-*.cjs',
+      'inspect-pdf.cjs',
+      'scripts/test-pg-jetable.cjs',
+      'qa-pdf-e2e.cjs',
       'audit-*.mjs',
       'qa-*.mjs',
+      'qa-*.cjs',
+      'scripts/qa-*.cjs',
       'tmp-*.mjs',
       'tmp-*.cjs',
       'patch-anim.mjs',
@@ -68,6 +80,16 @@ const config = [
       // Scripts Electron / packaging / tests de demarrage (hors application).
       'desktop/*.mjs',
       'desktop/*.cjs',
+      // Outils de prévisualisation locale / vérification de bout en bout
+      // (base de démonstration uniquement, aucun chiffre réel).
+      'scripts/preview.mjs',
+      'scripts/verifier-previews.cjs',
+      'scripts/qa-secretary.mjs',
+      'scripts/qa-navigateur.mjs',
+      'scripts/qa-finances.mjs',
+      'scripts/qa-acompte.cjs',
+      'scripts/qa-affectation.cjs',
+      'scripts/iso-personnelles.cjs',
     ],
     rules: {
       'no-console': 'off',
