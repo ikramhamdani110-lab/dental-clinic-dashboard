@@ -19,6 +19,20 @@
 @import './theme.css';
 @import './components.css';
 @import './layout-app.css';
+/*
+ * SITE FINANCIER PRIVÉ — FEUILLE INDÉPENDANTE.
+ *
+ * Importée ici, et non dans la mise en page du groupe `(finances)`, parce que
+ * Next.js n'accepte les imports CSS que depuis un point d'entrée statique : la
+ * mise en page a besoin de lire les cookies, elle est donc asynchrone et ne
+ * peut pas porter un `import` de feuille de style.
+ *
+ * SANS CETTE LIGNE, `/finances` s'affichait sans aucune mise en forme — du
+ * texte brut empilé sur le fond, exactement le défaut signalé au cabinet.
+ * Toutes les règles sont préfixées `.finances-…` ou `.fn-…` : cette feuille ne
+ * peut pas toucher l'application clinique.
+ */
+@import './finances.css';
 
 /* ── Reinitialisation minimale ─────────────────────────────────────────────── */
 

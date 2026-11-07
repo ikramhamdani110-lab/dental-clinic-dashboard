@@ -40,8 +40,16 @@ export function FormulaireConnexionFinanciere(): React.JSX.Element {
         methode: 'POST',
         corps: { email, password: motDePasse },
       })
+      /*
+       * `router.push` SUFFIT : le cookie de session vient d'être posé, la page
+       * cible est rendue par le serveur avec la session neuve.
+       *
+       * L'ancien `router.refresh()` qui suivait déclenchait un second vol RSC
+       * concurrent de la navigation ; l'un des deux était annulé, et le routeur
+       * rejouait parfois l'URL courante (`/finances?_rsc=…`) en pleine saisie —
+       * la page semblait alors se recharger sous les doigts du médecin.
+       */
       router.push('/finances')
-      router.refresh()
     } catch (cause) {
       setErreur(cause instanceof ApiError ? cause.message : 'Connexion impossible. Réessayez.')
       setEnCours(false)

@@ -8,23 +8,27 @@ import {
 
 /**
  * =============================================================================
- *  MISE EN PAGE DU SITE FINANCIER PRIVÉ (§finances, §securite) — v7
+ *  MISE EN PAGE DU SITE FINANCIER PRIVÉ — APPLICATION SÉPARÉE
  * =============================================================================
  *
  *  PROTECTION SERVEUR, DENY BY DEFAULT :
  *
- *   Chaque page du site financier passe par cette mise en page, qui resout la
- *   session DEDIEE (`sahed_finance_session`) cote serveur. Sans session
- *   financiere valide — y compris avec une session clinique valide — l'acces
- *   est refuse et l'utilisateur est redirige vers la connexion financiere.
+ *   Chaque page du site financier passe par cette mise en page, qui résout la
+ *   session DÉDIÉE (`sahed_finance_session`) côté serveur. Sans session
+ *   financière valide — y compris avec une session clinique valide — l'accès
+ *   est refusé et l'utilisateur est redirigé vers la connexion financière.
  *
- *   L'ANCIEN BANDEAU BLANC (identité + email) a été RETIRÉ (§finances-v7) :
- *   aucune barre d'identité ne le remplace. Le bouton « Déconnecter » vit
- *   désormais dans l'en-tête de la page (composant DeconnexionFinances).
+ *  COQUILLE D'APPLICATION :
  *
- *   ATTENTION : cette verification protege le RENDU. Les DONNEES sont protegees
+ *   Le site financier n'a NI barre de navigation NI pied de page : la page
+ *   s'ouvre directement sur les trois boîtes. Il garde son propre thème
+ *   (`--fn-*`), en mode clair uniquement. Rien n'est emprunté au secrétariat :
+ *   ni la barre latérale, ni les en-têtes, ni les jetons de couleur du thème
+ *   clinique.
+ *
+ *   ATTENTION : cette vérification protège le RENDU. Les DONNÉES sont protégées
  *   par `routeFinanciere` sur chaque route API : un appel direct sans session
- *   financiere valide renvoie 401/403, quelle que soit la page.
+ *   financière valide renvoie 401/403, quelle que soit la page.
  */
 export default async function LayoutFinances({
   children,
@@ -34,13 +38,18 @@ export default async function LayoutFinances({
   const session = await resoudreSessionFinanciere(jeton)
 
   // Pas de session financière valide : retour à la connexion financière.
+  // (La session reste vérifiée ici, côté serveur, même si plus rien de son
+  // identité n'est affiché à l'écran.)
   if (!session) {
     redirect('/finances/connexion')
   }
 
   return (
-    /* THÈME PROPRE AU SITE FINANCIER : la coquille définit ses propres jetons
-     * (`--fn-*`) dans `finances.css` et ne dépend pas du thème clinique. */
+    /*
+     * THÈME PROPRE AU SITE FINANCIER : la coquille définit ses propres jetons
+     * (`--fn-*`) dans `finances.css` et ne dépend pas du thème clinique. Elle
+     * est TOUJOURS claire : aucun attribut `data-theme`, aucune bascule.
+     */
     <div className="finances-coquille">
       <main className="finances-contenu">{children}</main>
     </div>

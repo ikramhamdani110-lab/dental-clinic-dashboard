@@ -37,11 +37,10 @@ export const POST = routeFinanciere(async (request: NextRequest, contexte): Prom
 
   const resultat = await creerDepense(
     {
+      titre: donnees.titre,
       montantCentimes: donnees.montantCentimes,
       date: donnees.date,
-      categorie: donnees.categorie,
-      description: donnees.description ?? null,
-      notes: donnees.notes ?? null,
+      ...(donnees.categorie ? { categorie: donnees.categorie } : {}),
       idempotencyKey: donnees.idempotencyKey,
     },
     contexte.journal,

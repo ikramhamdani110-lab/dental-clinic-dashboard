@@ -14,11 +14,10 @@ export const PUT = routeFinanciereAvecId(async (request, id, contexte): Promise<
   await modifierDepense(
     id,
     {
+      ...(donnees.titre !== undefined ? { titre: donnees.titre } : {}),
       ...(donnees.montantCentimes !== undefined ? { montantCentimes: donnees.montantCentimes } : {}),
       ...(donnees.date !== undefined ? { date: donnees.date } : {}),
       ...(donnees.categorie !== undefined ? { categorie: donnees.categorie } : {}),
-      ...(donnees.description !== undefined ? { description: donnees.description } : {}),
-      ...(donnees.notes !== undefined ? { notes: donnees.notes } : {}),
     },
     contexte.journal,
   )

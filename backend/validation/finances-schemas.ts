@@ -52,23 +52,28 @@ export const revenuManuelModificationSchema = z.object({
 //  DÉPENSES DU CABINET (matériel, fournitures, loyer…)
 // -----------------------------------------------------------------------------
 
-/** Création. */
+/**
+ * Création — le médecin saisit TROIS champs : titre, montant, date.
+ *
+ * Le montant arrive déjà converti en centimes entiers par le formulaire
+ * (`parseMontantEnCentimes`). Une dépense « 0 » n'a aucun sens comptable : elle
+ * est refusée plutôt qu'enregistrée silencieusement.
+ */
 export const depenseCreationSchema = z.object({
+  titre: z.string().trim().min(1, 'Le titre est obligatoire.').max(120),
   montantCentimes: z.number().int().positive(),
   date: dateFinanciere,
-  categorie: z.string().trim().min(1).max(80),
-  description: z.string().trim().max(300).optional(),
-  notes: z.string().trim().max(1000).optional(),
+  /** Rangement interne facultatif — déduit du titre s'il est absent. */
+  categorie: z.string().trim().min(1).max(80).optional(),
   idempotencyKey: z.string().trim().min(8).max(120),
 })
 
 /** Modification (sans idempotencyKey). */
 export const depenseModificationSchema = z.object({
+  titre: z.string().trim().min(1, 'Le titre est obligatoire.').max(120).optional(),
   montantCentimes: z.number().int().positive().optional(),
   date: dateFinanciere.optional(),
   categorie: z.string().trim().min(1).max(80).optional(),
-  description: z.string().trim().max(300).optional(),
-  notes: z.string().trim().max(1000).optional(),
 })
 
 // -----------------------------------------------------------------------------

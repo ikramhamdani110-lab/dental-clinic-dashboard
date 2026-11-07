@@ -1,74 +1,95 @@
 /* =============================================================================
-   SITE FINANCIER PRIVÉ DU MÉDECIN — DESIGN SYSTÈME COMPLET (§finances-v6)
+   SITE FINANCIER PRIVÉ DU MÉDECIN — SYSTÈME VISUEL
    =============================================================================
-   IDENTITÉ VISUELLE PROPRE, SCOPÉE À CETTE APPLICATION ET ELLE SEULE.
+   APPLICATION VISUELLE ISOLÉE.
 
-   CAUSE RACINE des textes invisibles et de l'aspect « pale » des versions
-   précédentes : l'application clinique pose sur <html> un thème SOMBRE par
-   défaut (`--texte-principal: #edf3fc`, police Book Antiqua serif). La page
-   de connexion financière n'étant PAS dans la coquille protégée, elle
-   héritait de ce texte clair sur un fond devenu clair → invisible.
+   Les deux racines (`.finances-coquille`, `.finances-connexion`) redéfinissent
+   TOUS les jetons qu'elles utilisent : couleurs, police, surfaces, états. Rien
+   ne remonte chercher une valeur du thème clinique — c'est ce qui garantit un
+   rendu identique quel que soit le thème de l'application hôte.
 
-   CORRECTION DE FOND (pas des overrides empilés) :
-     1. Les deux racines financières (`.finances-coquille`, `.finances-
-        connexion`) redéfinissent TOUTES les jetons utilisés : couleurs,
-        POLICE, couleurs des titres, des champs, des boutons. Rien ne remonte
-        chercher une valeur du thème clinique.
-     2. La police est un sans-serif propre (`Segoe UI`/système) — le serif
-        clinique n'apparaît nulle part ici.
-     3. globals.css garde uniquement son isolation de fond via `:has()`.
+   UN SEUL MODE : CLAIR. Aucun attribut `data-theme`, aucune bascule, aucune
+   règle `prefers-color-scheme`. Le site financier ne suit pas le thème du
+   secrétariat et ne propose pas d'apparence sombre.
 
-   Palette imposée par la demande (§3, §5) :
-     fond #F1F6FB · surfaces #FFFFFF · texte #172B3A · secondaire #64748B
-     bordures #E2EAF1 · bleu principal #28658A · hover #F5F8FB
-   Boîtes : vert #E8F5EC/#176B45 · orange #FFF1DC/#985600 · rouge #FCEAE8/#A83232
+   IDENTITÉ : fond blanc cassé, trois familles sémantiques (vert / orange /
+   rouge) portées par des surfaces TRÈS claires et des montants SATURÉS.
+
+   PRINCIPES
+     - Aucun dégradé décoratif, aucune ombre lourde.
+     - Aucun bandeau de couleur sur le côté d'une carte.
+     - Rayon contenu (10–12 px) : une carte professionnelle, pas une bulle.
+     - Chiffres tabulaires partout où un montant est comparé à un autre.
+   ========================================================================== */
+
+/* =============================================================================
+   1. JETONS
    ========================================================================== */
 
 .finances-coquille,
 .finances-connexion {
-  /* ── Jetons de base ── */
-  --fn-fond: #f1f6fb;
+  /* Fonds : trois niveaux, du plus en retrait au plus élevé. */
+  --fn-fond: #f7f8f6;
   --fn-surface: #ffffff;
-  --fn-surface-hover: #f5f8fb;
-  --fn-bordure: #e2eaf1;
-  --fn-bordure-forte: #cdd9e4;
-  --fn-texte: #172b3a;
-  --fn-texte-2: #64748b;
-  --fn-bleu: #28658a;
-  --fn-bleu-fonce: #1e5271;
+  --fn-surface-2: #fafbf9;
+  --fn-surface-3: #f1f3ef;
 
-  /* ── Boîtes financières ── */
-  --fn-recu-fond: #e8f5ec;
-  --fn-recu-bord: #cfe7d8;
-  --fn-recu: #176b45;
-  --fn-recu-2: #2f8a63;
+  /* Bordures : servir à DÉTACHER une surface, jamais à la cerner. */
+  --fn-bordure: #e8eae5;
+  --fn-bordure-forte: #d8dcd4;
 
-  --fn-dette-fond: #fff1dc;
-  --fn-dette-bord: #f0ddb8;
-  --fn-dette: #985600;
-  --fn-dette-2: #b06f14;
+  /* Textes : trois niveaux, tous au-dessus de 4.5:1 sur leurs surfaces. */
+  --fn-texte: #1a2420;
+  --fn-texte-2: #4d5a54;
+  --fn-texte-3: #6f7b75;
 
-  --fn-depense-fond: #fceae8;
-  --fn-depense-bord: #f2cdc9;
-  --fn-depense: #a83232;
-  --fn-depense-2: #c04848;
+  /* Accent — vert profond du cabinet. */
+  --fn-accent: #1f6b4f;
+  --fn-accent-fonce: #17543e;
+  --fn-accent-doux: #eef5f1;
+  --fn-accent-texte: #ffffff;
 
-  /* ── POLICE : sans-serif professionnel, jamais le serif clinique ── */
-  --fn-police: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue',
-    Arial, sans-serif;
+  /* Sémantique financière — trois familles, jamais mélangées. */
+  --fn-revenu: #15803d;
+  --fn-revenu-doux: #f0faf3;
+  --fn-revenu-bord: #d3ecd9;
+
+  --fn-reste: #c2620a;
+  --fn-reste-doux: #fff8ee;
+  --fn-reste-bord: #f6e2c6;
+
+  --fn-depense: #c0392b;
+  --fn-depense-doux: #fdf3f2;
+  --fn-depense-bord: #f4d6d2;
+
+  --fn-succes: #15803d;
+  --fn-erreur: #c0392b;
+
+  /* Profondeur. */
+  --fn-ombre-carte: 0 1px 2px rgba(26, 36, 32, 0.04), 0 6px 18px rgba(26, 36, 32, 0.05);
+  --fn-ombre-survol: 0 2px 4px rgba(26, 36, 32, 0.05), 0 14px 32px rgba(26, 36, 32, 0.09);
+  --fn-ombre-flottant: 0 18px 48px rgba(26, 36, 32, 0.18);
+  --fn-voile: rgba(26, 36, 32, 0.38);
+
+  /* Police : sans-serif système, jamais le serif clinique. */
+  --fn-police: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', -apple-system,
+    BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Rythme. */
+  --fn-rayon: 12px;
+  --fn-rayon-petit: 8px;
+  --fn-transition: 160ms ease;
 
   font-family: var(--fn-police);
   background: var(--fn-fond);
   color: var(--fn-texte);
   min-height: 100vh;
-
-  /* Neutralise toute héritage de typographie du thème clinique. */
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  color-scheme: light;
 }
 
-/* Tous les titres à l'intérieur de l'espace financier reprennent la police
-   et une couleur sombre POSÉE — jamais celle du thème sombre clinique. */
+/* Titres : toujours la police de l'espace financier, jamais celle du thème hôte. */
 .finances-coquille h1,
 .finances-coquille h2,
 .finances-coquille h3,
@@ -76,12 +97,13 @@
 .finances-connexion h2 {
   font-family: var(--fn-police);
   color: var(--fn-texte);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  margin: 0;
 }
 
 /* =============================================================================
-   PAGE DE CONNEXION — composition centrée, carte blanche, tout lisible
-   ============================================================================= */
+   2. CONNEXION FINANCIÈRE
+   ========================================================================== */
 
 .finances-connexion {
   display: grid;
@@ -92,116 +114,94 @@
 .finances-connexion-carte {
   background: var(--fn-surface);
   border: 1px solid var(--fn-bordure);
-  border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(23, 43, 58, 0.10);
-  width: min(26rem, 100%);
-  padding: 2.5rem 2.25rem 2.25rem;
+  border-radius: var(--fn-rayon);
+  box-shadow: var(--fn-ombre-flottant);
+  width: min(25rem, 100%);
+  padding: 2.25rem 2rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
-/* ── Marque ── (retirée §v7 : formulaire seul) */
-.finances-marque-bloc {
-  display: none;
-}
-
-.finances-marque-symbole {
-  display: none;
-}
-
-.finances-marque-nom {
-  display: none;
-}
-
-.finances-marque-sous-titre {
-  display: none;
-}
-
-.finances-connexion-carte h1 {
-  display: none;
-}
-
+.finances-marque-bloc,
+.finances-marque-symbole,
+.finances-marque-nom,
+.finances-marque-sous-titre,
+.finances-connexion-carte h1,
 .finances-connexion-intro {
   display: none;
 }
 
-/* ── Champs ── */
 .finances-connexion-carte .finances-champ label {
   color: var(--fn-texte);
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .finances-connexion-carte input {
   background: var(--fn-surface);
   border: 1px solid var(--fn-bordure-forte);
   color: var(--fn-texte);
-  border-radius: 8px;
-  padding: 0.65rem 0.8rem;
+  border-radius: var(--fn-rayon-petit);
+  padding: 0.62rem 0.8rem;
   font-family: var(--fn-police);
-  font-size: 0.95rem;
+  font-size: 0.94rem;
 }
 
 .finances-connexion-carte input::placeholder {
-  color: #94a3b8;
+  color: var(--fn-texte-3);
 }
 
-/* Mot de passe : ligne champ + contrôle afficher/masquer. */
 .finances-champ-mdp {
   position: relative;
 }
 
 .finances-champ-mdp input {
   width: 100%;
-  padding-inline-end: 3rem;
+  padding-inline-end: 2.75rem;
 }
 
 .finances-bascule-mdp {
   position: absolute;
-  inset-inline-end: 0.45rem;
+  inset-inline-end: 0.4rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 0.95rem;
-  line-height: 1;
-  padding: 0.35rem;
+  color: var(--fn-texte-2);
+  padding: 0.3rem;
   border-radius: 6px;
 }
 
 .finances-bascule-mdp:hover {
-  background: var(--fn-surface-hover);
+  background: var(--fn-surface-3);
+  color: var(--fn-texte);
 }
 
-/* ── Bouton principal ── */
 .finances-connexion-carte .finances-bouton-principal {
   width: 100%;
-  background: var(--fn-bleu);
-  border-color: var(--fn-bleu);
-  color: #ffffff;
+  background: var(--fn-accent);
+  border-color: var(--fn-accent);
+  color: var(--fn-accent-texte);
   font-weight: 600;
-  font-size: 0.98rem;
-  padding: 0.7rem 1rem;
-  border-radius: 8px;
+  padding: 0.68rem 1rem;
+  border-radius: var(--fn-rayon-petit);
   margin-top: 0.4rem;
 }
 
 .finances-connexion-carte .finances-bouton-principal:hover:not(:disabled) {
-  background: var(--fn-bleu-fonce);
+  background: var(--fn-accent-fonce);
 }
 
-/* Note « environnement de démonstration » : lisible, discrète. */
 .finances-connexion-carte .finances-note {
-  background: var(--fn-surface-hover);
+  background: var(--fn-surface-2);
   border: 1px solid var(--fn-bordure);
-  border-inline-start: 3px solid var(--fn-bleu);
   color: var(--fn-texte-2);
-  border-radius: 8px;
-  font-size: 0.83rem;
-  margin: 1.1rem 0 0;
-  padding: 0.7rem 0.9rem;
+  border-radius: var(--fn-rayon-petit);
+  font-size: 0.82rem;
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.85rem;
 }
 
 .finances-connexion-carte .finances-note strong {
@@ -209,57 +209,774 @@
 }
 
 /* =============================================================================
-   COQUILLE PROTÉGÉE — en-tête, contenu, boîtes, filtres, panneaux
+   3. COQUILLE PROTÉGÉE — CONTENEUR
    ============================================================================= */
 
 .finances-contenu {
-  max-width: 1200px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 2.2rem 2rem 3.5rem;
+  padding: 2.5rem 2rem 3.5rem;
 }
 
 .finances-page {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1.5rem;
+  min-width: 0;
 }
 
-/* ── En-tête de page : titre + sous-titre à gauche, actions à droite ────── */
-
-.finances-entete {
+/* Barre minimale : retour (dans une catégorie) et déconnexion. Aucune marque,
+   aucun lien de navigation. */
+.finances-barre {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.25rem;
+}
+
+.finances-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: none;
+  border: none;
+  padding: 0.3rem 0.1rem;
+  color: var(--fn-texte-2);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color var(--fn-transition);
+}
+
+.finances-retour:hover {
+  color: var(--fn-texte);
+}
+
+.finances-retour:focus-visible {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 2px;
+}
+
+.finances-deconnexion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-inline-start: auto;
+}
+
+/* =============================================================================
+   4. LES TROIS BOÎTES — + REVENUS · DETTE · − DÉPENSES
+   =============================================================================
+
+   Point focal de la page : trois surfaces de même poids, chacune avec son
+   icône, son titre et son total. Aucune quatrième carte, aucun bandeau latéral.
+   ========================================================================== */
+
+.finances-boites {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
+  min-width: 0;
+}
+
+.finances-boite {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  min-width: 0;
+  text-align: start;
+  font-family: inherit;
+  background: var(--fn-surface);
+  border: 1px solid var(--fn-bordure);
+  border-radius: var(--fn-rayon);
+  padding: 1.5rem 1.5rem 1.4rem;
+  box-shadow: var(--fn-ombre-carte);
+  cursor: pointer;
+  transition:
+    transform var(--fn-transition),
+    box-shadow var(--fn-transition),
+    border-color var(--fn-transition),
+    background var(--fn-transition);
+}
+
+.finances-boite--revenus {
+  background: var(--fn-revenu-doux);
+  border-color: var(--fn-revenu-bord);
+}
+
+.finances-boite--dette {
+  background: var(--fn-reste-doux);
+  border-color: var(--fn-reste-bord);
+}
+
+.finances-boite--depenses {
+  background: var(--fn-depense-doux);
+  border-color: var(--fn-depense-bord);
+}
+
+.finances-boite:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--fn-ombre-survol);
+}
+
+.finances-boite--revenus:hover { border-color: #b9dfc4; }
+.finances-boite--dette:hover { border-color: #eccfa6; }
+.finances-boite--depenses:hover { border-color: #ecc0ba; }
+
+.finances-boite:focus-visible {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 3px;
+}
+
+.finances-boite-tete {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.finances-boite-libelle {
+  /*
+   * ALIGNEMENT DES TROIS TITRES.
+   *
+   * « + REVENUS » et « − DÉPENSES » commencent par un signe ; « DETTE » n'en a
+   * pas. La colonne de signe est donc réservée dans TOUTES les boîtes, même
+   * quand elle est vide, pour que les trois titres démarrent au même point.
+   */
+  display: grid;
+  grid-template-columns: 0.85rem 1fr;
+  align-items: center;
+  column-gap: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--fn-texte-2);
+  line-height: 1.3;
+}
+
+.finances-boite-signe {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1;
+}
+
+.finances-boite--revenus .finances-boite-signe { color: var(--fn-revenu); }
+.finances-boite--depenses .finances-boite-signe { color: var(--fn-depense); }
+
+.finances-boite-montant {
+  margin-top: 0.9rem;
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--fn-texte);
+  /* Un montant très long (millions) se replie au lieu d'élargir la boîte. */
+  overflow-wrap: anywhere;
+}
+
+.finances-boite--revenus .finances-boite-montant { color: var(--fn-revenu); }
+.finances-boite--dette .finances-boite-montant { color: var(--fn-reste); }
+.finances-boite--depenses .finances-boite-montant { color: var(--fn-depense); }
+
+.finances-boite-detail {
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--fn-texte-2);
+}
+
+/* =============================================================================
+   5. CATÉGORIE OUVERTE — EN-TÊTE, TOTAL, PÉRIODE
+   ========================================================================== */
+
+.finances-categorie {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+  background: var(--fn-surface);
+  border: 1px solid var(--fn-bordure);
+  border-radius: var(--fn-rayon);
+  box-shadow: var(--fn-ombre-carte);
+  padding: 1.5rem 1.5rem 1rem;
+}
+
+.finances-categorie-entete {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
-.finances-titre {
-  margin: 0;
-  font-size: 1.7rem;
+.finances-categorie-libelle {
+  font-size: 1.15rem;
   font-weight: 700;
-  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
-.finances-sous-titre {
-  margin: 0.2rem 0 0;
+.finances-categorie-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  margin-inline-start: auto;
+}
+
+.finances-categorie-total-libelle {
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fn-texte-3);
+}
+
+.finances-categorie-total-valeur {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fn-texte);
+}
+
+.finances-categorie--revenus .finances-categorie-total-valeur { color: var(--fn-revenu); }
+.finances-categorie--dette .finances-categorie-total-valeur { color: var(--fn-reste); }
+.finances-categorie--depenses .finances-categorie-total-valeur { color: var(--fn-depense); }
+
+/* =============================================================================
+   6. FILTRES DE PÉRIODE
+   ========================================================================== */
+
+/*
+ * SÉLECTEUR DE PÉRIODE GLOBAL.
+ *
+ * Il vit AU-DESSUS des trois boîtes, hors de toute carte : une seule période
+ * pour tout l'écran. Il pilote les trois totaux et la liste de la catégorie
+ * ouverte.
+ */
+.finances-filtres {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.finances-groupe-periode {
+  display: inline-flex;
+  background: var(--fn-surface-2);
+  border: 1px solid var(--fn-bordure);
+  border-radius: var(--fn-rayon-petit);
+  padding: 0.2rem;
+  gap: 0.1rem;
+  flex-wrap: wrap;
+}
+
+.finances-groupe-periode button {
+  border: none;
+  background: transparent;
   color: var(--fn-texte-2);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--fn-transition), color var(--fn-transition);
+}
+
+.finances-groupe-periode button:hover {
+  background: var(--fn-surface-3);
+  color: var(--fn-texte);
+}
+
+.finances-groupe-periode button[aria-pressed='true'] {
+  background: var(--fn-surface);
+  color: var(--fn-texte);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(26, 36, 32, 0.08);
+}
+
+.finances-groupe-periode button:focus-visible {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 1px;
+}
+
+.finances-filtres-dates {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.finances-filtres-dates label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fn-texte-3);
+}
+
+.finances-filtres-dates input {
+  background: var(--fn-surface);
+  border: 1px solid var(--fn-bordure-forte);
+  border-radius: var(--fn-rayon-petit);
+  color: var(--fn-texte);
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+.finances-filtres-dates input:focus {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 1px;
+  border-color: var(--fn-accent);
+}
+
+.finances-selecteur-annee {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fn-texte-3);
+}
+
+.finances-selecteur-annee select {
+  background: var(--fn-surface);
+  border: 1px solid var(--fn-bordure-forte);
+  border-radius: var(--fn-rayon-petit);
+  color: var(--fn-texte);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0.42rem 0.55rem;
+  cursor: pointer;
+}
+
+.finances-selecteur-annee select:focus {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 1px;
+}
+
+/* =============================================================================
+   7. LISTE — TABLEAU
+   ========================================================================== */
+
+.finances-liste {
+  min-width: 0;
+}
+
+.finances-table-enveloppe {
+  margin-inline: -1.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.finances-tableau {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 40rem;
+}
+
+.finances-tableau th,
+.finances-tableau td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--fn-bordure);
+  color: var(--fn-texte);
+  font-size: 0.86rem;
+  vertical-align: middle;
+}
+
+.finances-tableau thead th {
+  background: var(--fn-surface-2);
+  color: var(--fn-texte-3);
+  font-size: 0.71rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  border-bottom: 1px solid var(--fn-bordure);
+  white-space: nowrap;
+}
+
+.finances-tableau tbody tr {
+  transition: background var(--fn-transition);
+}
+
+.finances-tableau tbody tr:hover {
+  background: var(--fn-surface-2);
+}
+
+.finances-tableau tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.finances-col-montant {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.finances-col-actions {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.finances-montant-cellule {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fn-texte);
+}
+
+.finances-cellule-date {
+  color: var(--fn-texte-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.finances-cellule-texte {
+  color: var(--fn-texte-2);
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finances-cellule-sous {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.74rem;
+  color: var(--fn-texte-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Cellule d'identité : le nom seul, en texte.
+ *
+ * Aucun avatar, aucune pastille, aucun symbole : le nom démarre exactement au
+ * même point que les autres colonnes, dans les trois listes.
+ */
+.finances-cellule-nom {
+  font-weight: 500;
+  color: var(--fn-texte);
+  white-space: nowrap;
+}
+
+/* Badge de statut — pastille discrète, couleur sémantique. */
+.finances-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.finances-badge--valide {
+  background: var(--fn-revenu-doux);
+  border-color: var(--fn-revenu-bord);
+  color: var(--fn-revenu);
+}
+
+.finances-badge--partiel {
+  background: var(--fn-reste-doux);
+  border-color: var(--fn-reste-bord);
+  color: var(--fn-reste);
+}
+
+.finances-badge--non-paye {
+  background: var(--fn-depense-doux);
+  border-color: var(--fn-depense-bord);
+  color: var(--fn-depense);
+}
+
+.finances-montant--revenu { color: var(--fn-revenu); }
+.finances-montant--depense { color: var(--fn-depense); }
+.finances-montant--dette { color: var(--fn-reste); }
+.finances-montant--paye { color: var(--fn-texte-2); }
+
+.finances-actions-ligne {
+  display: inline-flex;
+  gap: 0.15rem;
+  justify-content: flex-end;
+}
+
+.finances-lien-action {
+  background: none;
+  border: none;
+  color: var(--fn-accent);
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.finances-lien-action:hover {
+  background: var(--fn-accent-doux);
+}
+
+.finances-lien-action:focus-visible {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 1px;
+}
+
+.finances-lien-action--danger {
+  color: var(--fn-depense);
+}
+
+.finances-lien-action--danger:hover {
+  background: var(--fn-depense-doux);
+}
+
+.finances-note-perimetre {
+  margin: 0 0 0.9rem;
+  padding: 0.55rem 0.8rem;
+  background: var(--fn-surface-2);
+  border: 1px solid var(--fn-bordure);
+  color: var(--fn-texte-2);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  border-radius: var(--fn-rayon-petit);
+}
+
+/* =============================================================================
+   8. ÉTATS — vide, erreur, chargement
+   ========================================================================== */
+
+.finances-etat-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--fn-texte-3);
+  border: 1px dashed var(--fn-bordure-forte);
+  border-radius: var(--fn-rayon-petit);
+  background: var(--fn-surface-2);
+}
+
+.finances-etat-vide--erreur {
+  border-style: solid;
+  border-color: var(--fn-depense-bord);
+  background: var(--fn-depense-doux);
+  color: var(--fn-depense);
+}
+
+.finances-etat-vide-titre {
+  margin: 0;
   font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--fn-texte);
 }
 
-.finances-entete-actions {
+.finances-etat-vide--erreur .finances-etat-vide-titre {
+  color: var(--fn-depense);
+}
+
+.finances-etat-vide-texte {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--fn-texte-2);
+}
+
+.finances-etat-vide .finances-bouton {
+  margin-top: 0.5rem;
+}
+
+.finances-erreur {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: var(--fn-depense-doux);
+  border: 1px solid var(--fn-depense-bord);
+  border-radius: var(--fn-rayon-petit);
+  padding: 0.85rem 1rem;
+  color: var(--fn-depense);
 }
 
-.finances-bandeau-actions {
+.finances-erreur-titre {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.finances-erreur-detail {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--fn-texte-2);
+}
+
+.finances-erreur-inline {
+  background: var(--fn-depense-doux);
+  border: 1px solid var(--fn-depense-bord);
+  color: var(--fn-depense);
+  border-radius: var(--fn-rayon-petit);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.84rem;
+  margin: 0.8rem 0;
+}
+
+/* Squelettes de chargement. */
+.finances-squelette {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
-/* Bouton « Déconnecter » — discret, dans l'en-tête de page (droite). */
+.finances-squelette-ligne {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.6fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.finances-squelette-bloc {
+  height: 0.85rem;
+  border-radius: 4px;
+  background: var(--fn-surface-3);
+  animation: fn-pulse 1.4s ease-in-out infinite;
+}
+
+.finances-squelette-bloc--large {
+  height: 1rem;
+}
+
+.finances-squelette-bloc--court {
+  width: 60%;
+  justify-self: end;
+}
+
+.finances-squelette-inline {
+  display: inline-block;
+  width: 6.5rem;
+  height: 1.25rem;
+  border-radius: 4px;
+  background: var(--fn-surface-3);
+  animation: fn-pulse 1.4s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+.finances-squelette-inline--large {
+  width: 9.5rem;
+  height: 1.6rem;
+}
+
+@keyframes fn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Message de confirmation après une écriture. */
+.finances-toast {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--fn-revenu-bord);
+  background: var(--fn-revenu-doux);
+  color: var(--fn-revenu);
+  border-radius: var(--fn-rayon-petit);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+/* =============================================================================
+   9. BOUTONS
+   ========================================================================== */
+
+.finances-bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--fn-rayon-petit);
+  border: 1px solid var(--fn-bordure-forte);
+  background: var(--fn-surface);
+  color: var(--fn-texte);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.87rem;
+  font-weight: 500;
+  transition: background var(--fn-transition), border-color var(--fn-transition);
+}
+
+.finances-bouton:hover:not(:disabled) {
+  background: var(--fn-surface-3);
+}
+
+.finances-bouton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.finances-bouton:focus-visible {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 2px;
+}
+
+.finances-bouton-principal {
+  background: var(--fn-accent);
+  border-color: var(--fn-accent);
+  color: var(--fn-accent-texte);
+  font-weight: 600;
+}
+
+.finances-bouton-principal:hover:not(:disabled) {
+  background: var(--fn-accent-fonce);
+  border-color: var(--fn-accent-fonce);
+}
+
+.finances-bouton-plus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--fn-accent);
+  border: 1px solid var(--fn-accent);
+  color: var(--fn-accent-texte);
+  font-family: inherit;
+  font-size: 0.87rem;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  border-radius: var(--fn-rayon-petit);
+  cursor: pointer;
+  transition: background var(--fn-transition);
+}
+
+.finances-bouton-plus:hover {
+  background: var(--fn-accent-fonce);
+}
+
+.finances-bouton-plus:focus-visible {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 2px;
+}
+
 .finances-bouton-discret {
   color: var(--fn-texte-2);
   border-color: var(--fn-bordure);
@@ -271,19 +988,319 @@
   border-color: var(--fn-bordure-forte);
 }
 
-.finances-deconnexion {
+.finances-bouton-danger {
+  background: var(--fn-depense);
+  border-color: var(--fn-depense);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.finances-bouton-danger:hover:not(:disabled) {
+  background: var(--fn-depense);
+  filter: brightness(0.92);
+}
+
+.finances-bouton-danger-discret {
+  color: var(--fn-depense);
+  border-color: var(--fn-depense-bord);
+}
+
+.finances-bouton-danger-discret:hover:not(:disabled) {
+  background: var(--fn-depense-doux);
+}
+
+/* Pagination serveur. */
+.finances-pagination {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 0.25rem 0.15rem;
+  border-top: 1px solid var(--fn-bordure);
+  margin-top: 0.25rem;
+}
+
+.finances-pagination-info {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--fn-texte-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.finances-pagination-controles {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.finances-bouton-page {
+  min-width: 2.15rem;
+  padding: 0.36rem 0.6rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.finances-bouton-page[aria-current='page'] {
+  background: var(--fn-accent);
+  border-color: var(--fn-accent);
+  color: var(--fn-accent-texte);
+  font-weight: 700;
+}
+
+/* =============================================================================
+   10. MODALE ET VOILE
+   ========================================================================== */
+
+.finances-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--fn-voile);
+  display: flex;
+  justify-content: flex-end;
+  animation: fn-voile-entree 160ms ease both;
+}
+
+.finances-voile--centre {
+  justify-content: center;
+  align-items: center;
+}
+
+@keyframes fn-voile-entree {
+  from { opacity: 0; }
+}
+
+.finances-modale {
+  width: min(30rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  margin: auto;
+  overflow-y: auto;
+  background: var(--fn-surface);
+  border: 1px solid var(--fn-bordure);
+  border-radius: var(--fn-rayon);
+  box-shadow: var(--fn-ombre-flottant);
+  padding: 1.5rem;
+}
+
+.finances-modale-depense {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  animation: fn-modale-entree 160ms ease both;
+}
+
+@keyframes fn-modale-entree {
+  from { transform: translateY(0.6rem); opacity: 0; }
+}
+
+.finances-modale-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.finances-modale-titre {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.finances-modale-depense .finances-formulaire {
+  margin-top: 0;
+}
+
+.finances-fermer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--fn-bordure);
+  border-radius: 6px;
+  background: var(--fn-surface);
+  color: var(--fn-texte-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.finances-fermer:hover {
+  background: var(--fn-surface-3);
+  color: var(--fn-texte);
+}
+
+.finances-fermer:focus-visible {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 1px;
+}
+
+/* =============================================================================
+   11. FORMULAIRES
+   ========================================================================== */
+
+.finances-formulaire {
+  margin-top: 0.5rem;
+}
+
+.finances-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.finances-champ label {
+  color: var(--fn-texte);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.finances-champ input,
+.finances-champ select,
+.finances-champ textarea {
+  background: var(--fn-surface);
+  border: 1px solid var(--fn-bordure-forte);
+  border-radius: var(--fn-rayon-petit);
+  color: var(--fn-texte);
+  padding: 0.55rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+  resize: vertical;
+}
+
+.finances-champ input::placeholder,
+.finances-champ textarea::placeholder {
+  color: var(--fn-texte-3);
+}
+
+.finances-champ input:focus,
+.finances-champ select:focus,
+.finances-champ textarea:focus {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 1px;
+  border-color: var(--fn-accent);
+}
+
+.finances-champ-groupe {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--fn-bordure-forte);
+  border-radius: var(--fn-rayon-petit);
+  background: var(--fn-surface);
+  overflow: hidden;
+}
+
+.finances-champ .finances-champ-groupe input {
+  border: none;
+  border-radius: 0;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+}
+
+.finances-champ .finances-champ-groupe input:focus {
+  outline: none;
+}
+
+.finances-champ-groupe:focus-within {
+  outline: 2px solid var(--fn-accent);
+  outline-offset: 1px;
+}
+
+.finances-champ-suffixe {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  background: var(--fn-surface-2);
+  border-inline-start: 1px solid var(--fn-bordure);
+  color: var(--fn-texte-3);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.finances-champ-erreur {
+  color: var(--fn-depense);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.finances-apercu {
+  margin: -0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--fn-texte-3);
+}
+
+.finances-apercu strong {
+  color: var(--fn-texte);
+  font-variant-numeric: tabular-nums;
+}
+
+.finances-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.finances-actions--reparties {
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--fn-bordure);
+}
+
+.finances-actions-groupe {
+  display: flex;
   gap: 0.6rem;
 }
 
-.finances-erreur-inline {
-  color: var(--fn-depense);
-  font-size: 0.85rem;
+.finances-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1rem;
+  border: 1px solid var(--fn-depense-bord);
+  background: var(--fn-depense-doux);
+  border-radius: var(--fn-rayon-petit);
 }
 
-/* Label accessible mais masqué visuellement (formulaires minimalistes). */
-.finances-sr-only {
+.finances-confirmation-titre {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--fn-depense);
+}
+
+.finances-confirmation-texte {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--fn-texte-2);
+}
+
+.finances-confirmation-erreur {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--fn-depense);
+  font-weight: 600;
+}
+
+/* =============================================================================
+   12. TEXTE UTILITAIRE
+   ========================================================================== */
+
+.finances-sur-titre {
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fn-accent);
+}
+
+.fn-sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -295,487 +1312,163 @@
   border: 0;
 }
 
-/* ── LES TROIS BOÎTES ───────────────────────────────────────────────────── */
-
-.finances-boites {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
-}
-
-.finances-boite {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  text-align: left;
-  border-radius: 14px;
-  padding: 1.4rem 1.5rem 1.3rem;
-  cursor: pointer;
-  color: inherit;
-  font-family: inherit;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.finances-boite:hover {
-  border-color: var(--fn-bordure-forte);
-  box-shadow: 0 6px 18px rgba(23, 43, 58, 0.09);
-}
-
-.finances-boite:focus-visible {
-  outline: 2px solid var(--fn-bleu);
-  outline-offset: 2px;
-}
-
-.finances-boite[aria-expanded='true'] {
-  border-color: var(--fn-bleu);
-  box-shadow: 0 0 0 1px var(--fn-bleu) inset;
-}
-
-.finances-boite-recu {
-  background: var(--fn-recu-fond);
-  border: 1px solid var(--fn-recu-bord);
-}
-
-.finances-boite-dette {
-  background: var(--fn-dette-fond);
-  border: 1px solid var(--fn-dette-bord);
-}
-
-.finances-boite-depense {
-  background: var(--fn-depense-fond);
-  border: 1px solid var(--fn-depense-bord);
-}
-
-/* Icône discrète, dans la famille de la boîte. */
-.finances-boite-icone {
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1;
-  margin-bottom: 0.55rem;
-}
-
-.finances-boite-recu .finances-boite-icone { color: var(--fn-recu-2); }
-.finances-boite-dette .finances-boite-icone { color: var(--fn-dette-2); }
-.finances-boite-depense .finances-boite-icone { color: var(--fn-depense-2); }
-
-.finances-boite-libelle {
-  font-weight: 500;
-  font-size: 0.92rem;
-}
-
-.finances-boite-recu .finances-boite-libelle { color: #2c5c44; }
-.finances-boite-dette .finances-boite-libelle { color: #7a5310; }
-.finances-boite-depense .finances-boite-libelle { color: #7c2b2b; }
-
-/* LE MONTANT — point focal. ~32px, semi-bold, couleur foncée de la famille,
-   chiffres tabulaires. La devise est rendue plus petite pour ne pas rivaliser. */
-.finances-boite-montant {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-  margin-top: 0.35rem;
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-}
-
-.finances-boite-montant .finances-devise {
-  font-size: 1rem;
-  font-weight: 600;
-  opacity: 0.75;
-}
-
-.finances-boite-recu .finances-boite-montant { color: var(--fn-recu); }
-.finances-boite-dette .finances-boite-montant { color: var(--fn-dette); }
-.finances-boite-depense .finances-boite-montant { color: var(--fn-depense); }
-
-/* Couleurs de montants dans les listes (même familles). */
-.finances-couleur-recu { color: var(--fn-recu); }
-.finances-couleur-dette { color: var(--fn-dette); }
-.finances-couleur-depense { color: var(--fn-depense); }
-
-.finances-boite-detail {
-  color: var(--fn-texte-2);
-  font-size: 0.82rem;
-  margin-top: 0.3rem;
-  line-height: 1.45;
-}
-
-/* Devise + montants des lignes de liste. */
-.finances-montant-cellule {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.finances-montant-cellule .finances-devise {
-  font-size: 0.8em;
-  font-weight: 500;
-  margin-inline-start: 0.2rem;
-}
-
-/* ── Filtres de période : groupe segmenté ───────────────────────────────── */
-
-.finances-outils {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.finances-groupe-periode {
-  display: inline-flex;
-  background: var(--fn-surface);
-  border: 1px solid var(--fn-bordure);
-  border-radius: 10px;
-  padding: 0.25rem;
-  gap: 0.15rem;
-  flex-wrap: wrap;
-}
-
-.finances-groupe-periode button {
-  border: none;
-  background: transparent;
-  color: var(--fn-texte-2);
-  font-family: inherit;
-  font-size: 0.87rem;
-  font-weight: 500;
-  padding: 0.45rem 0.85rem;
-  border-radius: 7px;
-  cursor: pointer;
+/*
+ * VISIBLEMENT MASQUÉ DANS UN CELLULAIRE DE TABLEAU.
+ *
+ * Le lien « Passer à la section suivante » est `position: absolute`. Placé dans
+ * un `<th>`, il se positionne par rapport à la vue, mais ce tableau est LARGE
+ * (640 px) et défile dans sa carte : sa largeur réelle élargirait alors le
+ * document, et la page ENTIÈRE se mettrait à défiler horizontalement sur mobile.
+ */
+.finances-tableau .fn-sr-only {
+  position: static;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
-  transition: background 0.12s ease, color 0.12s ease;
+  border: 0;
 }
 
-.finances-groupe-periode button:hover {
-  background: var(--fn-surface-hover);
-  color: var(--fn-texte);
-}
+/* =============================================================================
+   13. RESPONSIVE
+   ========================================================================== */
 
-.finances-groupe-periode button[aria-pressed='true'] {
-  background: var(--fn-bleu);
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.finances-groupe-periode button:focus-visible {
-  outline: 2px solid var(--fn-bleu);
-  outline-offset: 1px;
-}
-
-.finances-filtres-dates {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.finances-filtres-dates input {
-  background: var(--fn-surface);
-  border: 1px solid var(--fn-bordure-forte);
-  border-radius: 8px;
-  color: var(--fn-texte);
-  padding: 0.5rem 0.65rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color-scheme: light;
-}
-
-.finances-filtres-dates input:focus {
-  outline: 2px solid var(--fn-bleu);
-  outline-offset: 1px;
-}
-
-/* ── Mention d'aide ── */
-.finances-mention {
-  color: var(--fn-texte-2);
-  font-size: 0.85rem;
-  max-width: 62rem;
-  line-height: 1.55;
-}
-
-/* ── Boutons ── */
-.finances-bouton {
-  padding: 0.55rem 1.05rem;
-  border-radius: 9px;
-  border: 1px solid var(--fn-bordure-forte);
-  background: var(--fn-surface);
-  color: var(--fn-texte);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: background 0.12s ease, border-color 0.12s ease;
-}
-
-.finances-bouton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.finances-bouton:hover:not(:disabled) {
-  background: var(--fn-surface-hover);
-}
-
-.finances-bouton:focus-visible {
-  outline: 2px solid var(--fn-bleu);
-  outline-offset: 2px;
-}
-
-.finances-bouton-principal {
-  background: var(--fn-bleu);
-  border-color: var(--fn-bleu);
-  color: #ffffff;
-}
-
-.finances-bouton-principal:hover:not(:disabled) {
-  background: var(--fn-bleu-fonce);
-}
-
-.finances-bouton-danger {
-  background: var(--fn-depense);
-  border-color: var(--fn-depense);
-  color: #fff;
-}
-
-.finances-bouton-danger:hover:not(:disabled) {
-  background: var(--fn-depense-2);
-}
-
-/* Bouton « + Nouvelle dépense » : bleu plein, proportion raisonnable. */
-.finances-bouton-plus {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--fn-bleu);
-  border: none;
-  color: #ffffff;
-  font-family: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
-  padding: 0.6rem 1.15rem;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.12s ease, box-shadow 0.12s ease;
-}
-
-.finances-bouton-plus:hover {
-  background: var(--fn-bleu-fonce);
-  box-shadow: 0 3px 10px rgba(40, 101, 138, 0.25);
-}
-
-.finances-bouton-plus:focus-visible {
-  outline: 2px solid var(--fn-bleu-fonce);
-  outline-offset: 2px;
-}
-
-.finances-bouton-plus .finances-plus-sign {
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-/* ── Panneaux détaillés ── */
-
-.finances-panneau {
-  background: var(--fn-surface);
-  border: 1px solid var(--fn-bordure);
-  border-radius: 14px;
-  padding: 1.5rem 1.6rem;
-  overflow-x: auto;
-  box-shadow: 0 2px 10px rgba(23, 43, 58, 0.05);
-}
-
-.finances-panneau h2 {
-  margin: 0 0 0.9rem;
-  font-size: 1.08rem;
-  font-weight: 700;
-  color: var(--fin-texte, var(--fn-texte));
-}
-
-.finances-panneau-recu { border-top: none; }
-.finances-panneau-dette { border-top: none; }
-.finances-panneau-depense { border-top: none; }
-
-.finances-panneau-personnel { display: none; } /* section retirée (§v4) */
-
-.finances-carte {
-  background: var(--fn-surface);
-  border: 1px solid var(--fin-bordure, var(--fn-bordure));
-  border-radius: 14px;
-  padding: 1.6rem;
-  box-shadow: 0 2px 10px rgba(23, 43, 58, 0.05);
-}
-
-.finances-carte h2 {
-  margin: 0 0 0.6rem;
-  font-size: 1.15rem;
-}
-
-.finances-tableau {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.finances-tableau th,
-.finances-tableau td {
-  padding: 0.72rem 0.85rem;
-  border-bottom: 1px solid var(--fn-bordure);
-  text-align: left;
-  color: var(--fn-texte);
-}
-
-.finances-tableau tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.finances-tableau tbody tr:hover {
-  background: var(--fn-surface-hover);
-}
-
-.finances-tableau thead th {
-  color: var(--fn-texte-2);
-  font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-
-.finances-nombre {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums;
-}
-
-.finances-tableau td button {
-  background: none;
-  border: none;
-  color: var(--fn-bleu);
-  cursor: pointer;
-  padding: 0.2rem 0.45rem;
-  font: inherit;
-  font-size: 0.86rem;
-  border-radius: 5px;
-}
-
-.finances-tableau td button:hover {
-  background: var(--fn-surface-hover);
-  text-decoration: underline;
-}
-
-.finances-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.finances-pagination button {
-  background: var(--fn-surface);
-  border: 1px solid var(--fn-bordure-forte);
-  border-radius: 8px;
-  padding: 0.45rem 0.95rem;
-  cursor: pointer;
-  color: var(--fn-texte);
-  font-family: inherit;
-  font-size: 0.88rem;
-}
-
-.finances-pagination button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.finances-pagination span {
-  color: var(--fn-texte-2);
-  font-size: 0.86rem;
-}
-
-/* ── Formulaire (modale/panneau) ── */
-.finances-champ {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-.finances-champ label {
-  color: var(--fn-texte);
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-
-.finances-champ input,
-.finances-champ select,
-.finances-champ textarea {
-  background: var(--fn-surface);
-  border: 1px solid var(--fn-bordure-forte);
-  border-radius: 8px;
-  color: var(--fn-texte);
-  padding: 0.6rem 0.75rem;
-  font-family: inherit;
-  font-size: 0.94rem;
-  color-scheme: light;
-}
-
-.finances-champ input::placeholder,
-.finances-champ textarea::placeholder {
-  color: #94a3b8;
-}
-
-.finances-champ input:focus,
-.finances-champ select:focus,
-.finances-champ textarea:focus {
-  outline: 2px solid var(--fn-bleu);
-  outline-offset: 1px;
-  border-color: var(--fn-bleu);
-}
-
-.finances-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1.1rem;
-}
-
-.finances-erreur {
-  background: var(--fn-depense-fond);
-  border: 1px solid var(--fn-depense-bord);
-  color: var(--fn-depense);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  margin-bottom: 0.9rem;
-}
-
-/* ── Responsive ─────────────────────────────────────────────────────────── */
-
-@media (max-width: 64rem) {
+@media (max-width: 60rem) {
   .finances-boites {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .finances-boite-montant {
-    font-size: 1.75rem;
+  /* La boîte Dépenses reste en pleine largeur sous les deux autres. */
+  .finances-boite--depenses {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 48rem) {
   .finances-contenu {
-    padding: 1.4rem 1rem 2.5rem;
+    padding: 1.35rem 1rem 2.5rem;
   }
 
-  .finances-titre {
-    font-size: 1.45rem;
+  .finances-boites {
+    grid-template-columns: 1fr;
   }
 
-  .finances-entete {
-    flex-direction: column;
+  .finances-boite--depenses {
+    grid-column: auto;
   }
 
+  .finances-boite-montant {
+    font-size: 1.85rem;
+  }
+
+  .finances-categorie {
+    padding: 1.15rem 1rem 0.75rem;
+  }
+
+  .finances-categorie-entete {
+    align-items: flex-start;
+  }
+
+  .finances-categorie-total {
+    align-items: flex-start;
+    margin-inline-start: 0;
+    width: 100%;
+  }
+
+  .finances-table-enveloppe {
+    margin-inline: -1rem;
+  }
+
+  .finances-pagination {
+    justify-content: center;
+  }
+
+  .finances-modale {
+    width: calc(100% - 1.25rem);
+    max-height: calc(100% - 1.25rem);
+    padding: 1.15rem;
+  }
+
+  .finances-actions--reparties {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .finances-actions-groupe {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 30rem) {
   .finances-connexion-carte {
-    padding: 2rem 1.5rem 1.75rem;
+    padding: 1.75rem 1.25rem 1.5rem;
+  }
+
+  .finances-boite {
+    padding: 1.25rem 1.15rem 1.15rem;
+  }
+
+  .finances-boite-montant {
+    font-size: 1.65rem;
+  }
+
+  .finances-tableau th,
+  .finances-tableau td {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .finances-pagination-controles {
+    justify-content: center;
+  }
+
+  .finances-bouton-page {
+    min-width: 1.9rem;
+    padding: 0.34rem 0.5rem;
+  }
+}
+
+/* =============================================================================
+   14. MOUVEMENT RÉDUIT ET IMPRESSION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .finances-voile,
+  .finances-modale-depense,
+  .finances-squelette-bloc,
+  .finances-squelette-inline {
+    animation: none;
+  }
+
+  .finances-tableau tbody tr,
+  .finances-boite,
+  .finances-bouton {
+    transition: none;
+  }
+
+  .finances-boite:hover {
+    transform: none;
+  }
+}
+
+@media print {
+  .finances-barre,
+  .finances-filtres,
+  .finances-col-actions {
+    display: none;
+  }
+
+  .finances-coquille {
+    background: #ffffff;
+  }
+
+  .finances-boite,
+  .finances-categorie {
+    box-shadow: none;
+    break-inside: avoid;
   }
 }
