@@ -1988,3 +1988,503 @@ html[dir='rtl'] .salutation {
   font-family: 'Noto Naskh Arabic', 'Segoe UI', Tahoma, var(--police-texte);
   font-style: normal;
 }
+
+/* =============================================================================
+ *  ÉCRAN DE PREMIÈRE CONNEXION — EXIGENCES DU MOT DE PASSE
+ * =============================================================================
+ *
+ *  Ces règles ne concernent QUE le formulaire de changement de mot de passe.
+ *  Elles prolongent le langage visuel de la connexion (filets fins, étiquettes
+ *  flottantes, pas de rectangles) : aucune boîte grise, aucun panneau encadré.
+ *
+ *  L'état de chaque exigence est porté par une classe (`--ok`) et non par un
+ *  style en ligne : la coche, le texte et l'accessibilité restent cohérents.
+ */
+
+/* ── Conteneur d'un champ mot de passe + contrôle œil ─────────────────────── */
+
+/*
+ * Le champ garde sa largeur naturelle ; l'œil se pose dans la marge droite
+ * BAISSE de la ligne de base du champ, pour ne jamais chevaucher la valeur
+ * saisie (qui grandit vers la gauche, LTR comme RTL).
+ */
+.connexion-champ-mdp {
+  position: relative;
+}
+
+.connexion-champ-mdp .connexion-champ {
+  padding-inline-end: 2.25rem;
+}
+
+.mdp-bascule {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 50%;
+  transform: translateY(-40%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--texte-tertiaire);
+  cursor: pointer;
+  transition: color var(--transition-rapide), background-color var(--transition-rapide);
+}
+
+.mdp-bascule:hover {
+  color: var(--texte-principal);
+  background-color: var(--survol);
+}
+
+.mdp-bascule:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  color: var(--texte-principal);
+}
+
+.mdp-bascule svg {
+  display: block;
+}
+
+/* ── Liste des exigences ──────────────────────────────────────────────────── */
+
+.mdp-exigences {
+  text-align: left;
+  padding-top: 0.15rem;
+}
+
+.mdp-exigences-titre {
+  margin: 0 0 0.5rem;
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-secondaire);
+  line-height: 1.45;
+}
+
+.mdp-exigences-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem 1rem;
+}
+
+.mdp-exigence {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+  line-height: 1.5;
+  transition: color var(--transition-rapide);
+}
+
+.mdp-exigence-marque {
+  flex: 0 0 auto;
+  width: 0.9rem;
+  text-align: center;
+  font-weight: 700;
+  color: var(--bordure-forte);
+  transition: color var(--transition-rapide);
+}
+
+/*
+ * EXIGENCE SATISFAITE.
+ *
+ * Le vert de succès est dérivé du jeton `--succes` du thème, ce qui garantit
+ * le même contraste en clair et en sombre : on ne pose jamais une couleur
+ * choisie à la main, qui serait illisible sur l'autre thème.
+ */
+.mdp-exigence--ok {
+  color: var(--texte-secondaire);
+}
+
+.mdp-exigence--ok .mdp-exigence-marque {
+  color: var(--succes);
+}
+
+.mdp-exigence--ok .mdp-exigence-libelle {
+  /* Un trait discret signale « réglé » sans barrer le texte (illisible en AR). */
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--succes) 55%, transparent);
+  text-underline-offset: 0.22em;
+}
+
+.mdp-exigences-compteur {
+  margin: 0.55rem 0 0;
+  font-size: var(--taille-tres-petite);
+  color: var(--texte-tertiaire);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Indicateur de correspondance des deux mots de passe ──────────────────── */
+
+.mdp-correspondance {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: var(--taille-tres-petite);
+  line-height: 1.45;
+  text-align: left;
+}
+
+.mdp-correspondance--ok {
+  color: var(--succes);
+}
+
+.mdp-correspondance--ko {
+  color: var(--erreur-texte);
+}
+
+/* ── Utilitaires d'accessibilité ──────────────────────────────────────────── */
+
+/* Texte réservé aux lecteurs d'écran (état des exigences). */
+.mdp-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Responsive : une colonne sur écran étroit ────────────────────────────── */
+
+@media (max-width: 30rem) {
+  .mdp-exigences-liste {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mdp-bascule,
+  .mdp-exigence,
+  .mdp-exigence-marque {
+    transition: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ORDONNANCES — feuille A5 (aperçu + impression) et atelier de création
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/*
+ * LA FEUILLE NE SUIT PAS LE THEME.
+ * Une ordonnance est un document médical imprimé : elle reste blanche, en
+ * clair, que l'interface soit en mode sombre ou clair. Les valeurs de la
+ * feuille sont donc des constantes, jamais des variables de thème ; la
+ * feuille s'intègre à la page par son ombre et son cadre.
+ */
+.feuille-ordonnance {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 148mm;
+  min-height: 210mm;
+  padding: 12mm 13mm;
+  background: #ffffff;
+  color: #1a2434;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow: hidden;
+}
+
+/* Sur l'écran, la feuille flotte sur la page comme un document posé. */
+.feuille-ordonnance-apercu {
+  box-shadow: var(--ombre-moyenne);
+  border: 1px solid var(--bordure-douce);
+  border-radius: var(--rayon-petit);
+  flex-shrink: 0;
+}
+
+.feuille-ordonnance-filigrane {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 62mm;
+  height: 62mm;
+  transform: translate(-50%, -50%);
+  fill: #265183;
+  fill-opacity: 0.06;
+  pointer-events: none;
+}
+
+.feuille-ordonnance-entete {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--espace-4);
+  padding-bottom: var(--espace-3);
+  border-bottom: 2px solid #265183;
+}
+
+.feuille-ordonnance-clinique {
+  display: flex;
+  gap: var(--espace-2);
+  min-width: 0;
+}
+
+.feuille-ordonnance-logo {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  fill: #265183;
+}
+
+.feuille-ordonnance-titre-arabe {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #265183;
+  line-height: 1.4;
+}
+
+.feuille-ordonnance-nom-clinique {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #265183;
+  letter-spacing: 0.02em;
+}
+
+.feuille-ordonnance-praticien {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #1a2434;
+  padding-top: 2px;
+}
+
+.feuille-ordonnance-adresse-ar {
+  font-size: 9px;
+  color: #47566b;
+  line-height: 1.5;
+}
+
+.feuille-ordonnance-telephone {
+  font-size: 9px;
+  color: #47566b;
+}
+
+.feuille-ordonnance-horaires {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 5px;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #265183;
+  border: 1px solid #265183;
+  border-radius: 3px;
+}
+
+.feuille-ordonnance-patient {
+  text-align: right;
+  font-size: 10.5px;
+  flex-shrink: 0;
+}
+
+.feuille-ordonnance-lieu-date {
+  color: #47566b;
+  font-style: italic;
+}
+
+.feuille-ordonnance-date {
+  display: inline-block;
+  min-width: 22mm;
+  border-bottom: 1px dotted #47566b;
+}
+
+.feuille-ordonnance-identite {
+  margin-top: var(--espace-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+}
+
+.feuille-ordonnance-identite div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--espace-1);
+}
+
+.feuille-ordonnance-identite dt {
+  color: #47566b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.feuille-ordonnance-identite dd {
+  flex: 1;
+  min-width: 26mm;
+  text-align: left;
+  font-weight: 700;
+  border-bottom: 1px dotted #47566b;
+}
+
+.feuille-ordonnance-titre {
+  margin: var(--espace-4) 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #265183;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.feuille-ordonnance-corps {
+  flex: 1;
+  padding: 0 2mm;
+}
+
+.feuille-ordonnance-vide {
+  padding: var(--espace-8) 0;
+  text-align: center;
+  font-style: italic;
+  color: #8b98ab;
+}
+
+.feuille-ordonnance-liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-3);
+  list-style: none;
+}
+
+.feuille-ordonnance-med-nom {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1a2434;
+}
+
+.feuille-ordonnance-med-numero {
+  color: #265183;
+}
+
+.feuille-ordonnance-med-posologie {
+  padding-left: var(--espace-4);
+  font-size: 10.5px;
+  color: #47566b;
+}
+
+.feuille-ordonnance-med-instructions {
+  padding-left: var(--espace-4);
+  font-size: 10px;
+  font-style: italic;
+  color: #47566b;
+}
+
+.feuille-ordonnance-notes {
+  margin-top: var(--espace-4);
+  padding-top: var(--espace-2);
+  border-top: 1px dotted #8b98ab;
+  font-size: 10px;
+  font-style: italic;
+  color: #47566b;
+}
+
+.feuille-ordonnance-pied {
+  margin-top: var(--espace-4);
+  padding-top: var(--espace-2);
+  border-top: 1px solid #d5dbe4;
+  text-align: center;
+}
+
+.feuille-ordonnance-pied p {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #265183;
+  letter-spacing: 0.02em;
+}
+
+/* ── Atelier : formulaire à gauche, aperçu à droite ──────────────────────── */
+
+.atelier-ordonnance {
+  display: grid;
+  gap: var(--espace-5);
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .atelier-ordonnance {
+    grid-template-columns: minmax(0, 30rem) 1fr;
+  }
+}
+
+.zone-telechargement-ordonnance {
+  display: flex;
+  justify-content: center;
+  padding: var(--espace-6) var(--espace-4);
+  overflow: auto;
+}
+
+.lignes-ordonnance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-3);
+}
+
+.ligne-ordonnance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+  padding: var(--espace-3);
+  border: 1px solid var(--bordure-douce);
+  border-radius: var(--rayon-moyen);
+  background: var(--fond-surface-douce);
+}
+
+.ligne-ordonnance-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-2);
+}
+
+.ligne-ordonnance-numero {
+  font-size: var(--taille-petite);
+  font-weight: 600;
+  color: var(--texte-tertiaire);
+}
+
+/* ── IMPRESSION : A5 portrait, feuille seule, rien d'autre ────────────────── */
+
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 0;
+  }
+
+  /* Tout est masque ; seule la feuille demandee reste visible. */
+  body > * {
+    display: none !important;
+  }
+
+  .impression-ordonnance {
+    display: block !important;
+    position: static !important;
+  }
+
+  .impression-ordonnance .feuille-ordonnance {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    width: 148mm !important;
+    min-height: 210mm !important;
+  }
+}
+
+/* Encadre de succes — meme gabarit que .encadre-erreur, couleur du statut. */
+.encadre-succes {
+  padding: var(--espace-3) var(--espace-4);
+  background-color: var(--succes-doux);
+  border-radius: var(--rayon-petit);
+  color: var(--succes-texte);
+  font-size: var(--taille-petite);
+}

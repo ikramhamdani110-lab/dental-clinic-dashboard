@@ -611,16 +611,46 @@ export const ligneOrdonnanceSchema = z.object({
   notes: texteOptionnel(1000, 'Les notes'),
 })
 
+/**
+ * En-tete de clinique imprime sur l'ordonnance. Conserve AVEC l'ordonnance
+ * pour qu'une reimpression reproduise exactement l'en-tete d'origine.
+ */
+export const enteteOrdonnanceSchema = z.object({
+  titreArabe: z.string().trim().min(1).max(120),
+  nomClinique: z.string().trim().min(1).max(120),
+  nomPraticien: z.string().trim().min(1).max(120),
+  adresse: z.string().trim().min(1).max(500),
+  telephone: z.string().trim().min(1).max(200),
+  horaires: z.string().trim().min(1).max(200),
+  conseil: z.string().trim().min(1).max(300),
+  ville: z.string().trim().min(1).max(120),
+})
+
+export type EnteteOrdonnance = z.infer<typeof enteteOrdonnanceSchema>
+
 export const ordonnanceCreationSchema = z.object({
   patientId: identifiant,
   treatmentId: identifiant.optional().nullable(),
   date: dateIso,
   notes: texteOptionnel(2000, 'Les notes'),
+  /**
+   * Cle d'idempotence (anti double soumission, meme mecanique que le
+   * formulaire de rendez-vous). Un renvoi du meme formulaire reutilise la
+   * meme cle et renvoie l'ordonnance deja enregistree.
+   */
+  idempotencyKey: z
+    .string()
+    .trim()
+    .min(8, "La cle d'idempotence est invalide.")
+    .max(120, "La cle d'idempotence est invalide."),
+  /** En-tete de clinique imprime sur la feuille A5. */
+  entete: enteteOrdonnanceSchema,
   lignes: z
     .array(ligneOrdonnanceSchema)
     .min(1, 'Ajoutez au moins un medicament a l’ordonnance.')
     .max(30, 'Une ordonnance ne peut pas contenir plus de 30 lignes.'),
 })
+
 
 // -----------------------------------------------------------------------------
 //  ODONTOGRAMME (§20)

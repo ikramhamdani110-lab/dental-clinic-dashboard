@@ -3,6 +3,7 @@ import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@backend/domain/constants'
 import { erreurs } from '@backend/errors/app-error'
 import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pagination'
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
+import type { EnteteOrdonnance } from '@backend/validation/schemas'
 import { filtreExclusion } from '@backend/services/trash.service'
 
 /**
@@ -34,6 +35,10 @@ export interface OrdonnanceComplete {
   notes: string | null
   auteur: string | null
   createdAt: Date
+
+  /** En-tete de clinique imprime sur la feuille, conserve a la creation. */
+  entete: EnteteOrdonnance | null
+
   lignes: LigneOrdonnance[]
 }
 
@@ -76,6 +81,7 @@ export async function listerOrdonnancesPatient(
     notes: ligne.notes,
     auteur: ligne.createdBy?.displayName ?? ligne.createdBy?.email ?? null,
     createdAt: ligne.createdAt,
+    entete: (ligne.enteteOrdonnance ?? null) as EnteteOrdonnance | null,
     lignes: ligne.items.map((item) => ({
       id: item.id,
       medicament: item.medicament,
@@ -121,6 +127,7 @@ export async function obtenirOrdonnance(id: string): Promise<OrdonnanceComplete>
     notes: ligne.notes,
     auteur: ligne.createdBy?.displayName ?? ligne.createdBy?.email ?? null,
     createdAt: ligne.createdAt,
+    entete: (ligne.enteteOrdonnance ?? null) as EnteteOrdonnance | null,
     lignes: ligne.items.map((item) => ({
       id: item.id,
       medicament: item.medicament,
@@ -138,6 +145,22 @@ export interface DonneesOrdonnance {
   treatmentId: string | null
   date: Date
   notes: string | null
+
+  /** Cle d'idempotence du formulaire (anti double soumission). */
+  submissionKey: string
+
+  /** En-tete de clinique imprime sur la feuille A5, conserve avec l'ordonnance. */
+  entete: {
+    titreArabe: string
+    nomClinique: string
+    nomPraticien: string
+    adresse: string
+    telephone: string
+    horaires: string
+    conseil: string
+    ville: string
+  }
+
   lignes: Array<{
     medicament: string
     dosage: string
@@ -155,7 +178,17 @@ export interface DonneesOrdonnance {
 export async function creerOrdonnance(
   donnees: DonneesOrdonnance,
   contexte: JournalContext,
-): Promise<{ id: string }> {
+): Promise<{ id: string; dejaEnregistre: boolean }> {
+  // IDEMPOTENCE (meme mecanique que le formulaire de rendez-vous) : si la meme
+  // cle a deja cree une ordonnance, on la RENVOIE au lieu d'en creer une
+  // seconde. Un double clic ou un reseau capricieux ne duplique donc jamais
+  // une prescription.
+  const existante = await prisma.prescription.findUnique({
+    where: { submissionKey: donnees.submissionKey },
+    select: { id: true },
+  })
+  if (existante) return { id: existante.id, dejaEnregistre: true }
+
   const patient = await prisma.patient.findUnique({
     where: { id: donnees.patientId },
     select: { id: true },
@@ -175,6 +208,8 @@ export async function creerOrdonnance(
         treatmentId: donnees.treatmentId,
         date: donnees.date,
         notes: donnees.notes,
+        submissionKey: donnees.submissionKey,
+        enteteOrdonnance: donnees.entete,
         createdById: contexte.userId,
       },
       select: { id: true },
@@ -199,10 +234,14 @@ export async function creerOrdonnance(
   await journaliser(contexte, ACTIONS.ORDONNANCE_CREEE, {
     entityType: 'Ordonnance',
     entityId: ordonnance.id,
-    metadata: { patientId: donnees.patientId, nombreLignes: donnees.lignes.length },
+    metadata: {
+      patientId: donnees.patientId,
+      nombreLignes: donnees.lignes.length,
+      dejaEnregistre: false,
+    },
   })
 
-  return ordonnance
+  return { id: ordonnance.id, dejaEnregistre: false }
 }
 
 /**

@@ -423,7 +423,23 @@
     "creerReussie": "تم حفظ الوصفة الطبية.",
     "aucunMedicament": "أضف دواءً واحداً على الأقل إلى الوصفة.",
     "numeriqueUniquement": "وصفة إلكترونية — لا تُنشأ أي وثيقة PDF.",
-    "lignes": "بنود الوصفة"
+    "lignes": "بنود الوصفة",
+    "enteteClinique": "ترويسة العيادة",
+    "titreArabe": "العنوان العربي",
+    "nomClinique": "اسم العيادة",
+    "nomPraticien": "اسم الطبيب",
+    "adresse": "العنوان",
+    "telephone": "الهاتف",
+    "horaires": "أوقات العمل",
+    "ville": "المدينة",
+    "conseil": "نصيحة أسفل الصفحة (بالعربية)",
+    "notesGenerales": "ملاحظات عامة",
+    "enregistrerEtImprimer": "حفظ وطباعة",
+    "apercu": "معاينة الوصفة (A5)",
+    "reimprimer": "إعادة الطباعة",
+    "voir": "عرض الوصفة كاملة",
+    "fermer": "إغلاق",
+    "impressionApresSauvegarde": "يتم حفظ الوصفة أولاً، ثم تُفتح نافذة الطباعة."
   },
   "odontogramme": {
     "titre": "مخطط الأسنان",
@@ -726,7 +742,8 @@
     "confirmation": "تأكيد كلمة المرور الجديدة",
     "enregistrer": "حفظ ومتابعة",
     "erreurs": {
-      "nonCorrespondant": "كلمتا المرور غير متطابقتين."
+      "nonCorrespondant": "كلمتا المرور غير متطابقتين.",
+      "politique": "كلمة المرور لا تستوفي بعد جميع الشروط المطلوبة."
     }
   }
 }

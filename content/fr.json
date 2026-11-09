@@ -423,7 +423,23 @@
     "creerReussie": "Ordonnance enregistrée.",
     "aucunMedicament": "Ajoutez au moins un médicament a l'ordonnance.",
     "numeriqueUniquement": "Ordonnance numérique — aucun document PDF n'est généré.",
-    "lignes": "Lignes de prescription"
+    "lignes": "Lignes de prescription",
+    "enteteClinique": "En-tête de la clinique",
+    "titreArabe": "Titre arabe",
+    "nomClinique": "Nom de la clinique",
+    "nomPraticien": "Nom du praticien",
+    "adresse": "Adresse",
+    "telephone": "Téléphone",
+    "horaires": "Horaires",
+    "ville": "Ville",
+    "conseil": "Conseil de pied de page (arabe)",
+    "notesGenerales": "Notes générales",
+    "enregistrerEtImprimer": "Enregistrer et imprimer",
+    "apercu": "Aperçu de l'ordonnance (A5)",
+    "reimprimer": "Réimprimer",
+    "voir": "Voir la feuille complète",
+    "fermer": "Fermer",
+    "impressionApresSauvegarde": "L'ordonnance est enregistrée, puis la boîte d'impression s'ouvre."
   },
   "odontogramme": {
     "titre": "Odontogramme",
@@ -726,7 +742,8 @@
     "confirmation": "Confirmer le nouveau mot de passe",
     "enregistrer": "Enregistrer et continuer",
     "erreurs": {
-      "nonCorrespondant": "Les deux mots de passe ne correspondent pas."
+      "nonCorrespondant": "Les deux mots de passe ne correspondent pas.",
+      "politique": "Le mot de passe ne remplit pas encore toutes les conditions requises."
     }
   }
 }

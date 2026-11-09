@@ -607,6 +607,17 @@ model Prescription {
 
   notes String?
 
+  /// Cle d'idempotence du generateur d'ordonnance (anti double soumission).
+  /// Meme mecanique que `Appointment.submissionKey` : le navigateur en genere
+  /// une par soumission ; un renvoi du meme formulaire ne cree pas de doublon.
+  submissionKey String? @unique
+
+  /// En-tete de clinique utilise lors de la creation (titre arabe, adresse,
+  /// telephones, horaires, conseil de pied de page, nom du praticien).
+  /// Conserve AVEC l'ordonnance pour qu'une reimpression reproduise
+  /// exactement l'en-tete d'origine, meme si ces elements changent ensuite.
+  enteteOrdonnance Json?
+
   createdById String? @db.Uuid
   createdBy   User?   @relation("PrescriptionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
 

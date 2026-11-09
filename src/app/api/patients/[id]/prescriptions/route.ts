@@ -39,7 +39,12 @@ export const POST = routePriveeAvecId(async (request, id, contexte): Promise<Nex
     const donnees = valider(ordonnanceCreationSchema, { ...(corps as object), patientId })
 
     const ordonnance = await creerOrdonnance(
-      { ...donnees, treatmentId: donnees.treatmentId ?? null },
+      {
+        ...donnees,
+        treatmentId: donnees.treatmentId ?? null,
+        submissionKey: donnees.idempotencyKey,
+        entete: donnees.entete,
+      },
       contexte.journal,
     )
     return ok({ ordonnance }, { status: 201 })
