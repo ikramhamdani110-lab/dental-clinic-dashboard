@@ -3,6 +3,12 @@ import argon2 from 'argon2'
 import { getEnv } from '@backend/config/env'
 import { erreurs } from '@backend/errors/app-error'
 
+import {
+  LONGUEUR_MAX_MOT_DE_PASSE,
+  LONGUEUR_MIN_MOT_DE_PASSE,
+  problemesMotDePasse,
+} from './password-policy'
+
 /**
  * =============================================================================
  *  HACHAGE DES MOTS DE PASSE — ARGON2ID (§6, §38)
@@ -18,6 +24,10 @@ import { erreurs } from '@backend/errors/app-error'
  *
  *  Le mot de passe en clair n'est jamais journalise, jamais stocke, jamais
  *  renvoye par l'API.
+ *
+ *  LA POLITIQUE ELLE-MEME vit dans `./password-policy`, partagee avec l'ecran
+ *  de changement de mot de passe : le serveur et l'interface appliquent
+ *  EXACTEMENT les memes regles, sans duplication.
  */
 
 /** Parametres de cout Argon2id. */
@@ -29,10 +39,7 @@ const ARGON2_OPTIONS = {
 } as const
 
 /** Longueur minimale exigee pour un mot de passe. */
-export const LONGUEUR_MIN_MOT_DE_PASSE = 12
-
-/** Longueur maximale : borne la charge de hachage (protection anti-DoS). */
-export const LONGUEUR_MAX_MOT_DE_PASSE = 200
+export { LONGUEUR_MAX_MOT_DE_PASSE, LONGUEUR_MIN_MOT_DE_PASSE }
 
 /**
  * Applique le poivre applicatif. Le poivre est concatene au mot de passe avant
@@ -46,30 +53,12 @@ function applyPepper(password: string): string {
 /**
  * Valide la robustesse minimale d'un mot de passe.
  * Les messages sont en francais et destines a l'utilisateur.
+ *
+ * Delegue a `password-policy` : c'est la MEME fonction que celle utilisee par
+ * l'interface, donc les deux ne peuvent pas diverger.
  */
 export function validatePasswordStrength(password: string): string[] {
-  const problemes: string[] = []
-
-  if (password.length < LONGUEUR_MIN_MOT_DE_PASSE) {
-    problemes.push(
-      `Le mot de passe doit contenir au moins ${LONGUEUR_MIN_MOT_DE_PASSE} caractères.`,
-    )
-  }
-  if (password.length > LONGUEUR_MAX_MOT_DE_PASSE) {
-    problemes.push(`Le mot de passe ne peut pas dépasser ${LONGUEUR_MAX_MOT_DE_PASSE} caractères.`)
-  }
-  if (!/[a-z]/.test(password)) problemes.push('Le mot de passe doit contenir une minuscule.')
-  if (!/[A-Z]/.test(password)) problemes.push('Le mot de passe doit contenir une majuscule.')
-  if (!/[0-9]/.test(password)) problemes.push('Le mot de passe doit contenir un chiffre.')
-
-  // Interdit les mots de passe les plus courants : la robustesse formelle ne
-  // suffit pas si le mot de passe reste devinable.
-  const courants = ['motdepasse', 'password', 'azertyuiop', '123456789012', 'administrateur']
-  if (courants.some((mot) => password.toLowerCase().includes(mot))) {
-    problemes.push('Ce mot de passe est trop courant. Choisissez-en un autre.')
-  }
-
-  return problemes
+  return problemesMotDePasse(password)
 }
 
 /** Hache un mot de passe. Leve une erreur si la robustesse est insuffisante. */
