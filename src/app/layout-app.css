@@ -918,23 +918,28 @@ a.rail-item:focus,
    * actif. Seule l'orientation change.
    */
   .rail {
-    position: sticky;
-    top: var(--espace-2);
-    left: auto;
-    transform: none;
+   position: static;
+   top: auto;
+   left: auto;
+   transform: none;
 
-    flex-direction: row;
-    justify-content: center;
-    gap: 0.125rem;
+   flex-direction: row;
+   flex-wrap: wrap;             /* jamais de defilement horizontal : les
+                                   elements passent a la ligne au besoin */
+   justify-content: center;
+   gap: 0.125rem;
 
-    /* `width: fit-content` + `max-width` : le rail se contracte si l'ecran est
-       etroit au lieu de deborder. C'est ce qui supprime le defilement
-       horizontal sur les mobiles de 320 px. */
-    width: fit-content;
-    max-width: calc(100vw - var(--espace-4));
+   /* RAIL STATIQUE : le rail occupe sa place dans le flux (pas de position
+      fixe/sticky), et sa largeur ne depasse JAMAIS l'ecran. Aucun defilement
+      horizontal n'est possible : `flex-wrap` repartit les elements sur
+      plusieurs lignes plutot que de les faire deborder. */
+   width: 100%;
+   max-width: 100%;
+   box-sizing: border-box;
+   overflow-x: hidden;
 
-    margin: var(--espace-3) auto var(--espace-2);
-    padding: 0.25rem 0.375rem;
+   margin: var(--espace-3) var(--espace-2) var(--espace-2);
+   padding: 0.25rem 0.375rem;
 
     border-radius: 1rem;
   }

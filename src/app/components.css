@@ -714,7 +714,10 @@ a.statistique-lien:focus-visible {
 .onglets {
   display: flex;
   gap: var(--espace-1);
-  overflow-x: auto;
+  /* Barre STATIQUE : pas de defilement horizontal. Les onglets passent a la
+     ligne quand la place manque — tous restent visibles, cliquables, et la
+     disposition reste correcte a toutes les largeurs d'ecran. */
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--bordure);
 }
 
