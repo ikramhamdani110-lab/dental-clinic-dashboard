@@ -27,9 +27,10 @@ import { useRequete } from '@/lib/hooks/use-requete'
  *   2. Cote serveur : la cle est UNIQUE en base. Meme un double envoi par un
  *      autre moyen ne creera pas de second paiement (garde-fou souverain).
  *
- *  Le formulaire affiche le RESTE A PAYER du traitement, mis a jour par le
- *  serveur apres enregistrement. Le montant est valide cote serveur : il ne peut
- *  pas faire depasser le prix du traitement.
+ *  Le formulaire affiche le RESTE A PAYER du traitement LORSQU'UN traitement
+ *  est selectionne. Un paiement SANS traitement (acompte) est autorise : le
+ *  patient peut regler sans aucun soin enregistre — le serveur l'accepte tel
+ *  quel (§paiements-avance) et le montant n'est alors soumisa aucun plafond.
  *
  *  La METHODE de paiement n'est plus exposee : le medecin ne saisit que le
  *  montant et la date. Le champ reste en base (voir schema) mais n'apparait
@@ -158,22 +159,22 @@ export function FormulairePaiement(): React.JSX.Element {
           />
         ) : null}
 
-        {traitements && traitements.traitements.length > 0 ? (
-          <ChampSelection
-            nom="treatmentId"
-            etiquette={t('paiements.traitementAssocie')}
-            obligatoire
-            value={traitementId}
-            placeholder="—"
-            onChange={(evenement) => setTraitementId(evenement.target.value)}
-            options={traitements.traitements.map((traitement) => ({
-              valeur: traitement.id,
-              libelle: `${traitement.typeTraitement}${
-                traitement.dents.length > 0 ? ` (${traitement.dents.join(', ')})` : ''
-              } — ${t('traitements.resteAPayer')} : ${formaterMontant(traitement.resteAPayerCentimes)}`,
-            }))}
-          />
-        ) : null}
+        {/* Le traitement est OPTIONNEL : sans traitement selectionne (le
+            placeholder sert d'option vide), le paiement est enregistre comme
+            ACOMPTE (argent recu du patient, rattache a lui seul). */}
+        <ChampSelection
+          nom="treatmentId"
+          etiquette={t('paiements.traitementAssocie')}
+          value={traitementId}
+          placeholder="Sans traitement (acompte)"
+          onChange={(evenement) => setTraitementId(evenement.target.value)}
+          options={(traitements?.traitements ?? []).map((traitement) => ({
+            valeur: traitement.id,
+            libelle: `${traitement.typeTraitement}${
+              traitement.dents.length > 0 ? ` (${traitement.dents.join(', ')})` : ''
+            } — ${t('traitements.resteAPayer')} : ${formaterMontant(traitement.resteAPayerCentimes)}`,
+          }))}
+        />
 
         {traitementSelectionne ? (
           <div className="encadre-information">
@@ -227,7 +228,7 @@ export function FormulairePaiement(): React.JSX.Element {
         <Bouton
           type="submit"
           variante="principal"
-          disabled={enCours || !patientId || !traitementId || !montant}
+          disabled={enCours || !patientId || !montant}
         >
           {enCours ? t('commun.chargement') : t('paiements.enregistrerPaiement')}
         </Bouton>

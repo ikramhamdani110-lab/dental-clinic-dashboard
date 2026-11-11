@@ -23,8 +23,11 @@ import { useRequete } from '@/lib/hooks/use-requete'
  *  systeme de paiement : ce composant appelle la MEME API securisee
  *  (`POST /api/payments`) que disposait l'ancienne page autonome.
  *
- *  Le medecin choisit le traitement concerne (dont le reste a payer est affiche),
- *  saisit un montant et une date. La METHODE de paiement n'est plus demandee.
+ *  Le medecin choisit le traitement concerne (dont le reste a payer est affiche)
+ *  OU laisse « Sans traitement » : le paiement est alors enregistre comme
+ *  ACOMPTE, rattache au patient seul, sans plafond (il n'y a pas de prix de
+ *  traitement a depasser). Il saisit un montant et une date. La METHODE de
+ *  paiement n'est plus demandee.
  *
  *  PROTECTION CONTRE LA DOUBLE SOUMISSION : la cle d'idempotence est generee une
  *  fois par ouverture et envoyee a chaque tentative ; le serveur ne creera jamais
@@ -77,7 +80,8 @@ export function FormulairePaiementPatient({
   )
 
   // Seuls les traitements presentant un solde peuvent recevoir un paiement :
-  // le serveur refuserait un depassement de toute facon (§17).
+  // le serveur refuserait un depassement de toute facon (§17). Aucun
+  // traitement n'est EXIGE : sans selection, le paiement part comme acompte.
   const traitementsASolder = (donnees?.traitements ?? []).filter(
     (traitement) => traitement.resteAPayerCentimes > 0,
   )
@@ -200,9 +204,7 @@ export function FormulairePaiementPatient({
               type="submit"
               form="formulaire-paiement-patient"
               variante="principal"
-              disabled={
-                enCours || !traitementId || !montant || traitementsASolder.length === 0
-              }
+              disabled={enCours || !montant}
             >
               {enCours ? t('commun.chargement') : t('paiements.enregistrerPaiement')}
             </Bouton>
@@ -223,11 +225,11 @@ export function FormulairePaiementPatient({
 
           {chargement ? <p className="etat-vide-texte">{t('tableaux.chargement')}</p> : null}
 
-          {!chargement && traitementsASolder.length === 0 ? (
-            <p className="encadre-information">{t('fichePatient.aucunTraitementASolder')}</p>
-          ) : null}
-
-          {traitementsASolder.length > 0 ? (
+          {/* Le formulaire reste utilisable SANS traitement : le paiement est
+              alors enregistre comme acompte (serveur, cas 1 §paiements-avance).
+              Aucun message n'est affiche quand il n'y a pas de traitement : le
+              champ de montant reste utilisable, le paiement part comme acompte. */}
+          {!chargement ? (
             <>
               <ChampTexte
                 nom="patient-paiement"
@@ -238,21 +240,24 @@ export function FormulairePaiementPatient({
                 readOnly
               />
 
+              {/* Traitement OPTIONNEL : « Sans traitement » enregistre un acompte. */}
               <ChampSelection
                 nom="treatmentId"
                 etiquette={t('paiements.traitementAssocie')}
-                obligatoire
                 value={traitementId}
-                placeholder="—"
+                placeholder="Sans traitement (acompte)"
                 onChange={(evenement) => setTraitementId(evenement.target.value)}
-                options={traitementsASolder.map((traitement) => ({
-                  valeur: traitement.id,
-                  libelle: `${traitement.typeTraitement}${
-                    traitement.dents.length > 0 ? ` (${traitement.dents.join(', ')})` : ''
-                  } — ${t('traitements.resteAPayer')} : ${formaterMontant(
-                    traitement.resteAPayerCentimes,
-                  )}`,
-                }))}
+                options={[
+                  { valeur: '', libelle: 'Sans traitement (acompte)' },
+                  ...traitementsASolder.map((traitement) => ({
+                    valeur: traitement.id,
+                    libelle: `${traitement.typeTraitement}${
+                      traitement.dents.length > 0 ? ` (${traitement.dents.join(', ')})` : ''
+                    } — ${t('traitements.resteAPayer')} : ${formaterMontant(
+                      traitement.resteAPayerCentimes,
+                    )}`,
+                  })),
+                ]}
               />
 
               {traitementSelectionne ? (

@@ -237,10 +237,10 @@
     "aucuneOrdonnance": "Aucune ordonnance pour ce patient.",
     "aucunDocument": "Aucun document pour ce patient.",
     "paiementTitre": "Nouveau paiement",
-    "paiementAide": "Le montant est vérifié par le serveur : il ne peut pas dépasser le prix du traitement.",
+    "paiementAide": "Le paiement peut être associé à un traitement ou enregistré comme acompte, sans traitement.",
     "traitementAssocie": "Traitement associe",
     "montantRestant": "Reste à payer sur ce traitement : {{reste}}",
-    "aucunTraitementASolder": "Aucun traitement a solder : tous les traitements de ce patient sont regles.",
+    "aucunTraitementASolder": "Aucun traitement à solder : le paiement sera enregistré comme acompte.",
     "totalTraitements": "Total des traitements",
     "totalPaye": "Total paye",
     "resteAPayer": "Reste a payer"
