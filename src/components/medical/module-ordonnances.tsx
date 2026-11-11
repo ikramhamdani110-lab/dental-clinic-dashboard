@@ -85,7 +85,8 @@ export function ModuleOrdonnances(): React.JSX.Element {
       const { ordonnance, patient } = detail
       const feuille: OrdonnanceFeuille = {
         date: ordonnance.date,
-        nomPatient: `${patient.prenom} ${patient.nom}`,
+        nom: patient.nom,
+        prenom: patient.prenom,
         agePatient: patient.age ? `${patient.age} ans` : null,
         lignes: ordonnance.lignes,
         notes: ordonnance.notes,
@@ -204,7 +205,8 @@ function HistoriqueOrdonnances({
       const { ordonnance, patient } = detailOuvert
       const feuille: OrdonnanceFeuille = {
         date: ordonnance.date,
-        nomPatient: `${patient.prenom} ${patient.nom}`,
+        nom: patient.nom,
+        prenom: patient.prenom,
         agePatient: patient.age ? `${patient.age} ans` : null,
         lignes: ordonnance.lignes,
         notes: ordonnance.notes,

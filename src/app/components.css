@@ -2295,8 +2295,6 @@ html[dir='rtl'] .salutation {
 
 .feuille-ordonnance-date {
   display: inline-block;
-  min-width: 22mm;
-  border-bottom: 1px dotted #47566b;
 }
 
 .feuille-ordonnance-identite {
@@ -2323,7 +2321,6 @@ html[dir='rtl'] .salutation {
   min-width: 26mm;
   text-align: left;
   font-weight: 700;
-  border-bottom: 1px dotted #47566b;
 }
 
 .feuille-ordonnance-titre {
@@ -2375,15 +2372,6 @@ html[dir='rtl'] .salutation {
 
 .feuille-ordonnance-med-instructions {
   padding-left: var(--espace-4);
-  font-size: 10px;
-  font-style: italic;
-  color: #47566b;
-}
-
-.feuille-ordonnance-notes {
-  margin-top: var(--espace-4);
-  padding-top: var(--espace-2);
-  border-top: 1px dotted #8b98ab;
   font-size: 10px;
   font-style: italic;
   color: #47566b;

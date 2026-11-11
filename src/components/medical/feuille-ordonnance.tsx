@@ -21,10 +21,13 @@ import { localeDates } from '@/lib/locale-dates'
  *
  *  Ligne de médicament du modèle de données :
  *    medicament  -> nom imprimé en gras
- *    dosage      -> posologie
- *    frequence   -> fréquence de prise
- *    duree       -> durée du traitement
- *    instructions-> consignes complémentaires (facultatif)
+ *    dosage      -> posologie (ordonnances anciennes)
+ *    frequence   -> fréquence de prise (ordonnances anciennes)
+ *    duree       -> durée du traitement (ordonnances anciennes)
+ *    instructions-> consignes complémentaires (ordonnances anciennes)
+ *
+ *  Les ordonnances récentes ne portent QUE le nom du médicament : les champs
+ *  de posologie valent « — » et ne sont pas imprimés.
  */
 
 export interface LigneFeuilleOrdonnance {
@@ -37,11 +40,20 @@ export interface LigneFeuilleOrdonnance {
 
 export interface OrdonnanceFeuille {
   date: string | Date
-  nomPatient: string
+  /** Nom de famille du patient (base de données, jamais saisi a la main). */
+  nom: string
+  /** Prénom du patient (base de données, jamais saisi a la main). */
+  prenom: string
   agePatient: string | null
   lignes: LigneFeuilleOrdonnance[]
+  /** Notes générales : champ supprimé — conservé uniquement pour les types. */
   notes?: string | null
   entete?: EnteteOrdonnance | null
+}
+
+/** Une posologie n'est affichée que si une ordonnance ANCIENNE en porte une. */
+function aPosologie(ligne: LigneFeuilleOrdonnance): boolean {
+  return [ligne.dosage, ligne.frequence, ligne.duree].some((valeur) => valeur && valeur !== '—')
 }
 
 /** Valeurs par défaut de l'en-tête clinique (celles du cabinet). */
@@ -104,11 +116,11 @@ export function FeuilleOrdonnance({ ordonnance }: { ordonnance: OrdonnanceFeuill
           <dl className="feuille-ordonnance-identite">
             <div>
               <dt>Nom&nbsp;:</dt>
-              <dd>{ordonnance.nomPatient.split(' ').slice(-1)[0] ?? ''}</dd>
+              <dd>{ordonnance.nom}</dd>
             </div>
             <div>
               <dt>Prénom&nbsp;:</dt>
-              <dd>{ordonnance.nomPatient.split(' ').slice(0, -1).join(' ')}</dd>
+              <dd>{ordonnance.prenom}</dd>
             </div>
             {ordonnance.agePatient ? (
               <div>
@@ -132,9 +144,11 @@ export function FeuilleOrdonnance({ ordonnance }: { ordonnance: OrdonnanceFeuill
                 <p className="feuille-ordonnance-med-nom">
                   <span className="feuille-ordonnance-med-numero">{index + 1}.</span> {ligne.medicament}
                 </p>
-                <p className="feuille-ordonnance-med-posologie">
-                  {ligne.dosage} — {ligne.frequence} — {ligne.duree}
-                </p>
+                {aPosologie(ligne) ? (
+                  <p className="feuille-ordonnance-med-posologie">
+                    {ligne.dosage} — {ligne.frequence} — {ligne.duree}
+                  </p>
+                ) : null}
                 {ligne.instructions ? (
                   <p className="feuille-ordonnance-med-instructions">{ligne.instructions}</p>
                 ) : null}
@@ -142,7 +156,6 @@ export function FeuilleOrdonnance({ ordonnance }: { ordonnance: OrdonnanceFeuill
             ))}
           </ol>
         )}
-        {ordonnance.notes ? <p className="feuille-ordonnance-notes">{ordonnance.notes}</p> : null}
       </div>
 
       <footer className="feuille-ordonnance-pied">

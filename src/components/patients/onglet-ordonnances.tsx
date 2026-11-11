@@ -73,7 +73,8 @@ export function OngletOrdonnances({ patientId }: { patientId: string }): React.J
       const { ordonnance, patient } = detail
       const feuille: OrdonnanceFeuille = {
         date: ordonnance.date,
-        nomPatient: `${patient.prenom} ${patient.nom}`,
+        nom: patient.nom,
+        prenom: patient.prenom,
         agePatient: patient.age ? `${patient.age} ans` : null,
         lignes: ordonnance.lignes,
         notes: ordonnance.notes,

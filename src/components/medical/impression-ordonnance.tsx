@@ -38,7 +38,8 @@ export function ImpressionOrdonnance({
 
   const feuille: OrdonnanceFeuille = {
     date: ordonnance.date,
-    nomPatient: `${patient.nom} ${patient.prenom}`.trim(),
+    nom: patient.nom,
+    prenom: patient.prenom,
     agePatient: patient.age !== null ? `${patient.age} ans` : null,
     lignes: ordonnance.lignes.map((l) => ({
       medicament: l.medicament,

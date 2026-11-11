@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { t } from '@content/index'
 
@@ -32,13 +32,9 @@ import { useDebounce, useRequete } from '@/lib/hooks/use-requete'
  *  sans etre enregistree.
  */
 
+/** Seul le nom du medicament est saisi : la posologie n'est plus demandee. */
 interface LigneSaisie {
-  medicament: string
-  dosage: string
-  frequence: string
-  duree: string
-  instructions: string
-}
+  medicament: string}
 
 interface PagePatients {
   elements: Array<{ id: string; nom: string; prenom: string; age: number | null }>
@@ -50,7 +46,7 @@ function dateDuJour(): string {
   return new Date(maintenant.getTime() - decalage).toISOString().slice(0, 10)
 }
 
-const LIGNE_VIDE: LigneSaisie = { medicament: '', dosage: '', frequence: '', duree: '', instructions: '' }
+const LIGNE_VIDE: LigneSaisie = { medicament: '' }
 
 export function GenerateurOrdonnance(): React.JSX.Element {
   const router = useRouter()
@@ -60,6 +56,8 @@ export function GenerateurOrdonnance(): React.JSX.Element {
   // ── Patient ────────────────────────────────────────────────────────────────
   const [patientId, setPatientId] = useState(patientIdParam ?? '')
   const [nomPatient, setNomPatient] = useState('')
+  // Identite du patient recuperee DIRECTEMENT de la base de donnees : la
+  // secretaire ne saisit jamais nom/prenom/age a la main.
   const [recherchePatient, setRecherchePatient] = useState('')
   const [listeOuverte, setListeOuverte] = useState(false)
 
@@ -70,14 +68,19 @@ export function GenerateurOrdonnance(): React.JSX.Element {
       : '/api/patients?taille=20&tri=recent&ordre=desc'
     : null
   const { donnees: patients, chargement: chargementPatients } = useRequete<PagePatients>(patientsUrl)
-  const { donnees: patientPrefill } = useRequete<{ patient: { id: string; nom: string; prenom: string; age: number | null } }>(
-    patientIdParam ? `/api/patients/${patientIdParam}` : null,
-  )
+  // Patient selectionne (parametre d'URL ou choix dans la liste) : fiche lue
+  // en direct dans la base -> Nom / Prenom / Age remplis AUTOMATIQUEMENT.
+  const { donnees: patientChoisi } = useRequete<{
+    patient: { id: string; nom: string; prenom: string; age: number | null }
+  }>(patientId ? `/api/patients/${patientId}` : null)
+
+  useEffect(() => {
+    if (patientChoisi) setNomPatient(`${patientChoisi.patient.prenom} ${patientChoisi.patient.nom}`)
+  }, [patientChoisi])
 
   // ── Contenu de l'ordonnance ───────────────────────────────────────────────
   const [date, setDate] = useState(dateDuJour())
   const [lignes, setLignes] = useState<LigneSaisie[]>([{ ...LIGNE_VIDE }])
-  const [notes, setNotes] = useState('')
   const [entete, setEntete] = useState<EnteteOrdonnance>({ ...ENTETE_DEFAUT })
 
   // ── Soumission ────────────────────────────────────────────────────────────
@@ -89,18 +92,19 @@ export function GenerateurOrdonnance(): React.JSX.Element {
   // ── Apercu live ───────────────────────────────────────────────────────────
   const feuille: OrdonnanceFeuille = {
     date,
-    nomPatient: nomPatient || ' ',
-    agePatient: patientPrefill?.patient.age ? `${patientPrefill.patient.age} ans` : null,
-    lignes: lignes
-      .filter((ligne) => ligne.medicament.trim() || ligne.dosage.trim())
+    nom: patientChoisi?.patient.nom ?? '',
+    prenom: patientChoisi?.patient.prenom ?? '',
+    agePatient: patientChoisi?.patient.age ? `${patientChoisi.patient.age} ans` : null,
+      lignes: lignes
+      .filter((ligne) => ligne.medicament.trim())
       .map((ligne) => ({
-        medicament: ligne.medicament,
-        dosage: ligne.dosage,
-        frequence: ligne.frequence,
-        duree: ligne.duree,
-        instructions: ligne.instructions.trim() || null,
+        medicament: ligne.medicament.trim(),
+        dosage: '',
+        frequence: '',
+        duree: '',
+        instructions: null,
       })),
-    notes: notes.trim() || null,
+    notes: null,
     entete,
   }
 
@@ -141,18 +145,18 @@ export function GenerateurOrdonnance(): React.JSX.Element {
         `/api/patients/${patientId}/prescriptions`,
         {
           methode: 'POST',
-          corps: {
+            corps: {
             patientId,
             date,
-            notes: notes.trim(),
+            notes: '',
             idempotencyKey,
             entete,
             lignes: lignesValides.map((ligne) => ({
               medicament: ligne.medicament.trim(),
-              dosage: ligne.dosage.trim(),
-              frequence: ligne.frequence.trim() || '—',
-              duree: ligne.duree.trim() || '—',
-              instructions: ligne.instructions.trim(),
+              dosage: '',
+              frequence: '',
+              duree: '',
+              instructions: '',
               notes: '',
             })),
           },
@@ -177,10 +181,10 @@ export function GenerateurOrdonnance(): React.JSX.Element {
             ...feuille,
             lignes: lignesValides.map((ligne) => ({
               medicament: ligne.medicament.trim(),
-              dosage: ligne.dosage.trim(),
-              frequence: ligne.frequence.trim() || '—',
-              duree: ligne.duree.trim() || '—',
-              instructions: ligne.instructions.trim() || null,
+              dosage: '',
+              frequence: '',
+              duree: '',
+              instructions: null,
             })),
           }}
         />,
@@ -308,19 +312,6 @@ export function GenerateurOrdonnance(): React.JSX.Element {
             </div>
 
             <ChampTexte nom="date-ordonnance" type="date" etiquette={t('commun.date')} obligatoire value={date} onChange={(evenement) => setDate(evenement.target.value)} />
-
-            <div className="champ">
-              <label htmlFor="notes-ordonnance" className="champ-etiquette">
-                {t('ordonnances.notesGenerales')}
-              </label>
-              <textarea
-                id="notes-ordonnance"
-                className="champ-controle"
-                rows={2}
-                value={notes}
-                onChange={(evenement) => setNotes(evenement.target.value)}
-              />
-            </div>
           </div>
         </section>
 
@@ -352,32 +343,6 @@ export function GenerateurOrdonnance(): React.JSX.Element {
                     obligatoire
                     value={ligne.medicament}
                     onChange={(evenement) => modifierLigne(index, 'medicament', evenement.target.value)}
-                  />
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--espace-3)' }}>
-                    <ChampTexte
-                      nom={`dosage-${index}`}
-                      etiquette={t('ordonnances.dosage')}
-                      value={ligne.dosage}
-                      onChange={(evenement) => modifierLigne(index, 'dosage', evenement.target.value)}
-                    />
-                    <ChampTexte
-                      nom={`frequence-${index}`}
-                      etiquette={t('ordonnances.frequence')}
-                      value={ligne.frequence}
-                      onChange={(evenement) => modifierLigne(index, 'frequence', evenement.target.value)}
-                    />
-                    <ChampTexte
-                      nom={`duree-${index}`}
-                      etiquette={t('ordonnances.duree')}
-                      value={ligne.duree}
-                      onChange={(evenement) => modifierLigne(index, 'duree', evenement.target.value)}
-                    />
-                  </div>
-                  <ChampTexte
-                    nom={`instructions-${index}`}
-                    etiquette={t('ordonnances.instructions')}
-                    value={ligne.instructions}
-                    onChange={(evenement) => modifierLigne(index, 'instructions', evenement.target.value)}
                   />
                 </div>
               ))}

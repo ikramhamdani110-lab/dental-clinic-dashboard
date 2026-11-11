@@ -163,9 +163,10 @@ export interface DonneesOrdonnance {
 
   lignes: Array<{
     medicament: string
-    dosage: string
-    frequence: string
-    duree: string
+    /** Posologie : champs des ordonnances anciennes, vides ('' ou null) depuis la simplification. */
+    dosage: string | null
+    frequence: string | null
+    duree: string | null
     instructions: string | null
     notes: string | null
   }>
@@ -219,9 +220,9 @@ export async function creerOrdonnance(
       data: donnees.lignes.map((ligne, index) => ({
         prescriptionId: cree.id,
         medicament: ligne.medicament,
-        dosage: ligne.dosage,
-        frequence: ligne.frequence,
-        duree: ligne.duree,
+        dosage: ligne.dosage ?? '',
+        frequence: ligne.frequence ?? '',
+        duree: ligne.duree ?? '',
         instructions: ligne.instructions,
         notes: ligne.notes,
         position: index,
@@ -274,9 +275,9 @@ export async function modifierOrdonnance(
         data: donnees.lignes.map((ligne, index) => ({
           prescriptionId: id,
           medicament: ligne.medicament,
-          dosage: ligne.dosage,
-          frequence: ligne.frequence,
-          duree: ligne.duree,
+          dosage: ligne.dosage ?? '',
+          frequence: ligne.frequence ?? '',
+          duree: ligne.duree ?? '',
           instructions: ligne.instructions,
           notes: ligne.notes,
           position: index,

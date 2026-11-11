@@ -602,11 +602,17 @@ export const dossierMedicalCreationSchema = z.object({
 //  ORDONNANCES (§21)
 // -----------------------------------------------------------------------------
 
+/**
+ * Ligne d'ordonnance. Depuis la simplification du formulaire, seul le nom du
+ * medicament est saisi : dosage, frequence, duree et instructions restent
+ * ACCEPTES (ordre backwards-compatible) pour ne pas casser les anciennes
+ * ordonnances ni les reimpressions, mais ne sont plus remplis par l'UI.
+ */
 export const ligneOrdonnanceSchema = z.object({
   medicament: texteRequis(1, 200, 'Le medicament'),
-  dosage: texteRequis(1, 120, 'Le dosage'),
-  frequence: texteRequis(1, 120, 'La frequence'),
-  duree: texteRequis(1, 120, 'La duree'),
+  dosage: texteOptionnel(120, 'Le dosage'),
+  frequence: texteOptionnel(120, 'La frequence'),
+  duree: texteOptionnel(120, 'La duree'),
   instructions: texteOptionnel(1000, 'Les instructions'),
   notes: texteOptionnel(1000, 'Les notes'),
 })

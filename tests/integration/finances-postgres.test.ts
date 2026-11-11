@@ -235,11 +235,10 @@ describe.skipIf(!ACTIVE)('Integration PostgreSQL reelle — finances privees', (
     compteurIdempotence += 1
     await creerDepense(
       {
+        titre: 'Fournitures de test',
         montantCentimes: 10_000,
         date: maintenant,
         categorie: 'FOURNITURES',
-        description: null,
-        notes: null,
         idempotencyKey: `dep-${compteurIdempotence}`,
       },
       contexte(),
@@ -249,7 +248,9 @@ describe.skipIf(!ACTIVE)('Integration PostgreSQL reelle — finances privees', (
     expect(synthese.revenusPaiementsCentimes).toBe(40_000)
     expect(synthese.revenusManuelsCentimes).toBe(5_000)
     expect(synthese.depensesCentimes).toBe(10_000)
-    expect(synthese.soldeNetCentimes).toBe(35_000)
+    // Solde net = revenus REÇUS − dépenses. Le revenu manuel n'est pas de
+    // l'argent encaissé par le cabinet : il n'entre pas dans ce solde.
+    expect(synthese.soldeNetCentimes).toBe(30_000)
     // Restant dû = 100 000 - 40 000 = 60 000 — AFFICHÉ séparément, jamais un revenu.
     expect(synthese.restantDuCentimes).toBe(60_000)
   })
@@ -286,11 +287,10 @@ describe.skipIf(!ACTIVE)('Integration PostgreSQL reelle — finances privees', (
   it('creerDepense : un second envoi avec la même clé ne crée pas de doublon', async () => {
     const maintenant = new Date()
     const donnees = {
+      titre: 'Loyer du local',
       montantCentimes: 12_000,
       date: maintenant,
       categorie: 'LOYER',
-      description: null,
-      notes: null,
       idempotencyKey: 'anti-doublon-dep-1',
     }
 

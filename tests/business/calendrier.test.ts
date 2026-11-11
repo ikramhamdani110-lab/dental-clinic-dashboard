@@ -3,20 +3,18 @@
  *  TESTS DE RÉGRESSION — CALENDRIER DE SÉLECTION DE DATE (rapports)
  * =============================================================================
  *
- *  EXIGENCE PRODUIT : dans Rapports, la période personnalisée se choisit par
- *  un CALENDRIER (jour → mois → année), jamais par frappe manuelle. L'année
- *  démarre à 2026. « Du » doit précéder « Au », sinon message FR et rapport
- *  bloqué.
+ *  EXIGENCE PRODUIT : la période personnalisée se choisit par un CALENDRIER
+ *  (jour → mois → année), jamais par frappe manuelle. L'année démarre à 2026.
  *
  *  Ces tests verrouillent (composant pur, logique extraite, sans rendu) :
  *    - conversion ISO ↔ Date sûre (rejet du 30/02, du mois 13…) ;
  *    - bornes d'années (grille démarrant à 2026) ;
  *    - format d'affichage français ;
- *    - la page Rapports n'utilise plus de champ de saisie manuelle pour la
- *      période personnalisée et valide l'ordre des bornes.
+ *    - l'ABSENCE de la page Rapports du secrétariat, qui exposait les finances
+ *      à un compte non-médecin (l'information financière vit dans `/finances`).
  */
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -24,6 +22,10 @@ const racine = resolve(__dirname, '..', '..')
 
 function lireFichier(cheminRelatif: string): string {
   return readFileSync(resolve(racine, cheminRelatif), 'utf8')
+}
+
+function existe(cheminRelatif: string): boolean {
+  return existsSync(resolve(racine, cheminRelatif))
 }
 
 // ── Logique extraite (copie fidèle des fonctions internes testées) ──────────
@@ -109,30 +111,33 @@ describe('Calendrier — bornes de la grille d’années', () => {
   })
 })
 
-describe('Rapports — période personnalisée', () => {
-  it('utilise le calendrier, pas de saisie manuelle', () => {
-    const rapports = lireFichier('src/components/rapports/rapports.tsx')
-    expect(rapports).toContain('CalendrierDates')
-    // Aucun `ChampDate` (saisie clavier) ne reste sur la période personnalisée.
-    expect(rapports.includes('<ChampDate')).toBe(false)
-    expect(rapports.includes("type=\"text\"")).toBe(false)
+describe('Rapports — retirés du secrétariat', () => {
+  /*
+   * La page « Rapports » du secrétariat a été SUPPRIMÉE : elle exposait les
+   * revenus, les soldes patients et les dépenses à un compte non-médecin.
+   * L'information financière vit désormais uniquement dans le site financier
+   * privé (`/finances`), protégé par une session dédiée au médecin.
+   *
+   * Ces tests verrouillent la suppression : si quelqu'un réintroduit la page ou
+   * son API, ils échouent.
+   */
+  it('la page Rapports du secrétariat n’existe plus', () => {
+    expect(existe('src/app/(dashboard)/rapports/page.tsx')).toBe(false)
+    expect(existe('src/components/rapports/rapports.tsx')).toBe(false)
   })
 
-  it('valide que « Du » précède « Au » avant tout appel API', () => {
-    const rapports = lireFichier('src/components/rapports/rapports.tsx')
-    // Message FR affiché + bouton inactif + garde-fou dans le callback.
-    expect(rapports).toContain('datesIncoherentes')
-    expect(rapports).toContain('periodeInvalide')
-    expect(rapports).toContain('disabled={!du || !au || periodeInvalide}')
+  it('l’API de rapports financiers n’existe plus', () => {
+    expect(existe('src/app/api/reports/revenue/route.ts')).toBe(false)
   })
 
-  it('les bornes sont propagées aux requêtes réelles, pas seulement affichées', () => {
-    const rapports = lireFichier('src/components/rapports/rapports.tsx')
-    expect(rapports).toContain("parametres.set('du', periodeAppliquee.du)")
-    expect(rapports).toContain("parametres.set('au', periodeAppliquee.au)")
+  it('aucune navigation du secrétariat ne mène aux finances', () => {
+    const rail = lireFichier('src/components/layout/rail-navigation.tsx')
+    // On cherche un VRAI lien (`href: '/…'`), pas une simple mention en commentaire.
+    expect(/href:\s*'\/rapports'/.test(rail)).toBe(false)
+    expect(/href:\s*'\/finances'/.test(rail)).toBe(false)
   })
 
-  it('les clés de traduction FR et AR existent', () => {
+  it('les clés de traduction FR et AR du calendrier existent', () => {
     const fr = JSON.parse(lireFichier('content/fr.json'))
     const ar = JSON.parse(lireFichier('content/ar.json'))
     for (const cle of [

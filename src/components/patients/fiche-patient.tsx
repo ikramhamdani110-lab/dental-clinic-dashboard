@@ -11,6 +11,7 @@ import { Bouton, LienBouton } from '@/components/ui/bouton'
 import { telechargerPdf } from '@/components/pdf/telecharger-pdf'
 import { FormulairePaiementPatient } from '@/components/patients/formulaire-paiement-patient'
 import { Pagination } from '@/components/patients/liste-patients'
+import { OngletOrdonnances } from '@/components/patients/onglet-ordonnances'
 import { formaterAgePatient } from '@/lib/age'
 import { useRequete } from '@/lib/hooks/use-requete'
 import { localeDates } from '@/lib/locale-dates'
@@ -112,7 +113,7 @@ interface ReponsePaiementsPatient {
 }
 
 /** Onglets de la fiche : le parcours quotidien, rien de plus. */
-const ONGLETS = ['informationsPersonnelles', 'rendezVous', 'paiements'] as const
+const ONGLETS = ['informationsPersonnelles', 'rendezVous', 'ordonnances', 'paiements'] as const
 
 type Onglet = (typeof ONGLETS)[number]
 
@@ -252,6 +253,9 @@ export function FichePatient({ patientId }: { patientId: string }): React.JSX.El
           </LienBouton>
           {/* Le reglement se fait ICI, depuis la fiche du patient (§16). */}
           <FormulairePaiementPatient patientId={patient.id} onPaiementEnregistre={rafraichirApresPaiement} />
+          <LienBouton href={`/ordonnances/nouvelle?patientId=${patient.id}`} variante="secondaire" taille="petite">
+            {t('fichePatient.nouvelleOrdonnance')}
+          </LienBouton>
           <LienBouton href={`/patients/${patient.id}/modifier`} variante="discret" taille="petite">
             {t('commun.modifier')}
           </LienBouton>
@@ -302,6 +306,8 @@ export function FichePatient({ patientId }: { patientId: string }): React.JSX.El
             <InformationsPersonnelles patient={patient} />
           ) : ongletActif === 'rendezVous' ? (
             <OngletRendezVous patientId={patient.id} />
+          ) : ongletActif === 'ordonnances' ? (
+            <OngletOrdonnances patientId={patient.id} />
           ) : (
             <OngletPaiements
               patientId={patient.id}
