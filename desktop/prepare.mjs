@@ -133,6 +133,10 @@ fs.copyFileSync(
 )
 
 // 9. Manifeste de l'application Electron : nom, point d'entrée main.
+//    `type: module` est INDISPENSABLE : main.mjs utilise `import` au lieu de
+//    `require`. Sans cette ligne, Electron charge main.mjs en CommonJS et
+//    quitte silencieusement au demarrage (aucune fenetre, aucun journal) —
+//    panne constatee au cabinet.
 fs.writeFileSync(
   path.join(dossierApp, 'package.json'),
   JSON.stringify(
@@ -142,6 +146,7 @@ fs.writeFileSync(
       version: versionApplication,
       description: 'Application de bureau de la clinique dentaire Sahed',
       main: 'main.mjs',
+      type: 'module',
       private: true,
     },
     null,

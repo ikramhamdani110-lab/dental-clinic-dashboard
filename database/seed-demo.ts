@@ -34,6 +34,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import * as argon2 from 'argon2'
+import type { Prisma } from '@prisma/client'
 
 // -----------------------------------------------------------------------------
 //  PRECAUTION ABSOLUE
@@ -112,6 +113,26 @@ function alea(graine: number): () => number {
 }
 
 const rnd = alea(20260928)
+
+/*
+ * LECTEUR SEQUENTIEL RESERVABLE.
+ *
+ * La graine etant FIXE, une partie des rendez-vous generes tombe forcement en
+ * chevauchement un jour donne (ex. 25 avril 11h00-11h30 contre 11h15-11h45) :
+ * la contrainte `appointments_no_overlap` refuse alors le seed entier sur le
+ * cluster de demonstration, pour une collision purement due au calendrier.
+ *
+ * `entre()` / `choisir()` alimentent les DONNEES affichees : ils consomment
+ * donc toujours le generateur (jeu de donnees stable d'une execution a
+ * l'autre). Seule la reservation d'un CREANEAU passe par ce second lecteur,
+ * qui consomme exactement UN tirage par creneau mais peut le REJOUER : une
+ * collision est resolue en tirant un autre creneau, sans deplacer les tirages
+ * qui determinent les noms, montants et dates de l'historique.
+ */
+const reserveur: () => number = alea(1)
+const entreReserve = (min: number, max: number): number =>
+  min + Math.floor(reserveur() * (max - min + 1))
+
 const choisir = <T,>(liste: readonly T[]): T => liste[Math.floor(rnd() * liste.length)] as T
 const entre = (min: number, max: number): number => min + Math.floor(rnd() * (max - min + 1))
 
@@ -149,7 +170,7 @@ function decaleJours(n: number): Date {
 }
 
 /**
- * Date PASSEE, `h` mois en arriere, au jour `m` du mois.
+ * Date PASSEE, `h` mois en arriere, au jour `m` du mois — CREANEAU seul.
  *
  * Le mois COURANT (`h = 0`) ne produit pas toujours une date passee : au
  * 8 octobre, « le 28 du mois courant » est le 28 octobre, donc DANS LE FUTUR.
@@ -157,11 +178,72 @@ function decaleJours(n: number): Date {
  * `payments_date_plausible_check` refuse une date de paiement future : le seed
  * echouait les jours 1 a 27 du mois. On borne donc le mois courant a la date du
  * jour, en conservant l'heure aleatoire.
+ *
+ * L'heure et la minute sont tirees avec `entreReserve()` : ce lecteur
+ * consomme les MÊMES deux tirages, dans le même ordre, que l'ancien `mois()`,
+ * mais peut être rejoué en cas de collision de créneau. Le flux de données
+ * (`rnd`) reste donc strictement inchangé.
  */
-function mois(h: number, m: number): Date {
+function moisReserve(h: number, m: number): Date {
   const d = new Date()
   const jourBorne = h === 0 ? Math.min(m, d.getDate()) : m
-  return new Date(d.getFullYear(), d.getMonth() - h, jourBorne, entre(9, 16), entre(0, 3) * 15, 0, 0)
+  return new Date(
+    d.getFullYear(),
+    d.getMonth() - h,
+    jourBorne,
+    entreReserve(9, 16),
+    entreReserve(0, 3) * 15,
+    0,
+    0,
+  )
+}
+
+/**
+ * CREE UN RENDEZ-VOUS SUR UN CREANEAU LIBRE.
+ *
+ * `appointments_no_overlap` interdit deux rendez-vous qui se chevauchent pour
+ * un meme praticien. Un creneau deja pris n'est PAS un echec : on retire alors
+ * un autre creneau, en respectant les regles de la journee
+ * (`9h-19h` par pas de 30 minutes dans `espace`, `9h-17h` sinon), puis on
+ * rejoue l'insertion. La contrainte est ainsi respectee sans jamais la
+ * desactiver ni supprimer de donnee.
+ *
+ * En cas d'epuisement (50 essais), l'erreur initiale est relancee.
+ */
+async function creerRendezVousLibre(
+  data: Prisma.AppointmentUncheckedCreateInput,
+  espace: 'journee' | 'historique' = 'historique',
+): Promise<{ id: string }> {
+  const DUREE = 30 * 60_000
+  const PAS = 30 * 60_000
+  let debut = data.dateDebut as Date
+  let premiereErreur: unknown
+
+  for (let essai = 1; essai <= 50; essai++) {
+    try {
+      return await prisma.appointment.create({
+        data: { ...data, dateDebut: debut, dateFin: new Date(debut.getTime() + DUREE) },
+      })
+    } catch (erreur) {
+      const message = String((erreur as { message?: string }).message ?? '')
+      const collision =
+        message.includes('appointments_no_overlap') ||
+        message.includes('23P01') ||
+        message.includes('P2004')
+      if (!collision) throw erreur
+      premiereErreur = premiereErreur ?? erreur
+      debut = new Date(debut.getTime() + PAS)
+      const borneMax = espace === 'journee' ? 19 : 17
+      if (debut.getHours() >= borneMax) {
+        // Fin de plage : on reprend le lendemain a 9h.
+        const suivant = new Date(debut)
+        suivant.setDate(suivant.getDate() + 1)
+        suivant.setHours(9, 0, 0, 0)
+        debut = suivant
+      }
+    }
+  }
+  throw premiereErreur
 }
 
 /** Numero fictif : prefixe reserved + indicatif, jamais attribuable. */
@@ -241,7 +323,8 @@ async function main(): Promise<void> {
   for (const patient of patients) {
     const nbConsultations = entre(0, 3)
     for (let c = 0; c < nbConsultations; c++) {
-      const debut = mois(entre(0, 7), entre(1, 28))
+      const h = entre(0, 7)
+      const debut = moisReserve(h, entre(1, 28))
       const fin = new Date(debut.getTime() + 30 * 60_000)
 
       const traitement = await prisma.treatment.create({
@@ -256,15 +339,18 @@ async function main(): Promise<void> {
         },
       })
 
-      await prisma.appointment.create({
-        data: {
-          patientId: patient.id,
-          praticienId: medecin.id,
-          treatmentId: traitement.id,
-          dateDebut: debut,
-          dateFin: fin,
-          statut: 'TERMINE',
-        },
+      // ── Reservation du creneau ──────────────────────────────────────────
+      //  Le meme praticien ne peut avoir deux rendez-vous qui se chevauchent
+      //  (`appointments_no_overlap`). Une collision est resolue en retirant un
+      //  creneau libre, jamais en supprimant le rendez-vous ni en desactivant
+      //  la contrainte.
+      await creerRendezVousLibre({
+        patientId: patient.id,
+        praticienId: medecin.id,
+        treatmentId: traitement.id,
+        dateDebut: debut,
+        dateFin: fin,
+        statut: 'TERMINE',
       })
 
       await prisma.treatmentVisit.create({
@@ -294,12 +380,38 @@ async function main(): Promise<void> {
 
   // ── AUJOURD'HUI : ce que le medecin voit en arrivant ───────────────────────
   dire('5. Journee du jour (les deux listes du tableau de bord)…')
+  /*
+   * Planning de la journee (12 entrees) : 8 rendez-vous planifies de 9h a 16h30,
+   * puis l'absent de 8h00, puis 2 patients sans rendez-vous de 17h a 18h30.
+   * Chaque creneau est SEPARE du precedent — aucun chevauchement sur un meme
+   * praticien, condition imposee par `appointments_no_overlap`.
+   */
+  const ENTREES_DU_JOUR: ReadonlyArray<{ debut: number; duree: number }> = [
+    { debut: 9, duree: 30 },
+    { debut: 10, duree: 30 },
+    { debut: 11, duree: 30 },
+    { debut: 12, duree: 30 },
+    { debut: 13, duree: 30 },
+    { debut: 14, duree: 30 },
+    { debut: 15, duree: 30 },
+    { debut: 16, duree: 30 },
+    { debut: 8, duree: 30 }, // absent
+    { debut: 17, duree: 30 },
+    { debut: 18, duree: 30 },
+    { debut: 19, duree: 30 },
+  ]
   const patientsDuJour = patients.slice(0, 12)
   let index = 0
   for (const patient of patientsDuJour) {
-    const heure = 9 + index
+    //  Cles par index : ces rendez-vous ne consomment AUCUN tirage du generateur
+    //  (contrairement a `jour`/`entre`), le jeu de donnees reste donc identique.
+    //  Les creneaux sont volontairement SEPARES : avant, le rendez-vous
+    //  "absent" de 8h00 chevauchait ceux de 9h00-11h30 deja poses, et l'index 9
+    //  (11h00) recouvrait le rendez-vous de 11h30 — `appointments_no_overlap`
+    //  refusait alors le seed entier.
+    const heure = ENTREES_DU_JOUR[index]!.debut
     const debut = jour(heure, 0)
-    const fin = jour(heure, 30)
+    const fin = jour(heure, ENTREES_DU_JOUR[index]!.duree)
 
     if (index < 8) {
       // 8 rendez-vous PLANIFIES : c'est le contenu de la premiere liste.
@@ -314,8 +426,8 @@ async function main(): Promise<void> {
           dateDebut: debut,
         },
       })
-      const rdv = await prisma.appointment.create({
-        data: {
+      const rdv = await creerRendezVousLibre(
+        {
           patientId: patient.id,
           praticienId: medecin.id,
           treatmentId: traitement.id,
@@ -323,7 +435,8 @@ async function main(): Promise<void> {
           dateFin: fin,
           statut: termine ? 'TERMINE' : 'CONFIRME',
         },
-      })
+        'journee',
+      )
       await prisma.treatmentVisit.create({
         data: {
           treatmentId: traitement.id,
@@ -350,20 +463,21 @@ async function main(): Promise<void> {
       }
     } else if (index === 8) {
       // Un rendez-vous planifie NON HONORE : il doit apparaitre « N'est pas venu ».
-      const debutAbs = jour(8, 0)
-      await prisma.appointment.create({
-        data: {
+      const debutAbs = jour(ENTREES_DU_JOUR[index]!.debut, 0)
+      await creerRendezVousLibre(
+        {
           patientId: patient.id,
           praticienId: medecin.id,
           dateDebut: debutAbs,
-          dateFin: jour(8, 30),
+          dateFin: jour(ENTREES_DU_JOUR[index]!.debut, ENTREES_DU_JOUR[index]!.duree),
           statut: 'ABSENT',
         },
-      })
+        'journee',
+      )
     } else if (index < 11) {
       // 2 patients SANS rendez-vous, dont un vu pour la PREMIERE fois.
       const sansRdv = (await prisma.appointment.count({ where: { patientId: patient.id } })) === 0
-      const debut = jour(11 + index, 0)
+      const debut = jour(ENTREES_DU_JOUR[index]!.debut, 0)
       const traitement = await prisma.treatment.create({
         data: {
           patientId: patient.id,
@@ -373,17 +487,18 @@ async function main(): Promise<void> {
           dateDebut: debut,
         },
       })
-      await prisma.appointment.create({
-        data: {
+      await creerRendezVousLibre(
+        {
           patientId: patient.id,
           praticienId: medecin.id,
           treatmentId: traitement.id,
           dateDebut: debut,
-          dateFin: jour(11 + index, 30),
+          dateFin: jour(ENTREES_DU_JOUR[index]!.debut, ENTREES_DU_JOUR[index]!.duree),
           motif: `${marqueur} — ${choisir(MOTIFS_SANS_RDV)}`,
           statut: 'TERMINE',
         },
-      })
+        'journee',
+      )
       if (sansRdv) {
         await prisma.payment.create({
           data: {
@@ -433,9 +548,12 @@ async function main(): Promise<void> {
   // ── Rendez-vous a venir : « Nouveaux rendez-vous » du planning ───────────
   dire('7. Rendez-vous a venir…')
   for (let i = 0; i < 14; i++) {
+    const couleur = choixStatut()
+    const patient = patients[entre(0, NB_PATIENTS - 1)]!
+    // Creneaux separes : 9h, 10h, ... 16h sur 14 jours a venir. Une collision
+    // (meme jour, meme heure) est rejouee sans consommer de tirage supplementaire.
     const debut = decaleJours(entre(1, 20))
     debut.setHours(entre(9, 16), 0, 0, 0)
-    const patient = patients[entre(0, NB_PATIENTS - 1)]!
     const traitement = await prisma.treatment.create({
       data: {
         patientId: patient.id,
@@ -445,15 +563,15 @@ async function main(): Promise<void> {
         dateDebut: debut,
       },
     })
-    await prisma.appointment.create({
-      data: {
-        patientId: patient.id,
-        praticienId: medecin.id,
-        treatmentId: traitement.id,
-        dateDebut: debut,
-        dateFin: new Date(debut.getTime() + 30 * 60_000),
-        statut: choixStatut(),
-      },
+    // Le creneau est reserve : jour/heure tires ci-dessus sont respectes quand
+    // ils sont libres, sinon le premier creneau libre suivant est utilise.
+    await creerRendezVousLibre({
+      patientId: patient.id,
+      praticienId: medecin.id,
+      treatmentId: traitement.id,
+      dateDebut: debut,
+      dateFin: new Date(debut.getTime() + 30 * 60_000),
+      statut: couleur,
     })
   }
 

@@ -1,5 +1,5 @@
 // =============================================================================
-//  SEED DU COMPTE MEDECIN — VERSION BUREAU (CommonJS autonome)
+//  SEED DU COMPTE SECRETAIRE — VERSION BUREAU (CommonJS autonome)
 // =============================================================================
 //  Créé au premier lancement de l'application de bureau. Reproduit exactement
 //  `database/seed.ts` (hachage Argon2id + pepper) sans TypeScript, pour être
@@ -14,9 +14,10 @@ const argon2 = require(path.join(dossierStandalone, 'node_modules', 'argon2'))
 const prisma = new PrismaClient()
 
 async function main() {
-  const email = process.env.DOCTOR_EMAIL
-  const nom = process.env.DOCTOR_NAME
-  const motDePasse = process.env.DOCTOR_INITIAL_PASSWORD
+  const email = process.env.DOCTOR_EMAIL ?? 'clinic@gmail.dz'
+  const nom = process.env.DOCTOR_NAME ?? 'Secrétaire'
+  const motDePasse = process.env.DOCTOR_INITIAL_PASSWORD ?? 'Clinic+123'
+  const role = process.env.DOCTOR_ROLE ?? 'ASSISTANT'
   const pepper = process.env.PASSWORD_PEPPER
 
   const manquants = []
@@ -60,13 +61,13 @@ async function main() {
     data: {
       email: emailNormalise,
       displayName: nom,
-      role: 'MEDECIN',
+      role,
       passwordHash: hash,
       isActive: true,
       passwordChangedAt,
     },
   })
-  console.log('Compte medecin cree :', emailNormalise)
+  console.log('Compte cree :', emailNormalise, '(' + role + ')')
 }
 
 main()

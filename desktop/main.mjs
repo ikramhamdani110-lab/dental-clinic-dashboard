@@ -16,11 +16,46 @@ import path from 'node:path'
 import fs from 'node:fs'
 import http from 'node:http'
 import { spawn } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const IS_DEV = !!process.env.DESKTOP_DEV
+
+// -----------------------------------------------------------------------------
+//  GARDE-FOU : MODE NODE ACCIDENTEL
+// -----------------------------------------------------------------------------
+//  Si la variable `ELECTRON_RUN_AS_NODE` est presente dans l'environnement, le
+//  binaire Electron s'execute comme un simple Node : AUCUNE fenetre n'apparait
+//  et le processus se termine aussitot, sans le moindre message.
+//
+//  Panne reellement constatee : une session de developpement avait exporte
+//  cette variable. L'application « ne demarrait pas » alors qu'elle etait saine,
+//  et le diagnostic etait impossible — pas de fenetre, pas de journal.
+//
+//  Ce bloc ne peut pas empecher Electron d'adopter le mode Node (la decision est
+//  prise avant l'execution de ce fichier), MAIS il laisse une trace explicite
+//  dans le journal de demarrage, et il retire la variable pour tous les
+//  processus enfants (node.exe du serveur Next, migration, seed) : sans cela,
+//  le serveur embarque demarrerait lui aussi en mode degrade.
+// -----------------------------------------------------------------------------
+if (process.env.ELECTRON_RUN_AS_NODE) {
+  const avertissement =
+    'ATTENTION : ELECTRON_RUN_AS_NODE est definie dans l environnement. ' +
+    'L application ne peut pas ouvrir de fenetre dans cet etat. ' +
+    'Lancez-la depuis une session normale (ou supprimez cette variable).'
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true })
+    fs.appendFileSync(
+      path.join(app.getPath('userData'), 'startup.log'),
+      `[${new Date().toISOString()}] ${avertissement}\n`,
+    )
+  } catch {}
+  console.error(avertissement)
+  // Les enfants ne doivent pas heriter de ce mode.
+  delete process.env.ELECTRON_RUN_AS_NODE
+}
 
 // -----------------------------------------------------------------------------
 //  Journal de demarrage (fichier dans AppData) : indispensable pour diagnostiquer
@@ -52,10 +87,23 @@ const NEXT_STANDALONE = path.join(APP_ROOT, 'standalone')
 // desinstallation/mise a jour n'efface jamais le dossier clinique.
 const DATA_DIR = path.join(app.getPath('userData'), 'clinique')
 const PG_DIR = path.join(DATA_DIR, 'pg')
-const DB_PORT = Number(process.env.DESKTOP_DB_PORT ?? 54329)
+const DB_PORT_BASE = Number(process.env.DESKTOP_DB_PORT ?? 54329)
 const WEB_PORT = Number(process.env.DESKTOP_WEB_PORT ?? 43177)
 
-const DATABASE_URL = `postgresql://sahed:sahed_local_pw@127.0.0.1:${DB_PORT}/sahed_clinic`
+// Ports PostgreSQL candidats. Le port de base reste 54329 (comportement
+// historique), mais si un socket FANTOME d'un postgres tue monopolise ce port
+// (cas reel au cabinet : le handle survit au processus et refuse tout), on
+// bascule automatiquement sur le port suivant. Les donnees ne dependent PAS
+// du port : le dossier PG_DIR est identique, rien n'est perdu.
+const DB_PORT_CANDIDATS = [DB_PORT_BASE, DB_PORT_BASE + 1, DB_PORT_BASE + 2]
+let DB_PORT = DB_PORT_BASE
+let DATABASE_URL = `postgresql://sahed:sahed_local_pw@127.0.0.1:${DB_PORT}/sahed_clinic`
+
+function definirDbPort(/** @type {number} */ port) {
+  DB_PORT = port
+  DATABASE_URL = `postgresql://sahed:sahed_local_pw@127.0.0.1:${port}/sahed_clinic`
+}
+
 const SESSION_SECRET =
   'desktop-local-secret-sahed-dental-clinic-2026-not-for-production'
 const APP_PASSWORD_PEPPER = 'desktop-local-pepper-sahed-2026-secret'
@@ -121,23 +169,200 @@ async function portDejaOccupe(port) {
   })
 }
 
-async function verifierPortsLibres() {
-  const occupes = []
-  for (const [nom, port] of [
-    ['PostgreSQL', DB_PORT],
-    ['serveur local', WEB_PORT],
-  ]) {
-    if (await portDejaOccupe(port)) {
-      occupes.push(`${nom} (port ${port})`)
+// -----------------------------------------------------------------------------
+//  NETTOYAGE DES ORPHELINS POSTGRESQL
+// -----------------------------------------------------------------------------
+//  Probleme reel observe sur le poste du cabinet : apres un arret brutal
+//  (coupure, fermeture forcee), un postgres.exe orphelin garde le port 54329
+//  en LISTENING mais ne repond PLUS jamais (socket fantome : TCP accepte,
+//  aucune reponse au protocole). La verification de port le voyait « occupe »
+//  et l'application refusait de demarrer — ou migrait en boucle infinie.
+//
+//  Remede : si un postgres.exe orphelin utilise NOTRE dossier de donnees
+//  (PG_DIR), on le termine — c'est notre propre serveur, pas la base d'un
+//  tiers. On supprime aussi le postmaster.pid perime. Aucune donnee n'est
+//  touchee : le dossier PG_DIR reste intact et PostgreSQL redemarre dessus.
+//
+//  PORTEE DU NETTOYAGE — POINT CRITIQUE
+//  On ne cible PAS « tout postgres.exe ». Un postgres.exe peut appartenir a une
+//  autre application du poste (un autre logiciel, un serveur de developpement) :
+//  le tuer serait une faute grave. Le filtre exige que la ligne de commande
+//  contienne LE CHEMIN EXACT de notre dossier de donnees (PG_DIR), qui est
+//  propre a cet utilisateur Windows et a cette application.
+function arreterOrphelinsPostgres() {
+  const pidFile = path.join(PG_DIR, 'postmaster.pid')
+  /** @type {number[]} */
+  let pids = []
+  try {
+    /*
+     * La comparaison porte sur `PG_DIR` (ex.
+     * `C:\Users\pc\AppData\Roaming\Clinique Sahed\clinique\pg`).
+     *
+     * Le chemin est passé par variable d'environnement plutôt qu'inséré dans
+     * la commande PowerShell : il contient un espace (« Clinique Sahed ») et
+     * pourrait contenir une apostrophe dans le nom d'utilisateur. Une
+     * interpolation directe casserait la condition et, au mieux, ne
+     * nettoierait rien ; au pire, elle ciblerait le mauvais processus.
+     */
+    const sortie = execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        "(Get-CimInstance Win32_Process -Filter \"Name='postgres.exe'\" | " +
+          'Where-Object { $_.CommandLine -and $_.CommandLine.Contains($env:SAHED_PG_DIR) } | ' +
+          'Select-Object -ExpandProperty ProcessId) -join \',\'',
+      ],
+      {
+        encoding: 'utf8',
+        timeout: 10_000,
+        env: { ...process.env, SAHED_PG_DIR: PG_DIR },
+      },
+    )
+    pids = String(sortie || '')
+      .split(',')
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isInteger(n) && n > 0)
+  } catch {
+    pids = []
+  }
+  if (pids.length > 0) {
+    log('Nettoyage : processus PostgreSQL orphelins a arreter : ' + pids.join(', '))
+    for (const pid of pids) {
+      try {
+        process.kill(pid, 'SIGKILL')
+      } catch {}
+      try {
+        execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], {
+          stdio: 'ignore',
+          timeout: 5000,
+        })
+      } catch {}
     }
   }
-  if (occupes.length > 0) {
+  // postmaster.pid perime : PostgreSQL refuserait de demarrer ou signalerait
+  // un serveur « deja en cours ». Le supprimer est sans danger quand aucun
+  // processus n'ecoute reellement notre port.
+  try {
+    if (fs.existsSync(pidFile)) {
+      const premiereLigne = fs.readFileSync(pidFile, 'utf8').split(/\r?\n/)[0]
+      const pid = Number(premiereLigne)
+      let vivant = false
+      if (Number.isInteger(pid) && pid > 0) {
+        try {
+          process.kill(pid, 0)
+          vivant = true
+        } catch {
+          vivant = false
+        }
+      }
+      if (!vivant) {
+        fs.rmSync(pidFile, { force: true })
+        log('Nettoyage : postmaster.pid perime supprime')
+      }
+    }
+  } catch {}
+  return pids.length
+}
+
+/** Le port accepte-t-il VRAIMENT le protocole PostgreSQL (et pas un socket fantome) ? */
+async function portRepondVraiment(port, timeoutMs = 2500) {
+  const net = await import('node:net')
+  return new Promise((resolve) => {
+    let fini = false
+    const terminer = (/** @type {boolean} */ v) => {
+      if (fini) return
+      fini = true
+      try { socket.destroy() } catch {}
+      resolve(v)
+    }
+    const socket = net.default.connect({ host: '127.0.0.1', port })
+    socket.once('connect', () => {
+      // SSLRequest PostgreSQL : reponse attendue 'S' (SSL) ou 'N' (non SSL).
+      const buf = Buffer.alloc(8)
+      buf.writeInt32BE(8, 0)
+      buf.writeInt32BE(80877103, 4)
+      socket.write(buf)
+    })
+    socket.once('data', () => terminer(true))
+    socket.once('error', () => terminer(false))
+    socket.once('close', () => terminer(false))
+    socket.setTimeout(timeoutMs, () => terminer(false))
+  })
+}
+
+async function verifierPortsLibres() {
+  // ---- PostgreSQL : nettoyage des orphelins puis selection d'un port sain ----
+  // Un port est « sain » s'il est libre OU occupé par un PostgreSQL qui répond
+  // réellement (instance déjà lancée par cette application). Un socket fantôme
+  // ne répond jamais : on le contourne en changeant de port.
+  arreterOrphelinsPostgres()
+  await delay(300)
+
+  let portChoisi = null
+  for (const port of DB_PORT_CANDIDATS) {
+    const occupe = await portDejaOccupe(port)
+    if (!occupe) {
+      portChoisi = port
+      break
+    }
+    if (await portRepondVraiment(port)) {
+      // Un vrai PostgreSQL écoute déjà : c'est probablement une instance
+      // résiduelle de CETTE application. On ne tue pas les données, on
+      // réutilise ce port uniquement si c'est bien le nôtre ; sinon on
+      // passe au suivant pour rester prudent.
+      log(`Port ${port} occupé par un PostgreSQL actif — essai du port suivant`)
+      continue
+    }
+    log(`Port ${port} en etat fantome (aucune reponse PostgreSQL) — ignore`)
+  }
+
+  if (portChoisi === null) {
     throw new Error(
-      `Le port de ${occupes.join(' et ')} est déjà utilisé par une autre ` +
-        `application (ou un processus orphelin d'un arrêt brutal). ` +
-        `Fermez cette application puis relancez. Journal : ${LOG_FILE}`,
+      `Aucun port PostgreSQL disponible parmi ${DB_PORT_CANDIDATS.join(', ')}. ` +
+        `Fermez les applications utilisant ces ports puis relancez. Journal : ${LOG_FILE}`,
     )
   }
+  definirDbPort(portChoisi)
+  log(`Port PostgreSQL retenu : ${DB_PORT}`)
+
+  // ---- Serveur web local ----
+  if (await portDejaOccupe(WEB_PORT)) {
+    if (!(await portRepondAvecHttp(WEB_PORT))) {
+      log(`Port ${WEB_PORT} en etat fantome — poursuite du demarrage`)
+    } else {
+      throw new Error(
+        `Le port du serveur local (${WEB_PORT}) est déjà utilisé par une autre ` +
+          `application. Fermez cette application puis relancez. Journal : ${LOG_FILE}`,
+      )
+    }
+  }
+}
+
+/** Le port web répond-il à une requête HTTP (et pas un socket fantome) ? */
+async function portRepondAvecHttp(port, timeoutMs = 2500) {
+  return new Promise((resolve) => {
+    let fini = false
+    const terminer = (/** @type {boolean} */ v) => {
+      if (fini) return
+      fini = true
+      resolve(v)
+    }
+    try {
+      const req = http.get(
+        { host: '127.0.0.1', port, path: '/', timeout: timeoutMs },
+        (res) => {
+          res.resume()
+          terminer(true)
+        },
+      )
+      req.on('timeout', () => { req.destroy(); terminer(false) })
+      req.on('error', () => terminer(false))
+    } catch {
+      terminer(false)
+    }
+  })
 }
 
 // -----------------------------------------------------------------------------
@@ -181,23 +406,16 @@ async function startDatabase() {
   return { pg, fresh: !alreadyInitialised }
 }
 
-// Attend la disponibilité de PostgreSQL (port ouvert) avant toute requête.
+// Attend la disponibilité de PostgreSQL AVANT toute requête.
+// IMPORTANT : on ne se contente PAS d'un TCP-connect réussi. Un socket
+// fantome (postgres orphelin tué, handle survécu) accepte la connexion TCP
+// mais ne répond JAMAIS : l'ancien test passait alors que le serveur était
+// mort, et la migration restait bloquée indéfiniment (cause du blocage
+// observé au cabinet). On exige donc une VRAIE réponse au protocole
+// PostgreSQL (réponse 'S' ou 'N' à SSLRequest).
 async function waitForPg(port, attempts = 60) {
-  const net = await import('node:net')
   for (let i = 0; i < attempts; i++) {
-    const ouvert = await new Promise((resolve) => {
-      const socket = net.default.connect({ host: '127.0.0.1', port })
-      socket.once('connect', () => {
-        socket.destroy()
-        resolve(true)
-      })
-      socket.once('error', () => resolve(false))
-      socket.setTimeout(1500, () => {
-        socket.destroy()
-        resolve(false)
-      })
-    })
-    if (ouvert) return
+    if (await portRepondVraiment(port)) return
     await delay(500)
   }
   throw new Error(
@@ -235,11 +453,12 @@ async function migrateAndSeed(fresh) {
     PASSWORD_PEPPER: APP_PASSWORD_PEPPER,
     ...(fresh
       ? {
-          DOCTOR_EMAIL: process.env.DOCTOR_EMAIL ?? 'sahed@gmail.dz',
-          DOCTOR_NAME: process.env.DOCTOR_NAME ?? 'Dr. Sahed',
+          DOCTOR_EMAIL: process.env.DOCTOR_EMAIL ?? 'clinic@gmail.dz',
+          DOCTOR_NAME: process.env.DOCTOR_NAME ?? 'Secrétaire',
           // Mot de passe initial demandé par le cabinet — DOIT être changé à
           // la première connexion (voir `passwordChangedAt`).
-          DOCTOR_INITIAL_PASSWORD: process.env.DOCTOR_INITIAL_PASSWORD ?? 'sahed2026',
+          DOCTOR_INITIAL_PASSWORD: process.env.DOCTOR_INITIAL_PASSWORD ?? 'Clinic+123',
+          DOCTOR_ROLE: process.env.DOCTOR_ROLE ?? 'ASSISTANT',
           // Le seed positionne `passwordChangedAt` à l'époque Unix pour forcer
           // le changement de mot de passe à la première connexion.
           FORCE_FIRST_LOGIN_PASSWORD_CHANGE: 'true',

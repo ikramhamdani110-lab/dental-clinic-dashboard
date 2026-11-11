@@ -1,5 +1,5 @@
 // =============================================================================
-//  SEED DU COMPTE MEDECIN — VERSION BUREAU (CommonJS autonome)
+//  SEED DU COMPTE SECRETAIRE — VERSION BUREAU (CommonJS autonome)
 // =============================================================================
 //  Créé au premier lancement de l'application de bureau. Reproduit exactement
 //  `database/seed.ts` (hachage Argon2id + pepper) sans TypeScript, pour être
@@ -7,16 +7,17 @@
 // =============================================================================
 
 const path = require('node:path')
-const dossierStandalone = process.env.DESKTOP_SEED_STANDALONE ?? path.resolve(__dirname, '..', 'standalone')
+const dossierStandalone = path.resolve(__dirname, '..', 'standalone')
 const { PrismaClient } = require(path.join(dossierStandalone, 'node_modules', '@prisma', 'client'))
 const argon2 = require(path.join(dossierStandalone, 'node_modules', 'argon2'))
 
 const prisma = new PrismaClient()
 
 async function main() {
-  const email = process.env.DOCTOR_EMAIL
-  const nom = process.env.DOCTOR_NAME
-  const motDePasse = process.env.DOCTOR_INITIAL_PASSWORD
+  const email = process.env.DOCTOR_EMAIL ?? 'clinic@gmail.dz'
+  const nom = process.env.DOCTOR_NAME ?? 'Secrétaire'
+  const motDePasse = process.env.DOCTOR_INITIAL_PASSWORD ?? 'Clinic+123'
+  const role = process.env.DOCTOR_ROLE ?? 'ASSISTANT'
   const pepper = process.env.PASSWORD_PEPPER
 
   const manquants = []
@@ -50,27 +51,9 @@ async function main() {
   })
 
   if (existant) {
-    // COMPTE EXISTANT : le seed ne reinitialise JAMAIS le mot de passe d'un
-    // compte en service â€” SAUF si la procedure de reinitialisation d'urgence
-    // (desktop/reinitialiser-compte.cjs) a place le fichier
-    // docteur-initial.txt : dans ce cas, et seulement dans ce cas,
-    // main.mjs passe DOCTOR_PASSWORD_RESET=1 et le mot de passe est remplace.
-    // Jamais automatiquement au demarrage (seed non destructif par defaut).
-    if (process.env.DOCTOR_PASSWORD_RESET === '1') {
-      await prisma.user.update({
-        where: { id: existant.id },
-        data: {
-          passwordHash: hash,
-          passwordChangedAt,
-          isActive: true,
-          failedLoginCount: 0,
-          lockedUntil: null,
-        },
-      })
-      console.log('Mot de passe reinitialise pour le compte existant :', emailNormalise)
-      return
-    }
-    console.log('Compte medecin deja existant :', emailNormalise, 'â€” aucune modification.')
+    // COMPTE EXISTANT : on ne touche a RIEN — le seed ne reinitialise JAMAIS le
+    // mot de passe d'un compte reel deja en service (seed non destructif).
+    console.log('Compte medecin deja existant :', emailNormalise, '— aucune modification.')
     return
   }
 
@@ -78,13 +61,13 @@ async function main() {
     data: {
       email: emailNormalise,
       displayName: nom,
-      role: 'MEDECIN',
+      role,
       passwordHash: hash,
       isActive: true,
       passwordChangedAt,
     },
   })
-  console.log('Compte medecin cree :', emailNormalise)
+  console.log('Compte cree :', emailNormalise, '(' + role + ')')
 }
 
 main()
