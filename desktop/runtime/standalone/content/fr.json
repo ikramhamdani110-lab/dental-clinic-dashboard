@@ -79,6 +79,7 @@
     "ordonnances": "Ordonnances",
     "odontogramme": "Odontogramme",
     "documents": "Documents",
+    "rapports": "Rapports",
     "journalActivite": "Journal d'activité",
     "corbeille": "Corbeille",
     "parametres": "Paramètres",
@@ -236,10 +237,10 @@
     "aucuneOrdonnance": "Aucune ordonnance pour ce patient.",
     "aucunDocument": "Aucun document pour ce patient.",
     "paiementTitre": "Nouveau paiement",
-    "paiementAide": "Le montant est vérifié par le serveur : il ne peut pas dépasser le prix du traitement.",
+    "paiementAide": "Le paiement peut être associé à un traitement ou enregistré comme acompte, sans traitement.",
     "traitementAssocie": "Traitement associe",
     "montantRestant": "Reste à payer sur ce traitement : {{reste}}",
-    "aucunTraitementASolder": "Aucun traitement a solder : tous les traitements de ce patient sont regles.",
+    "aucunTraitementASolder": "Aucun traitement à solder : le paiement sera enregistré comme acompte.",
     "totalTraitements": "Total des traitements",
     "totalPaye": "Total paye",
     "resteAPayer": "Reste a payer"
@@ -313,7 +314,7 @@
     "typeTraitement": "Type de traitement",
     "dents": "Dent(s)",
     "diagnostic": "Diagnostic",
-    "description": "Demande du patient",
+    "description": "Description",
     "prixTotal": "Prix total",
     "montantPaye": "Montant paye",
     "resteAPayer": "Reste a payer",
@@ -389,13 +390,6 @@
     "montantPositif": "Le montant doit être supérieur à zéro.",
     "montantRestant": "Reste à payer sur ce traitement : {{reste}}",
     "solder": "Solder",
-    "acompte": "Acompte",
-    "acompteAucunTraitement": "Acompte — sans traitement associé",
-    "acompteReussie": "Acompte enregistré : il sera affectable plus tard à un traitement.",
-    "affecterAcompte": "Affecter à un traitement",
-    "aucunTraitementAAffecter": "Aucun traitement avec solde disponible pour cet acompte.",
-    "selectionnerTraitement": "Sélectionner un traitement",
-    "reste": "Reste",
     "duplikat": "Doublon detecte",
     "sousTitre": "Historique des paiements du cabinet."
   },
@@ -732,7 +726,8 @@
     "confirmation": "Confirmer le nouveau mot de passe",
     "enregistrer": "Enregistrer et continuer",
     "erreurs": {
-      "nonCorrespondant": "Les deux mots de passe ne correspondent pas."
+      "nonCorrespondant": "Les deux mots de passe ne correspondent pas.",
+      "politique": "Le mot de passe ne remplit pas encore toutes les conditions requises."
     }
   }
 }

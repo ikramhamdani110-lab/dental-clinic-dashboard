@@ -79,6 +79,7 @@
     "ordonnances": "الوصفات الطبية",
     "odontogramme": "مخطط الأسنان",
     "documents": "الوثائق",
+    "rapports": "التقارير",
     "journalActivite": "سجل النشاط",
     "corbeille": "سلة المحذوفات",
     "parametres": "الإعدادات",
@@ -236,10 +237,10 @@
     "aucuneOrdonnance": "لا توجد وصفات طبية لهذا المريض.",
     "aucunDocument": "لا توجد وثائق لهذا المريض.",
     "paiementTitre": "دفعة جديدة",
-    "paiementAide": "يتم التحقق من المبلغ من قبل الخادم: لا يمكن أن يتجاوز سعر العلاج.",
+    "paiementAide": "يمكن ربط الدفعة بالعلاج أو تسجيلها كدفعة مقدم بدون علاج.",
     "traitementAssocie": "العلاج المرتبط",
     "montantRestant": "المتبقي للدفع على هذا العلاج: {{reste}}",
-    "aucunTraitementASolder": "لا يوجد علاج للتصفية: جميع علاجات هذا المريض مسددة.",
+    "aucunTraitementASolder": "لا يوجد علاج للتصفية: سيتم تسجيل الدفعة كدفعة مقدم.",
     "totalTraitements": "مجموع العلاجات",
     "totalPaye": "المجموع المدفوع",
     "resteAPayer": "المتبقي للدفع"
@@ -389,13 +390,6 @@
     "montantPositif": "يجب أن يكون المبلغ أكبر من صفر.",
     "montantRestant": "المتبقي للدفع على هذا العلاج: {{reste}}",
     "solder": "تصفية",
-    "acompte": "دفعة مقدمة",
-    "acompteAucunTraitement": "دفعة مقدمة — بدون علاج مرتبط",
-    "acompteReussie": "تم تسجيل الدفعة المقدمة : يمكن ربطها لاحقًا بعلاج.",
-    "affecterAcompte": "ربط بعلاج",
-    "aucunTraitementAAffecter": "لا يوجد علاج برصيد متاح لهذه الدفعة المقدمة.",
-    "selectionnerTraitement": "اختر علاجًا",
-    "reste": "المتبقي",
     "duplikat": "تم كشف تكرار",
     "sousTitre": "سجل دفعات العيادة."
   },
@@ -732,7 +726,8 @@
     "confirmation": "تأكيد كلمة المرور الجديدة",
     "enregistrer": "حفظ ومتابعة",
     "erreurs": {
-      "nonCorrespondant": "كلمتا المرور غير متطابقتين."
+      "nonCorrespondant": "كلمتا المرور غير متطابقتين.",
+      "politique": "كلمة المرور لا تستوفي بعد جميع الشروط المطلوبة."
     }
   }
 }

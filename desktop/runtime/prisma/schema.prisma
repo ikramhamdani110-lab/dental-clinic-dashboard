@@ -74,20 +74,21 @@ model User {
 
   sessions          Session[]
   activityLogs      ActivityLog[]
-  createdPayments   Payment[]             @relation("PaymentCreatedBy")
-  correctedPayments PaymentCorrection[]   @relation("CorrectionCreatedBy")
-  medicalRecords    MedicalRecord[]       @relation("MedicalRecordAuthor")
-  prescriptions     Prescription[]        @relation("PrescriptionAuthor")
-  odontogram        OdontogramEntry[]     @relation("OdontogramAuthor")
-  documents         Document[]            @relation("DocumentAuthor")
+  createdPayments   Payment[]               @relation("PaymentCreatedBy")
+  correctedPayments PaymentCorrection[]     @relation("CorrectionCreatedBy")
+  medicalRecords    MedicalRecord[]         @relation("MedicalRecordAuthor")
+  prescriptions     Prescription[]          @relation("PrescriptionAuthor")
+  odontogram        OdontogramEntry[]       @relation("OdontogramAuthor")
+  documents         Document[]              @relation("DocumentAuthor")
   reschedules       AppointmentReschedule[] @relation("RescheduleChangedBy")
   appointments      Appointment[]
-  trashEntries      TrashEntry[]          @relation("TrashDeletedBy")
+  trashEntries      TrashEntry[]            @relation("TrashDeletedBy")
   passwordResets    PasswordResetToken[]
-  manualIncomes     ManualIncome[]        @relation("ManualIncomeCreatedBy")
-  expenses          Expense[]             @relation("ExpenseCreatedBy")
-  personalTx        PersonalTransaction[] @relation("PersonalTransactionCreatedBy")
-  financeSessions   FinanceSession[]      @relation("FinanceSessionUser")
+  manualIncomes     ManualIncome[]          @relation("ManualIncomeCreatedBy")
+  expenses          Expense[]               @relation("ExpenseCreatedBy")
+  personalTx        PersonalTransaction[]   @relation("PersonalTransactionCreatedBy")
+  financeSessions   FinanceSession[]        @relation("FinanceSessionUser")
+  deviceSessions    DeviceSession[]         @relation("DeviceSessionUser")
 
   @@map("users")
 }
@@ -140,10 +141,10 @@ model FinanceSession {
   ipAddress String?
   userAgent String?
 
-  createdAt  DateTime  @default(now())
-  lastSeenAt DateTime  @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
   revokedReason String?
 
   @@index([userId])
@@ -153,10 +154,10 @@ model FinanceSession {
 
 /// Journal des tentatives de connexion — sert au rate limiting et a l'audit.
 model LoginAttempt {
-  id         String   @id @default(uuid()) @db.Uuid
+  id         String  @id @default(uuid()) @db.Uuid
   email      String
   ipAddress  String
-  successful Boolean  @default(false)
+  successful Boolean @default(false)
 
   /// Raison technique uniquement, conservee cote serveur. Le message renvoye a
   /// l'interface reste generique (§6).
@@ -218,7 +219,7 @@ model Patient {
   age Int?
 
   dateNaissance DateTime?
-  sexe          Sexe    @default(NON_PRECISE)
+  sexe          Sexe      @default(NON_PRECISE)
 
   telephone           String
   telephoneSecondaire String?
@@ -280,6 +281,10 @@ model Treatment {
   prixTotalCentimes Int
 
   statut StatutTraitement @default(PLANIFIE)
+
+  /// Statut de synchronisation (sync). `A_ARBITRER` = conflit non résolu :
+  /// traitement verrouillé en lecture seule jusqu'à arbitrage médecin.
+  syncStatut String @default("VALIDE")
 
   dateDebut DateTime?
   dateFin   DateTime?
@@ -376,13 +381,24 @@ model Appointment {
 
   statut StatutRendezVous @default(PLANIFIE)
 
+  /// Statut de synchronisation (sync). `CONFLIT_A_ARBITRER` = le push de ce
+  /// RDV a ete rejete pour chevauchement de creneau et attend un arbitrage
+  /// humain (voir migration 20261101000000 et PLAN-SYNC-OFFLINE-B.md §1.5bis).
+  syncStatut String @default("VALIDE")
+
+  /// Intervalle tstzrange demi-ouvert '[dateDebut, dateFin)' recalculé par un
+  /// déclencheur PostgreSQL (voir migration 20261101000000). Utilisé par la
+  /// contrainte d'exclusion anti-chevauchement. Prisma ne gère pas les
+  /// colonnes maintenues par déclencheur : lue mais jamais écrite.
+  creneau String? @ignore
+
   /// Motif d'annulation / d'absence, conserve pour l'historique.
   motifStatut String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  visit      TreatmentVisit?
+  visit       TreatmentVisit?
   reschedules AppointmentReschedule[]
 
   @@index([dateDebut])
@@ -455,8 +471,8 @@ model Payment {
   /// la ligne EXISTANTE, sans créer un second paiement — l'argent ne peut
   /// donc jamais être compté deux fois.
   ///
-  treatmentId String?     @db.Uuid
-  treatment   Treatment?  @relation(fields: [treatmentId], references: [id], onDelete: Restrict)
+  treatmentId String?    @db.Uuid
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: Restrict)
 
   /// Visite concernee, lorsqu'elle est connue (§13, §16).
   treatmentVisitId String?         @db.Uuid
@@ -473,6 +489,12 @@ model Payment {
   /// destructrice, le champ n'est simplement plus demande.
   methode MethodePaiement @default(ESPECES)
   statut  StatutPaiement  @default(VALIDE)
+
+  /// Statut de synchronisation (sync). `VALIDE` par defaut ; `A_ARBITRER`
+  /// signifie que ce paiement est en conflit de synchronisation et qu'il est
+  /// EXCLU de tous les calculs financiers jusqu'a resolution (voir
+  /// backend/services/finances.service.ts). Jamais expose au formulaire.
+  syncStatut String @default("VALIDE")
 
   notes String?
 
@@ -945,4 +967,132 @@ enum PersonalDirection {
   DU_PAR_UN_TIERS
 
   @@map("personal_direction")
+}
+
+// =============================================================================
+//  SYNCHRONISATION OFFLINE-FIRST (Option B) — tables ADDITIVES
+// =============================================================================
+//  Ces tables supportent la synchronisation bidirectionnelle entre
+//  l'application de bureau (base embarquee) et la base centrale Neon.
+//  Aucune table existante n'est modifiee : voir la migration
+//  20261101000000_sync_offline_first pour les details SQL (contraintes,
+//  colonnes generees, index partiels).
+// =============================================================================
+
+/// Curseur de tirage (pull) par appareil et table metier. Persiste pour que
+/// la reprise apres crash/panne reprenne EXACTEMENT ou elle s'etait arretee.
+model SyncState {
+  id           String    @id @default(uuid()) @db.Uuid
+  deviceId     String    @db.Uuid
+  tableName    String
+  lastPulledAt DateTime  @default(now())
+  lastPushedAt DateTime?
+
+  @@unique([deviceId, tableName])
+  @@index([deviceId])
+  @@map("sync_state")
+}
+
+/// Idempotence stricte : un `operationId` donne ne peut produire d'effet
+/// qu'une seule fois. Un rejeu (ack perdu, retry applicatif, crash) renvoie
+/// `alreadyApplied = true` sans toucher aux donnees.
+model SyncSeenOperation {
+  operationId    String   @id @default(uuid()) @db.Uuid
+  deviceId       String   @db.Uuid
+  entityType     String
+  receivedAt     DateTime @default(now())
+  alreadyApplied Boolean  @default(false)
+
+  @@index([deviceId])
+  @@map("sync_seen_operations")
+}
+
+/// Journal serveur de la synchronisation (audit et diagnostic).
+/// `outcome` : APPLIED | ALREADY_APPLIED | CONFLICT | REJECTED | REVOKED |
+///             MIGRATION_BLOCKED.
+model SyncEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  deviceId    String   @db.Uuid
+  operationId String?  @db.Uuid
+  direction   String
+  entityType  String
+  entityId    String?  @db.Uuid
+  outcome     String
+  detail      String?
+  createdAt   DateTime @default(now())
+
+  @@index([deviceId, createdAt])
+  @@index([outcome, createdAt])
+  @@map("sync_events")
+}
+
+/// Conflit conserve en DOUBLE version. Jamais resolu automatiquement pour
+/// les donnees medicales ou financieres : `resolution` reste `PENDING`
+/// jusqu'a un arbitrage humain journalise.
+model SyncConflict {
+  id               String    @id @default(uuid()) @db.Uuid
+  entityType       String
+  entityId         String    @db.Uuid
+  fieldName        String?
+  localValue       String?
+  remoteValue      String?
+  localUpdatedAt   DateTime?
+  remoteUpdatedAt  DateTime?
+  deviceId         String    @db.Uuid
+  resolution       String    @default("PENDING")
+  resolvedById     String?   @db.Uuid
+  resolvedAt       DateTime?
+  resolutionChoice String?
+  archivedPayload  String?
+  createdAt        DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([resolution])
+  @@map("sync_conflicts")
+}
+
+/// Appairage et revocation des appareils. Le jeton n'est jamais stocke en
+/// clair : uniquement son SHA-256. La revocation est verifiee DANS la
+/// transaction de push (SELECT FOR SHARE) — jamais de course critique.
+model DeviceSession {
+  id                 String    @id @default(uuid()) @db.Uuid
+  deviceId           String    @db.Uuid
+  userId             String    @db.Uuid
+  user               User      @relation("DeviceSessionUser", fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash          String    @unique
+  recoveryPhraseHash String?
+  recoverySalt       String?
+  label              String?
+  createdAt          DateTime  @default(now())
+  lastSeenAt         DateTime  @default(now())
+  revokedAt          DateTime?
+  revokedReason      String?
+
+  @@index([deviceId])
+  @@index([userId])
+  @@map("device_sessions")
+}
+
+/// File d'attente LOCALE de l'appareil. Persistee en base embarquee :
+/// survit a un crash, a un redemarrage et a une coupure secteur. Chaque
+/// operation a un statut explicite : PENDING | SYNCING | SYNCHRONIZED |
+/// CONFLICT | REJECTED. Une operation en echec NE BLOQUE PAS les suivantes.
+model SyncQueueEntry {
+  operationId    String    @id @default(uuid()) @db.Uuid
+  deviceId       String    @db.Uuid
+  entityType     String
+  entityId       String    @db.Uuid
+  operation      String
+  payload        String
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  lastError      String?
+  conflictDetail String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  synchronizedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([deviceId])
+  @@map("sync_queue")
 }

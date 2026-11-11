@@ -44,13 +44,19 @@
 | Version | contient le moteur de synchronisation offline-first complet |
 | Nom affiché | « Clinique Sahed » (menu Démarrer) |
 
-## 2. URLs (production Vercel — à redéployer si déjà fait)
+## 2. URLs (production Vercel — déploiement du 2026-11-02, vérifié Ready)
 
-- **Site secrétaire** : l'URL de production du projet `dental-clinic-dashboard`
-  (la même qu'avant — le déploiement Vercel existant pointe déjà sur Neon ;
-  il faut redéployer pour charger la nouvelle version du code avec
-  `UTILISATEURS_ACTIFS = ['MEDECIN','ASSISTANT']`).
-- **Site financier** : même domaine, route `/finances/connexion`.
+- **Déploiement prod** : `https://dental-clinic-dashboard-6p4vcr9sd-ikram-it.vercel.app`
+- **Site secrétaire** : cette URL (racine), login `clinic@gmail.dz`.
+- **Site financier** : `/finances/connexion` sur la même URL.
+- Commit final sur origin/main : **`b8b1c07`** — contient
+  `UTILISATEURS_ACTIFS = ['MEDECIN','ASSISTANT']`, le moteur de
+  synchronisation et les schemas financiers.
+- ⚠ **Alias projet obsolète** : `dental-clinic-dashboard.vercel.app` répond
+  encore avec une version antérieure (405 sur POST /api). Promouvez le
+  déploiement ci-dessus comme alias de production (dashboard Vercel →
+  Deployments → ⋯ → Promote to Production Alias), ou communiquez l'URL
+  complète aux utilisateurs.
 
 ⚠️ **Section obsolète** — remplacée par la section 0 ci-dessus : le
 redéploiement a été fait (commits `2181ca3`, `b8b1c07`) et vérifié **Ready**.
