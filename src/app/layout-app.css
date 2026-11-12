@@ -933,7 +933,12 @@ a.rail-item:focus,
       fixe/sticky), et sa largeur ne depasse JAMAIS l'ecran. Aucun defilement
       horizontal n'est possible : `flex-wrap` repartit les elements sur
       plusieurs lignes plutot que de les faire deborder. */
-   width: 100%;
+   /* LARGEUR AUTO, PAS 100% : `width: 100%` + les marges laterales poussaient
+      le bord droit du rail de `--espace-2` hors de l'ecran, ce qui creait une
+      scrollbar horizontale sur toute la page. En `width: auto`, un conteneur
+      de niveau bloc se dimensionne DANS l'espace laisse par ses propres
+      marges : plus aucun debordement, sans masquer quoi que ce soit. */
+   width: auto;
    max-width: 100%;
    box-sizing: border-box;
    overflow-x: hidden;
