@@ -154,6 +154,26 @@
   cursor: pointer;
 
   /*
+   * ABSORPTION DU DEBORDEMENT DU LIBELLE, A LA SOURCE.
+   *
+   *  Chaque element porte son libelle absolu a `left: 100%` (~118 px hors de
+   *  la boite de 44 px). Tant que ce debordement remontait jusqu'au `.rail`,
+   *  des que celui-ci devenait un conteneur de défilement vertical (écran
+   *  court), l'axe horizontal s'armaient aussi : `scrollLeft` devenait
+   *  possible et l'ascenseur natif avec ses fleches apparaissait.
+   *
+   *  `overflow-x: clip` sur l'ELEMENT MEME absorbe le debordement de son
+   *  libelle a la source : `scrollWidth == clientWidth` a tous les niveaux,
+   *  aucun conteneur n'a plus rien a exposer horizontalement. La marge de
+   *  rognage elargie (`overflow-clip-margin`) laisse le libelle s'afficher
+   *  ENTIEREMENT au survol, exactement comme avant — clip ne scrolle pas,
+   *  il ne fait que borner la peinture.
+   */
+  overflow-x: clip;
+  overflow-y: visible;
+  overflow-clip-margin: 10rem;
+
+  /*
    * AUCUN SOULIGNEMENT DE TEXTE, AUCUN TRAIT SOUS LES ICONES.
    *
    *  `globals.css` pose `a:hover { text-decoration: underline }` sur TOUS les
