@@ -16,14 +16,23 @@
 /**
  * Montant en centimes -> chaine lisible en dinars (ex. 2000000 -> « 20 000 DA »).
  * Les decimales ne sont affichees que si le montant n'est pas rond.
+ *
+ * SEPARATEURS DE MILLIERS : `fr-FR` produit l'espace fine insécable (U+202F),
+ * qui est rendue quasi invisible par certaines polices d'interface (Inter à
+ * grande taille : « 1 494140 DA » au lieu de « 1 494 140 DA », constaté à
+ * l'audit). On la remplace par l'espace insécable standard (U+00A0), plus
+ * large et toujours lisible, sans risquer de retour à la ligne dans un
+ * montant.
  */
 export function formaterMontant(centimes: number): string {
   const dinars = Math.round(centimes) / 100
   const aDesDecimales = Math.abs(dinars % 1) > 1e-9
-  const groupe = dinars.toLocaleString('fr-FR', {
-    minimumFractionDigits: aDesDecimales ? 2 : 0,
-    maximumFractionDigits: 2,
-  })
+  const groupe = dinars
+    .toLocaleString('fr-FR', {
+      minimumFractionDigits: aDesDecimales ? 2 : 0,
+      maximumFractionDigits: 2,
+    })
+    .replace(/\u202f/g, '\u00a0')
   return `${groupe} DA`
 }
 

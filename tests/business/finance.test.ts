@@ -179,3 +179,17 @@ describe('Scenario complet — patient Ahmed (§44)', () => {
     expect(revenu).toBe(2_500_000) // 25 000 DA — et non 35 000 DA
   })
 })
+
+describe('Separateur de milliers lisible', () => {
+  /**
+   * L'espace fine U+202F produite par `fr-FR` est rendue quasi invisible par
+   * certaines polices d'interface à grande taille (bug « 1 494140 DA » constaté
+   * à l'audit). Le formatage doit utiliser l'espace insécable standard U+00A0.
+   */
+  it('utilise l espace insécable standard (U+00A0), jamais la space fine (U+202F)', () => {
+    const rendu = formaterMontant(149_414_000)
+    expect(rendu).toContain('\u00a0')
+    expect(rendu).not.toContain('\u202f')
+    expect(rendu).toBe('1\u00a0494\u00a0140 DA')
+  })
+})

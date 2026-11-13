@@ -23,7 +23,7 @@ const ROUTES_PRIVEES = [
   '/api/appointments',
   '/api/activity-log',
   '/api/trash',
-  '/api/reports/revenue?rapport=revenus',
+  '/api/finances/summary',
 ]
 
 let echecs = 0

@@ -374,7 +374,11 @@
   margin-top: 0.9rem;
   font-size: 2.1rem;
   font-weight: 700;
-  letter-spacing: -0.035em;
+  /*
+   * PAS de letter-spacing négatif ici : il s'appliquerait aussi aux espaces
+   * fines insécables (U+202F) des séparateurs de milliers et les rendrait
+   * quasi invisibles (« 1 494140 DA » au lieu de « 1 494 140 DA »).
+   */
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--fn-texte);

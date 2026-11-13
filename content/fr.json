@@ -151,7 +151,7 @@
     "revenusMensuels": "Revenus mensuels",
     "aucunRendezVousAujourdhui": "Aucun rendez-vous aujourd'hui.",
     "aucunNouveauRendezVousCree": "Aucun rendez-vous créé aujourd'hui.",
-    "aucunProchainRendezVous": "Aucun rendez-vous a venir.",
+    "aucunProchainRendezVous": "Aucun rendez-vous à venir.",
     "aucuneActivite": "Aucune activité récente.",
     "voirPlanning": "Voir le planning",
     "voirPatients": "Voir les patients",
@@ -414,7 +414,7 @@
     "aucune": "Aucune ordonnance enregistrée.",
     "medicament": "Medicament",
     "dosage": "Dosage",
-    "frequence": "Frequence",
+    "frequence": "Fréquence",
     "duree": "Durée",
     "instructions": "Instructions",
     "ajouterMedicament": "Ajouter un médicament",
@@ -547,7 +547,7 @@
     "aucunRevenu": "Aucun revenu enregistré sur cette année."
   },
   "journalActivite": {
-    "titre": "Journal d'activite",
+    "titre": "Journal d'activité",
     "aucune": "Aucun événement enregistré.",
     "action": "Action",
     "utilisateur": "Utilisateur",

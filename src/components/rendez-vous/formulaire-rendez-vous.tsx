@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { TYPES_TRAITEMENT_RENDEZ_VOUS } from '@backend/domain/constants'
+import { LIBELLES_TRAITEMENT_RENDEZ_VOUS } from '@backend/domain/constants'
 import { formaterMontant, parseMontantEnCentimes } from '@backend/domain/finance'
 import { t } from '@content/index'
 
@@ -237,7 +237,7 @@ export function FormulaireRendezVous(): React.JSX.Element {
               value={typeTraitement}
               placeholder="Selectionner un traitement"
               onChange={(event) => setTypeTraitement(event.target.value)}
-              options={TYPES_TRAITEMENT_RENDEZ_VOUS.map((value) => ({ valeur: value, libelle: value }))}
+              options={LIBELLES_TRAITEMENT_RENDEZ_VOUS.map(([valeur, libelle]) => ({ valeur, libelle }))}
               {...(erreursChamps.typeTraitement ? { erreur: erreursChamps.typeTraitement } : {})}
             />
             <ChampTexte

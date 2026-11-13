@@ -94,6 +94,20 @@ export const TYPES_TRAITEMENT_RENDEZ_VOUS = [
   'علاج تسوس وعصب الأسنان بالأشعة',
 ] as const
 
+/**
+ * Libellés AFFICHÉS du formulaire de rendez-vous.
+ *
+ * Les valeurs stockées restent les intitulés historiques en arabe (§21 : la
+ * donnée existante n'est jamais réécrite) ; seul le texte présenté à la saisie
+ * est traduit en français, langue de l'interface.
+ */
+export const LIBELLES_TRAITEMENT_RENDEZ_VOUS: ReadonlyArray<readonly [string, string]> = [
+  ['تركيب الأسنان', 'Prothèse dentaire'],
+  ['تقويم وتنظيف الأسنان', 'Orthodontie et détartrage'],
+  ['جراحة الأسنان واللثة', 'Chirurgie dentaire et gencive'],
+  ['علاج تسوس وعصب الأسنان بالأشعة', 'Traitement carie et nerf (radio)'],
+]
+
 // -----------------------------------------------------------------------------
 //  ODONTOGRAMME FDI (§20)
 // -----------------------------------------------------------------------------

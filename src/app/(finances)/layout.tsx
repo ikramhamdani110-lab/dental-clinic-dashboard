@@ -49,8 +49,14 @@ export default async function LayoutFinances({
      * THÈME PROPRE AU SITE FINANCIER : la coquille définit ses propres jetons
      * (`--fn-*`) dans `finances.css` et ne dépend pas du thème clinique. Elle
      * est TOUJOURS claire : aucun attribut `data-theme`, aucune bascule.
+     *
+     * L'attribut `data-theme="sombre"` hérité de `<html>` est explicitement
+     * neutralisé : sans lui, certains styles sombres du thème clinique fuitent
+     * sur des éléments du site financier (contraste dégradé de la carte
+     * « DETTE » observé à l'audit). La racine `<html>` reste un domaine du
+     * secrétariat ; cette coquille ne lui doit rien.
      */
-    <div className="finances-coquille">
+    <div className="finances-coquille" data-theme="clair">
       <main className="finances-contenu">{children}</main>
     </div>
   )
