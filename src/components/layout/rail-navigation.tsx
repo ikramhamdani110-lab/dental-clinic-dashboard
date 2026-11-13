@@ -124,18 +124,10 @@ export function RailNavigation(): React.JSX.Element {
           DS
         </span>
         {/*
-          UN SEUL trait sous « Tableau de bord ».
-
-          Le separateur qui suivait cette marque a ete RETIRE : la marque porte
-          deja son propre trait d'etat (`.rail-soulignement`, visible a l'etat
-          courant et au survol), et le separateur venait s'empiler juste en
-          dessous. Deux traits horizontaux identiques se lisaient alors comme un
-          doublon, sans rien apporter.
-
-          Le trait de section reste, lui, present sur les autres elements : c'est
-          l'unique repere de survol et de section courante.
+          AUCUN trait sous les elements du rail : les anciens traits d'etat
+          ont ete RETIRES. L'etat courant reste signale par la couleur
+          d'accent de l'icone uniquement.
         */}
-        <span className="rail-soulignement" aria-hidden="true" />
         {/*
           `aria-hidden` comme sur les autres elements du rail : le libelle est
           deja porte par l'`aria-label` du lien. Sans cela, un lecteur d'ecran
@@ -172,7 +164,6 @@ export function RailNavigation(): React.JSX.Element {
         title={enClair ? t('theme.modeSombre') : t('theme.modeClair')}
       >
         <Icone nom={enClair ? 'lune' : 'soleil'} className="rail-icone" />
-        <span className="rail-soulignement" aria-hidden="true" />
         <span className="rail-libelle" aria-hidden="true">
           {enClair ? t('theme.modeSombre') : t('theme.modeClair')}
         </span>
@@ -187,7 +178,6 @@ export function RailNavigation(): React.JSX.Element {
         title={t('commun.langue')}
       >
         <Icone nom="langue" className="rail-icone" />
-        <span className="rail-soulignement" aria-hidden="true" />
         <span className="rail-libelle" aria-hidden="true">
           {langue === 'fr' ? 'العربية' : 'Français'}
         </span>
@@ -239,7 +229,6 @@ function LienRail({ entree }: { entree: EntreeRail }): React.JSX.Element {
         C'est un element a part (et non une bordure) afin de pouvoir l'animer
         en opacite ET en largeur, sans deplacer l'icone.
       */}
-      <span className="rail-soulignement" aria-hidden="true" />
       <span className="rail-libelle" aria-hidden="true">
         {entree.libelle}
       </span>

@@ -134,30 +134,15 @@
   cursor: pointer;
 
   /*
-   * AUCUN SOULIGNEMENT DE TEXTE — LE DOUBLE TRAIT.
+   * AUCUN SOULIGNEMENT DE TEXTE, AUCUN TRAIT SOUS LES ICONES.
    *
    *  `globals.css` pose `a:hover { text-decoration: underline }` sur TOUS les
-   *  liens. Ce soulignement n'est presque jamais visible dans le rail : les trois
-   *  entrees de navigation ne contiennent qu'une ICONE, et une image SVG ne se
-   *  souligne pas. La MARQUE « DS », elle, est un TEXTE : elle héritait donc du
-   *  soulignement au survol, et l'on obtenait sous l'icone DEUX traits
-   *  horizontaux distincts —
-   *
-   *      1. le soulignement du texte, a 2 px sous le « DS »  ;
-   *      2. le repere d'etat `.rail-soulignement`, quelques pixels plus bas.
-   *
-   *  Mesure au survol, section active : texte 305→318, soulignement ~318→320,
-   *  repere d'etat 326→328. Deux lignes visibles, espacees de 6 px, pour un
-   *  rail qui n'en doit montrer qu'une.
-   *
-   * Le repere d'etat est une FRISE PEINTE, pas du texte : il doit rester le
-    *  seul trait visible.
-    *
-    *  La neutralisation est posee sur `a.rail-item` (et sa variante `:hover`)
-    *  volontairement PLUS SPECIFIQUE que le `a:hover` generique pose dans
-    *  `globals.css` : ce dernier vaut 0,1,1, et une simple classe `.rail-item`
-    *  (0,1,0) perdait la cascade, laissant le soulignement intact.
-    */
+   *  liens : les selecteurs ci-dessous montent dessus (specificite superieure).
+   *  Les anciens traits d'etat peints sous l'icone ont ete RETIRES a la
+   *  demande expresse : la navigation ne montre AUCUNE ligne horizontale.
+   *  L'etat courant est signale par la couleur d'accent de l'icone.
+   */
+
    text-decoration: none;
 
   transition:
@@ -171,7 +156,7 @@
  *
  * Ces selecteurs montent volontairement au-dessus du `a:hover` generique
  * (0,1,1) de `globals.css` : `a.rail-item:hover` vaut 0,2,1. Sans cette
- * precision, le soulignement restait — et le rail affichait deux traits.
+ * precision, le soulignement restait.
  */
 a.rail-item,
 a.rail-item:hover,
@@ -183,20 +168,13 @@ a.rail-item:focus,
 }
 
 /*
- * Le soulignement se propage aux descendants : la neutraliser sur la boite
+ * La neutralisation se propage aux descendants : la poser sur la boite
  * suffirait, mais on la repete sur les deux enfants pour que le resultat ne
  * depended pas de la portee de la decoration, et qu'un texte ajoute plus tard
  * dans le rail ne reintroduise pas le trait.
  */
-.rail-marque-texte,
-.rail-soulignement,
-.rail-libelle {
-  text-decoration: none;
-}
-
 .rail-item:hover {
   color: var(--texte-principal);
-  background-color: transparent;
 }
 
 /*
@@ -297,70 +275,10 @@ a.rail-item:focus,
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Petit soulignement clair (survol / focus) ─────────────────────────────── */
 
-/*
- * Trait court et clair sous l'icone. En position ABSOLUE : il ne participe pas
- * a la mise en page, donc il ne decale ni l'icone ni le rail, et il ne peut pas
- * provoquer de debordement. Il s'etire legerement (scaleX) en apparaissant,
- * ce qui donne le mouvement sans animation lourde.
- */
-.rail-soulignement {
-  position: absolute;
-  bottom: 0.3rem;
-  left: 50%;
-  width: 0.875rem;
-  height: 2px;
-  border-radius: 2px;
-  background-color: var(--texte-principal);
 
-  opacity: 0;
-  transform: translateX(-50%) scaleX(0.4);
-  transform-origin: center;
 
-  transition:
-    opacity var(--transition-rapide),
-    transform var(--transition-rapide);
 
-  pointer-events: none;
-}
-
-.rail-item:hover .rail-soulignement,
-.rail-item:focus .rail-soulignement {
-  opacity: 0.55;
-  transform: translateX(-50%) scaleX(1);
-}
-
-/*
- * Section COURANTE : le trait est visible en permanence, un peu plus marque
- * que le trait de survol. C'est l'indication « vous etes ici », discrete, qui
- * remplace tout aplat ou halo.
- */
-.rail-item[aria-current='page'] .rail-soulignement {
-  opacity: 0.9;
-  transform: translateX(-50%) scaleX(1);
-  background-color: var(--accent);
-}
-
-/*
- * SURVOL DE LA SECTION COURANTE : LE MEME TRAIT, RIEN DE PLUS.
- *
- * Sans cette regle, survoler l'icone de la page courante rejouait la transition
- * de survol PAR-DESSUS le trait d'etat : le trait passait de son opacite
- * d'etat a celle du survol, et sa couleur d'accent pouvait perdre un instant
- * contre la couleur de texte. Le repere clignotait, ce qui se lisait comme un
- * second indicateur.
- *
- * On fige donc explicitement le trait d'etat lorsqu'il est deja affiche : meme
- * opacite, meme couleur, meme longueur. Survoler la section active ne change
- * donc RIEN au trait — il n'y a jamais deux lignes, ni une ligne qui bouge.
- */
-.rail-item[aria-current='page']:hover .rail-soulignement,
-.rail-item[aria-current='page']:focus .rail-soulignement {
-  opacity: 0.9;
-  transform: translateX(-50%) scaleX(1);
-  background-color: var(--accent);
-}
 
 /* ── Libelles reveles au survol / au focus ─────────────────────────────────── */
 
