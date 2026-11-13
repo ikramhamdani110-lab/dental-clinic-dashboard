@@ -93,17 +93,37 @@
   border: 1px solid var(--bordure);
   box-shadow: var(--ombre-rail), var(--liseret-haut);
 
-  /* Les libelles absolus doivent pouvoir sortir du rail. */
-  overflow: visible;
+  /*
+   * ROGNAGE SANS ASCENSEUR HORIZONTAL.
+   *
+   *  Les libelles au survol sont en `position: absolute` ancrés a gauche du
+   *  rail (`left: 100%`) : ils sortent de la boite. Avec `overflow: visible`,
+   *  aucun ascenseur n'apparaissait tant que le rail n'etait pas un conteneur
+   *  de défilement — mais dès que l'écran est court (media query ci-dessous),
+   *  `overflow-y: auto` transforme le rail en conteneur de défilement, ce qui
+   *  force `overflow-x` de `visible` vers `auto` : les libelles armaient alors
+   *  une zone de défilement horizontale (scrollWidth 177 > clientWidth 60) et
+   *  un ASCENSEUR HORIZONTAL NATIF avec fleches apparaissait au bas du rail.
+   *
+   *  `overflow-x: clip` interdit le défilement horizontal (aucun ascenseur,
+   *  aucune fleche, `scrollLeft` imposable) tout en laissant la zone rognee
+   *  s'étendre au-dela de la boite grace a `overflow-clip-margin` : les
+   *  libelles restent donc ENTIEREMENT visibles au survol, comme avant.
+   */
+  overflow-x: clip;
+  overflow-y: clip;
+  overflow-clip-margin: 10rem;
 }
 
-/* Ecran tres court : le rail defile au lieu de sortir de l'ecran. */
+/* Ecran tres court : le rail defile VERTICALEMENT au lieu de sortir de l'ecran.
+   L'axe horizontal reste rogne (clip) : jamais d'ascenseur ni de fleches. */
 @media (max-height: 34rem) {
   .rail {
     top: var(--espace-4);
     transform: none;
     max-height: calc(100vh - var(--espace-6));
     overflow-y: auto;
+    overflow-x: clip;
   }
 }
 
