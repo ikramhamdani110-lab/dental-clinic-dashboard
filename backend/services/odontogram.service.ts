@@ -6,6 +6,7 @@ import { FDI_PERMANENTE, FDI_TEMPORAIRE } from '@backend/domain/constants'
 import { erreurs } from '@backend/errors/app-error'
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
 import { filtreExclusion, identifiantsEnCorbeille } from '@backend/services/trash.service'
+import { chargeUtile, journaliserOperationLocale } from '@backend/services/sync-outbox.service'
 
 /**
  * Nombre maximal d'entrees d'historique chargees pour un patient.
@@ -239,6 +240,15 @@ export async function enregistrerChangement(
       createdById: contexte.userId,
     },
     select: { id: true },
+  })
+
+  // File de synchronisation locale (bureau uniquement, inactif en production).
+  const entreeComplete = await prisma.odontogramEntry.findUniqueOrThrow({ where: { id: entree.id } })
+  await journaliserOperationLocale({
+    entityType: 'odontogramEntries',
+    entityId: entree.id,
+    operation: 'CREATE',
+    payload: chargeUtile(entreeComplete as unknown as Record<string, unknown>),
   })
 
   await journaliser(contexte, ACTIONS.ODONTOGRAMME_MODIFIE, {

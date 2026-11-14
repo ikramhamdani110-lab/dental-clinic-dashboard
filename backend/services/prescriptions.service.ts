@@ -5,6 +5,7 @@ import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pag
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
 import type { EnteteOrdonnance } from '@backend/validation/schemas'
 import { filtreExclusion } from '@backend/services/trash.service'
+import { chargeUtile, journaliserOperationLocale } from '@backend/services/sync-outbox.service'
 
 /**
  * =============================================================================
@@ -202,7 +203,7 @@ export async function creerOrdonnance(
     ])
   }
 
-  const ordonnance = await prisma.$transaction(async (tx) => {
+    const ordonnance = await prisma.$transaction(async (tx) => {
     const cree = await tx.prescription.create({
       data: {
         patientId: donnees.patientId,
@@ -227,6 +228,19 @@ export async function creerOrdonnance(
         notes: ligne.notes,
         position: index,
       })),
+    })
+
+    // File de synchronisation locale, DANS la transaction (bureau uniquement).
+    const ordonnanceComplete = await tx.prescription.findUniqueOrThrow({
+      where: { id: cree.id },
+      include: { items: { orderBy: { position: 'asc' } } },
+    })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'prescriptions',
+      entityId: cree.id,
+      operation: 'CREATE',
+      payload: chargeUtile(ordonnanceComplete as unknown as Record<string, unknown>),
     })
 
     return cree
@@ -284,6 +298,19 @@ export async function modifierOrdonnance(
         })),
       })
     }
+
+    // File de synchronisation locale, DANS la transaction (bureau uniquement).
+    const modifiee = await tx.prescription.findUniqueOrThrow({
+      where: { id },
+      include: { items: { orderBy: { position: 'asc' } } },
+    })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'prescriptions',
+      entityId: id,
+      operation: 'UPDATE',
+      payload: chargeUtile(modifiee as unknown as Record<string, unknown>),
+    })
   })
 
   await journaliser(contexte, ACTIONS.ORDONNANCE_MODIFIEE, {

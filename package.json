@@ -25,11 +25,13 @@
     "db:demo:stop": "node scripts/demo-db.mjs stop",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:sync": "node scripts/test-sync.mjs",
     "backup:postgres": "node database/scripts/backup-postgres.mjs",
     "corbeille:purger": "node database/scripts/purge-corbeille.mjs",
     "desktop:build": "cross-env BUILD_TARGET=desktop next build && node desktop/prepare.mjs",
     "desktop:start": "node desktop/dev-launch.mjs",
-    "desktop:installer": "electron-builder --config electron-builder.config.cjs"
+    "desktop:installer": "electron-builder --config electron-builder.config.cjs",
+    "desktop:livrer": "node desktop/livrer.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.1.0",

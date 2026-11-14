@@ -6,6 +6,26 @@ import { AppError, erreurs } from '@backend/errors/app-error'
 import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pagination'
 import { logger } from '@backend/logging/logger'
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
+import { chargeUtile, journaliserOperationLocale } from '@backend/services/sync-outbox.service'
+import { journaliserRestauration, journaliserSuppression, typeCorbeilleVersTable } from '@backend/services/sync-tombstones.service'
+
+/** Correspondance TypeEntiteSupprimable -> entityType de la file de sync. */
+function typeVersEntityTypeSync(
+  type: TypeEntiteSupprimable,
+): string {
+  const table: Record<TypeEntiteSupprimable, string> = {
+    PATIENT: 'patients',
+    RENDEZ_VOUS: 'appointments',
+    TRAITEMENT: 'treatments',
+    VISITE_TRAITEMENT: 'treatmentVisits',
+    PAIEMENT: 'payments',
+    DOSSIER_MEDICAL: 'medicalRecords',
+    ORDONNANCE: 'prescriptions',
+    DOCUMENT: 'documents',
+    ENTREE_ODONTOGRAMME: 'odontogramEntries',
+  }
+  return table[type]
+}
 
 /**
  * =============================================================================
@@ -185,6 +205,29 @@ export async function mettreEnCorbeille(
       supprimeDefinitivementLe: null,
       supprimeDefinitivementParId: null,
     },
+  })
+
+  // File de synchronisation locale (bureau uniquement) : la suppression est
+  // journalisee comme TRASH (tombstone reversible), jamais comme un DELETE.
+  await journaliserOperationLocale({
+    entityType: typeVersEntityTypeSync(type),
+    entityId,
+    operation: 'TRASH',
+    payload: chargeUtile(entite),
+  })
+
+  // TOMBSTONE DURABLE : journalise DANS LA MEME TRANSACTION que la mise en
+  // corbeille — il survit à la purge 24 h, donc aucune résurrection possible
+  // pour un appareil resté hors ligne plus de 24 h. `sourceTrashId` relie
+  // explicitement le tombstone à son entrée de corbeille (traçabilité et
+  // distinction avec la suppression définitive).
+  const trashId = entree.id
+  await prisma.$transaction(async (tx) => {
+    await journaliserSuppression(tx, {
+      entityType: type,
+      entityId,
+      sourceTrashId: trashId,
+    })
   })
 
   await journaliser(contexte, actionSuppression(type), {
@@ -451,6 +494,24 @@ export async function restaurer(entreeId: string, contexte: JournalContext): Pro
     data: { restaureLe: new Date(), restaureParId: contexte.userId },
   })
 
+  // File de synchronisation locale (bureau uniquement) : la restauration est
+  // journalisee comme RESTORE — annule le tombstone du TRASH correspondant.
+  await journaliserOperationLocale({
+    entityType: typeVersEntityTypeSync(entree.entityType),
+    entityId: entree.entityId,
+    operation: 'RESTORE',
+    payload: {},
+  })
+
+  // TOMBSTONE DURABLE de restauration : au prochain pull, l'appareil verra
+  // RESTORE après DELETE et réaffichera l'enregistrement.
+  await prisma.$transaction(async (tx) => {
+    await journaliserRestauration(tx, {
+      entityType: entree.entityType,
+      entityId: entree.entityId,
+    })
+  })
+
   await journaliser(contexte, actionRestauration(entree.entityType), {
     entityType: entree.entityType,
     entityId: entree.entityId,
@@ -509,6 +570,20 @@ export async function supprimerDefinitivement(
       supprimeDefinitivementParId: contexte.userId,
     },
   })
+
+  // TOMBSTONE DURABLE de suppression définitive : l'entité physique disparaît,
+  // le tombstone (avec le DELETE antérieur à la corbeille) garantit qu'aucun
+  // appareil hors ligne ne la ressuscitera.
+  const tableSync = typeCorbeilleVersTable(entree.entityType)
+  if (tableSync) {
+    await prisma.$transaction(async (tx) => {
+      await journaliserSuppression(tx, {
+        entityType: entree.entityType,
+        entityId: entree.entityId,
+        sourceTrashId: entree.id,
+      })
+    })
+  }
 
   await journaliser(contexte, ACTIONS.SUPPRESSION_DEFINITIVE, {
     entityType: entree.entityType,
@@ -622,6 +697,18 @@ export async function purgerExpires(): Promise<{
         where: { id: entree.id },
         data: { supprimeDefinitivementLe: maintenant, supprimeDefinitivementParId: null },
       })
+      // TOMBSTONE DURABLE même pour la purge automatique : un appareil hors
+      // ligne au moment de la purge recevra quand même la suppression.
+      const tableSyncPurge = typeCorbeilleVersTable(entree.entityType)
+      if (tableSyncPurge) {
+        await prisma.$transaction(async (tx) => {
+          await journaliserSuppression(tx, {
+            entityType: entree.entityType,
+            entityId: entree.entityId,
+            sourceTrashId: entree.id,
+          })
+        })
+      }
       supprimes += 1
     } catch (erreur) {
       // Deux cas distincts :

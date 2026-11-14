@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { SESSION_COOKIE_NAME, resolveSession } from '@backend/auth/session'
 
 import { EnTetePage } from '@/components/layout/en-tete-page'
+import { IndicateurSynchronisation } from '@/components/sync/indicateur-synchronisation'
 
 /**
  * Enveloppe d'une page privee (composant SERVEUR).
@@ -46,6 +47,9 @@ export async function PagePrivee({
   return (
     <>
       <EnTetePage titre={titre} cleTitre={cleTitre} utilisateur={utilisateur} />
+      {/* Indicateur de sync : visible UNIQUEMENT dans l'application de bureau
+          (rend null sur les sites web — aucun impact sur la production). */}
+      <IndicateurSynchronisation />
       {children}
     </>
   )

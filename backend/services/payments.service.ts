@@ -13,6 +13,7 @@ import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pag
 import { logger } from '@backend/logging/logger'
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
 import { filtreExclusion } from '@backend/services/trash.service'
+import { chargeUtile, journaliserOperationLocale } from '@backend/services/sync-outbox.service'
 
 /**
  * =============================================================================
@@ -188,6 +189,15 @@ export async function ajouterPaiement(
       select: { id: true },
     })
 
+    // File de synchronisation locale (bureau uniquement, inactif en production).
+    const acompteComplet = await prisma.payment.findUniqueOrThrow({ where: { id: acompte.id } })
+    await journaliserOperationLocale({
+      entityType: 'payments',
+      entityId: acompte.id,
+      operation: 'CREATE',
+      payload: chargeUtile(acompteComplet as unknown as Record<string, unknown>),
+    })
+
     await journaliser(contexte, ACTIONS.PAIEMENT_AJOUTE, {
       entityType: 'Paiement',
       entityId: acompte.id,
@@ -258,6 +268,16 @@ export async function ajouterPaiement(
         createdById: contexte.userId ?? '',
       },
       select: { id: true },
+    })
+
+    // File de synchronisation locale, DANS la transaction (bureau uniquement).
+    const paiementComplet = await tx.payment.findUniqueOrThrow({ where: { id: paiement.id } })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'payments',
+      entityId: paiement.id,
+      operation: 'CREATE',
+      payload: chargeUtile(paiementComplet as unknown as Record<string, unknown>),
     })
 
     return { id: paiement.id, resteApresPaiement: controle.resteApresPaiement }
@@ -347,6 +367,14 @@ export async function affecterAcompte(
     await tx.payment.update({
       where: { id: paiementId },
       data: { treatmentId },
+    })
+    const rattache = await tx.payment.findUniqueOrThrow({ where: { id: paiementId } })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'payments',
+      entityId: paiementId,
+      operation: 'UPDATE',
+      payload: chargeUtile(rattache as unknown as Record<string, unknown>),
     })
 
     return { resteApresPaiement: controle.resteApresPaiement }
@@ -588,6 +616,14 @@ export async function corrigerPaiement(
       where: { id: paiementId },
       data: { statut: 'ANNULE' },
     })
+    const annule = await tx.payment.findUniqueOrThrow({ where: { id: paiementId } })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'payments',
+      entityId: paiementId,
+      operation: 'UPDATE',
+      payload: chargeUtile(annule as unknown as Record<string, unknown>),
+    })
 
     // 2. Ligne d'audit : anciennes et nouvelles valeurs.
     await tx.paymentCorrection.create({
@@ -623,6 +659,14 @@ export async function corrigerPaiement(
         createdById: contexte.userId ?? '',
       },
       select: { id: true },
+    })
+    const nouveauComplet = await tx.payment.findUniqueOrThrow({ where: { id: nouveau.id } })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'payments',
+      entityId: nouveau.id,
+      operation: 'CREATE',
+      payload: chargeUtile(nouveauComplet as unknown as Record<string, unknown>),
     })
 
     return nouveau.id

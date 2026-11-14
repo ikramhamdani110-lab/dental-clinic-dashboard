@@ -11,7 +11,7 @@
 //  residuent integralement sur le poste.
 // =============================================================================
 
-import { app, BrowserWindow, dialog, Menu } from 'electron'
+import { app, BrowserWindow, dialog, Menu, Tray, ipcMain, nativeImage } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import http from 'node:http'
@@ -122,6 +122,13 @@ let pgProcess = null
 let nextProcess = null
 let mainWindow = null
 let quitting = false
+let tray = null
+
+// SYNCHRONISATION — modules chargés après le démarrage de PostgreSQL
+// (voir demarrerSync plus bas). Audit G1 : le watcher était du code mort.
+let watcher = null
+let etatSync = { mode: 'NON_APPAIRE' }
+let fileSync = null
 // -----------------------------------------------------------------------------
 //  Instance unique : un second lancement de l'application ne doit JAMAIS
 //  entrer en conflit avec la première (mêmes ports, même base). Le second
@@ -532,13 +539,67 @@ function startNext() {
   nextProcess.on('error', (e) => log('Erreur node/next : ' + e.message))
   nextProcess.on('exit', (code) => {
     log(`Serveur local arrêté (code ${code})`)
-    if (code !== 0 && !quitting) {
-      dialog.showErrorBox(
-        'Erreur interne',
-        `Le serveur local s'est arrêté (code ${code}). Relancez l'application.`,
-      )
-    }
+    nextProcess = null
+    if (quitting) return
+    // SUPERVISION (audit G8) : le backend se relance TOUT SEUL après un crash,
+    // avec un backoff et un plafond — jamais de boucle infinie.
+    planifierRelanceNext()
   })
+}
+
+// -----------------------------------------------------------------------------
+//  SUPERVISION DU BACKEND — relance automatique après un crash.
+//  Backoff exponentiel 2 s → 60 s, plafonné à 5 essais consécutifs : au-delà,
+//  un message explicite s'affiche au lieu de tourner en boucle. Un démarrage
+//  réussi réinitialise le compteur.
+// -----------------------------------------------------------------------------
+let essaisRelanceNext = 0
+
+function planifierRelanceNext() {
+  if (quitting || essaisRelanceNext >= 5) {
+    if (essaisRelanceNext >= 5) {
+      const message =
+        `Le serveur local n'a pas réussi à redémarrer après ${essaisRelanceNext} tentatives.\n\n` +
+        `Fermez complètement l'application (icône tray → Quitter) puis relancez-la.\n` +
+        `Journal complet : ${LOG_FILE}`
+      log('SUPERVISION : plafond de relances atteint — intervention requise.')
+      dialog.showErrorBox('Serveur local indisponible', message)
+    }
+    return
+  }
+  essaisRelanceNext += 1
+  const attente = Math.min(60_000, 2 ** essaisRelanceNext * 1000)
+  log(`SUPERVISION : relance du serveur local dans ${attente / 1000} s (essai ${essaisRelanceNext}/5)`)
+  setTimeout(async () => {
+    if (quitting) return
+    try {
+      if (await portRepondAvecHttp(WEB_PORT, 1500)) {
+        // Quelque chose répond déjà : pas besoin de relancer.
+        essaisRelanceNext = 0
+        return
+      }
+      startNext()
+      await waitForHttp(`${APP_URL}/api/health`)
+      essaisRelanceNext = 0
+      log('SUPERVISION : serveur local relancé avec succès.')
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(APP_URL).catch(() => {})
+    } catch (e) {
+      log('SUPERVISION : échec de relance — ' + String(e?.message ?? e))
+      planifierRelanceNext()
+    }
+  }, attente)
+}
+
+/** Surveillant de santé : sonde /api/health toutes les 30 s ; relance si mort. */
+function demarrerSurveillantSante() {
+  setInterval(async () => {
+    if (quitting) return
+    const vivant = await portRepondAvecHttp(WEB_PORT, 2500)
+    if (!vivant && !nextProcess) {
+      log('SURVEILLANT : backend injoignable — relance programmée.')
+      planifierRelanceNext()
+    }
+  }, 30_000).unref()
 }
 
 // -----------------------------------------------------------------------------
@@ -582,6 +643,9 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      // Preload étroit : expose UNIQUEMENT l'état de sync + l'appairage
+      // (audit G9). Aucune API Node, aucun fichier, aucun secret.
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   })
   Menu.setApplicationMenu(null)
@@ -593,10 +657,84 @@ function createWindow() {
 }
 
 // -----------------------------------------------------------------------------
+//  TRAY — FERMER LA FENÊTRE ≠ ARRÊTER LE BACKEND (audit G8)
+// -----------------------------------------------------------------------------
+//  La fenêtre de l'application peut être fermée (le médecin passe à autre
+//  chose) : le backend et la base CONTINUENT de tourner en arrière-plan, et
+//  la synchronisation aussi. L'icône tray permet de rouvrir la fenêtre ou de
+//  QUITTER réellement l'application (arrêt propre de Next puis PostgreSQL).
+//  Comportement standard d'une application Windows de fond de poste.
+// -----------------------------------------------------------------------------
+let exitDemandeParUtilisateur = false
+
+function creerTray() {
+  try {
+    const iconePath = path.join(IS_DEV ? path.resolve(__dirname, '..') : process.resourcesPath, 'ico', 'icon.ico')
+    const image = fs.existsSync(iconePath)
+      ? nativeImage.createFromPath(iconePath)
+      : nativeImage.createEmpty()
+    tray = new Tray(image.isEmpty() ? path.join(APP_ROOT, 'ico', 'icon.ico') : image)
+  } catch {
+    // Repli : tray avec une image vide (16x16 transparent) plutôt qu'un crash.
+    try {
+      tray = new Tray(nativeImage.createEmpty())
+    } catch (e) {
+      log('Tray indisponible : ' + String(e?.message ?? e))
+      return
+    }
+  }
+  tray.setToolTip('Clinique Sahed')
+  tray.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+    } else {
+      createWindow()
+    }
+  })
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'Ouvrir Clinique Sahed',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+        } else {
+          createWindow()
+        }
+      },
+    },
+    {
+      label: 'Synchroniser maintenant',
+      click: () => {
+        watcher?.cycleMaintenant().catch(() => {})
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quitter (arrête le serveur local)',
+      click: () => {
+        exitDemandeParUtilisateur = true
+        quitting = true
+        app.quit()
+      },
+    },
+  ])
+  tray.setContextMenu(menu)
+}
+
+// -----------------------------------------------------------------------------
 //  Arret propre
 // -----------------------------------------------------------------------------
 async function shutdown() {
   quitting = true
+  try {
+    watcher?.arreter()
+  } catch {}
+  try {
+    const { fermerWatcher } = await import('./sync/net-watcher.mjs')
+    await fermerWatcher()
+  } catch {}
   try {
     nextProcess?.kill()
   } catch {}
@@ -609,10 +747,21 @@ async function shutdown() {
 }
 
 app.on('window-all-closed', () => {
-  // Pas de re-quitter ici : shutdown le fait deja.
-  shutdown()
+  // AUDIT G8 : la fermeture de la fenêtre N'ARRÊTE PAS le backend. L'icône
+  // tray reste active ; l'application ne quitte que par « Quitter » du menu
+  // tray (exitDemandeParUtilisateur) ou par l'arrêt de Windows.
+  if (exitDemandeParUtilisateur) {
+    shutdown()
+  }
+  // Sinon : rien — le backend continue en arrière-plan.
 })
 app.on('before-quit', (e) => {
+  if (!quitting && !exitDemandeParUtilisateur) {
+    // Quitter via Windows (arrêt système) : arrêt propre.
+    e.preventDefault()
+    shutdown()
+    return
+  }
   if (!quitting) {
     e.preventDefault()
     shutdown()
@@ -622,11 +771,111 @@ process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 
 // -----------------------------------------------------------------------------
+//  SYNCHRONISATION — démarrage après le serveur local (audit G1)
+// -----------------------------------------------------------------------------
+async function demarrerSync() {
+  try {
+    // La file (CommonJS) résout @prisma/client depuis le node_modules du
+    // runtime embarqué : DESKTOP_SEED_STANDALONE pointe dessus.
+    process.env.DESKTOP_SEED_STANDALONE = path.join(NEXT_STANDALONE, 'node_modules')
+    process.env.APP_ROOT = APP_ROOT
+    process.env.DESKTOP_DATA_DIR = DATA_DIR
+    process.env.SAHED_DESKTOP_LOCAL = '1'
+    const queueModule = await import('./sync/queue.mjs')
+    fileSync = queueModule
+    const { demarrerWatcher } = await import('./sync/net-watcher.mjs')
+    watcher = demarrerWatcher({
+      queue: fileSync,
+      log,
+      surEtat: (etat) => {
+        etatSync = etat
+        // Propagation à l'interface via le canal preload (audit G9).
+        try {
+          mainWindow?.webContents.send('sahed:sync-etat', etat)
+        } catch {}
+        try {
+          tray?.setToolTip(`Clinique Sahed — ${libelleEtatSync(etat)}`)
+        } catch {}
+      },
+    })
+    log('Surveillant de synchronisation démarré.')
+  } catch (e) {
+    log('Sync NON démarrée : ' + String(e?.stack ?? e))
+  }
+}
+
+function libelleEtatSync(etat) {
+  switch (etat?.mode) {
+    case 'SYNCED': return 'Synchronisé'
+    case 'SYNCING': return 'Synchronisation en cours…'
+    case 'OFFLINE': return 'Hors ligne — données enregistrées sur cet ordinateur'
+    case 'ERREUR': return 'Échec de synchronisation'
+    case 'SESSION_EXPIREE': return 'Session en ligne expirée — reconnexion requise'
+    case 'APPAREIL_REVOQUE': return 'Appareil révoqué — synchronisation désactivée'
+    case 'NON_APPAIRE': return 'Synchronisation désactivée (appairage requis)'
+    default: return 'Clinique Sahed'
+  }
+}
+
+// -----------------------------------------------------------------------------
+//  IPC — ÉTAT DE SYNC + APPAIRAGE (audit G9, §4 sécurité)
+// -----------------------------------------------------------------------------
+function enregistrerIpc() {
+  ipcMain.handle('sahed:sync-etat-actuel', () => etatSync)
+  ipcMain.handle('sahed:sync-derniere', async () => {
+    try {
+      const { obtenirDerniereSynchro } = await import('./sync/config.mjs')
+      return await obtenirDerniereSynchro()
+    } catch {
+      return null
+    }
+  })
+  ipcMain.handle('sahed:sync-compteurs', async () => {
+    try {
+      return await fileSync.compteurs()
+    } catch {
+      return null
+    }
+  })
+  ipcMain.handle('sahed:sync-configurer', async (_e, { url, jetonSession }) => {
+    try {
+      if (typeof url !== 'string' || !url.startsWith('https://')) {
+        throw new Error('L’URL doit être en HTTPS.')
+      }
+      if (typeof jetonSession !== 'string' || jetonSession.length < 20) {
+        throw new Error('Session de connexion invalide.')
+      }
+      const { definirUrlServeur, definirAppareil } = await import('./sync/config.mjs')
+      const { appairer } = await import('./sync/client.mjs')
+      const { randomUUID } = await import('node:crypto')
+      await definirUrlServeur(url)
+      const deviceId = randomUUID()
+      const { jeton, phraseRecuperation } = await appairer(url, jetonSession, deviceId, 'Bureau Windows')
+      await definirAppareil(deviceId, jeton)
+      watcher?.definirSession(jetonSession)
+      watcher?.cycleMaintenant().catch(() => {})
+      return { ok: true, phraseRecuperation }
+    } catch (e) {
+      return { ok: false, erreur: String(e?.message ?? e) }
+    }
+  })
+  ipcMain.handle('sahed:sync-cycle', async () => {
+    try {
+      await watcher?.cycleMaintenant()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, erreur: String(e?.message ?? e) }
+    }
+  })
+}
+
+// -----------------------------------------------------------------------------
 //  Demarrage
 // -----------------------------------------------------------------------------
 app.whenReady().then(async () => {
   try {
     log(`Démarrage — APP_ROOT=${APP_ROOT} DATA_DIR=${DATA_DIR} NODE_EXE=${NODE_EXE}`)
+    enregistrerIpc()
     // Garde-fou AMONT : ports déjà pris ? (processus orphelin, autre app)
     await verifierPortsLibres()
     log('Ports libres — démarrage de PostgreSQL embarqué')
@@ -640,6 +889,11 @@ app.whenReady().then(async () => {
     await waitForHttp(`${APP_URL}/api/health`)
     log(`Serveur Next.js prêt sur ${APP_URL} — ouverture de la fenêtre`)
     createWindow()
+    creerTray()
+    demarrerSurveillantSante()
+    // SYNCHRONISATION (audit G1) : démarrée APRÈS que la base et le serveur
+    // local sont prêts. Elle tourne en arrière-plan et ne bloque jamais l'UI.
+    await demarrerSync()
   } catch (erreur) {
     const details = String(
       erreur instanceof Error ? erreur.stack || erreur.message : erreur,

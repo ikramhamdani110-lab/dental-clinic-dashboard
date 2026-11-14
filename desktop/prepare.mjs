@@ -25,7 +25,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const racine = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
-const versionApplication = '1.0.0'
+// Version lue du package.json racine (audit G12 : plus jamais figée à 1.0.0).
+const versionApplication = JSON.parse(
+  fs.readFileSync(path.join(racine, 'package.json'), 'utf8'),
+).version ?? '1.0.0'
 const cible = path.join(racine, 'desktop', 'runtime')
 const ressourcesNext = path.join(cible, 'standalone')
 
@@ -131,6 +134,16 @@ fs.copyFileSync(
   path.join(racine, 'desktop', 'main.mjs'),
   path.join(dossierApp, 'main.mjs'),
 )
+// Preload (contextBridge étroit : état de sync + appairage) — à côté de
+// main.mjs : main référence `__dirname/preload.cjs`.
+fs.copyFileSync(path.join(racine, 'desktop', 'preload.cjs'), path.join(dossierApp, 'preload.cjs'))
+// Modules de synchronisation (audit G1) : importés par main.mjs en chemin
+// relatif — ils vivent dans le MÊME dossier que main.mjs packagé.
+fs.mkdirSync(path.join(dossierApp, 'sync'), { recursive: true })
+for (const f of ['queue.mjs', 'client.mjs', 'config.mjs', 'net-watcher.mjs', 'appliquer.mjs', 'log.mjs', 'export.mjs']) {
+  const source = path.join(racine, 'desktop', 'sync', f)
+  if (fs.existsSync(source)) fs.copyFileSync(source, path.join(dossierApp, 'sync', f))
+}
 
 // 9. Manifeste de l'application Electron : nom, point d'entrée main.
 //    `type: module` est INDISPENSABLE : main.mjs utilise `import` au lieu de

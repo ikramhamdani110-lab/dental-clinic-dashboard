@@ -1107,3 +1107,34 @@ model SyncQueueEntry {
   @@index([deviceId])
   @@map("sync_queue")
 }
+
+/// Journal DURABLE des suppressions (indépendant de la fenêtre 24 h).
+/// Écrit dans la transaction de chaque suppression (corbeille, purge) ; un
+/// RESTORE y ajoute une ligne qui annule le DELETE précédent. Rétention
+/// pilotée par curseur : jamais purgé avant que chaque appareil actif ait lu.
+model SyncTombstone {
+  id            String   @id @default(uuid()) @db.Uuid
+  entityType    String
+  entityId      String   @db.Uuid
+  /// DELETE = suppression ; RESTORE = restauration (annule le DELETE).
+  type          String   @default("DELETE")
+  sourceTrashId String?  @db.Uuid
+  deviceId      String?
+  deletedAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([deletedAt])
+  @@index([entityType, entityId])
+  @@map("sync_tombstones")
+}
+
+/// Curseur de lecture des tombstones, par appareil. Un appareil récemment
+/// appairé démarre à epoch (now - 100 ans) : il reçoit tout l'historique.
+model SyncTombstoneCursor {
+  id             String   @id @default(uuid()) @db.Uuid
+  deviceId       String   @unique @db.Uuid
+  lastTombstoneAt DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("sync_tombstone_cursors")
+}

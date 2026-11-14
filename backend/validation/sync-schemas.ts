@@ -14,7 +14,16 @@ const uuidSchema = z.string().uuid()
 /** Une operation individuelle poussée par le bureau. */
 const operationSchema = z.object({
   operationId: uuidSchema,
-  entityType: z.enum(['patients', 'appointments', 'treatments', 'payments', 'documents']),
+  entityType: z.enum([
+    'patients',
+    'appointments',
+    'treatments',
+    'payments',
+    'documents',
+    'prescriptions',
+    'odontogramEntries',
+    'medicalRecords',
+  ]),
   entityId: uuidSchema,
   operation: z.enum(['CREATE', 'UPDATE', 'TRASH', 'RESTORE']),
   /** Payload libre, valide par table dans le service de synchronisation. */
@@ -36,7 +45,21 @@ export const pullSchema = z
   .object({
     deviceId: uuidSchema,
     jetonAppareil: z.string().min(20).max(200),
-    tables: z.array(z.enum(['patients', 'appointments', 'treatments', 'payments', 'documents'])).min(1).max(5),
+    tables: z
+      .array(
+        z.enum([
+          'patients',
+          'appointments',
+          'treatments',
+          'payments',
+          'documents',
+          'prescriptions',
+          'odontogramEntries',
+          'medicalRecords',
+        ]),
+      )
+      .min(1)
+      .max(8),
   })
   .strict()
 

@@ -54,5 +54,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 /** GET /api/sync/push — non supporté (la liste des tables est fournie par /pull). */
 export function GET(): NextResponse {
-  return NextResponse.json({ tables: ['patients', 'appointments', 'treatments', 'payments', 'documents'] })
+  return NextResponse.json({
+    tables: [
+      'patients',
+      'appointments',
+      'treatments',
+      'payments',
+      'documents',
+      'prescriptions',
+      'odontogramEntries',
+      'medicalRecords',
+    ],
+  })
 }

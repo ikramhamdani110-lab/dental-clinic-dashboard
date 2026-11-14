@@ -4,6 +4,7 @@ import { erreurs } from '@backend/errors/app-error'
 import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pagination'
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
 import { filtreExclusion } from '@backend/services/trash.service'
+import { chargeUtile, journaliserOperationLocale } from '@backend/services/sync-outbox.service'
 
 /**
  * =============================================================================
@@ -156,6 +157,15 @@ export async function creerDossierMedical(
     select: { id: true },
   })
 
+  // File de synchronisation locale (bureau uniquement, inactif en production).
+  const dossierComplet = await prisma.medicalRecord.findUniqueOrThrow({ where: { id: dossier.id } })
+  await journaliserOperationLocale({
+    entityType: 'medicalRecords',
+    entityId: dossier.id,
+    operation: 'CREATE',
+    payload: chargeUtile(dossierComplet as unknown as Record<string, unknown>),
+  })
+
   await journaliser(contexte, ACTIONS.DOSSIER_MEDICAL_CREE, {
     entityType: 'DossierMedical',
     entityId: dossier.id,
@@ -198,6 +208,15 @@ export async function modifierDossierMedical(
         : {}),
       ...(donnees.dateSuivi !== undefined ? { dateSuivi: donnees.dateSuivi } : {}),
     },
+  })
+
+  // File de synchronisation locale (bureau uniquement, inactif en production).
+  const modifie = await prisma.medicalRecord.findUniqueOrThrow({ where: { id } })
+  await journaliserOperationLocale({
+    entityType: 'medicalRecords',
+    entityId: id,
+    operation: 'UPDATE',
+    payload: chargeUtile(modifie as unknown as Record<string, unknown>),
   })
 
   await journaliser(contexte, ACTIONS.DOSSIER_MEDICAL_MODIFIE, {

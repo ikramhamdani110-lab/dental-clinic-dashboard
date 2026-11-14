@@ -25,13 +25,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const corps = await lireCorpsJson(request)
     const { deviceId, jetonAppareil, tables } = valider(pullSchema, corps)
 
-    const { curseurs, lots } = await tirerChangements(
+    const { curseurs, lots, tombstones } = await tirerChangements(
       deviceId,
       jetonAppareil,
       tables as readonly (typeof TABLES_SYNC)[number][],
     )
 
-    return NextResponse.json({ curseurs, lots, tables: TABLES_SYNC })
+    return NextResponse.json({ curseurs, lots, tombstones, tables: TABLES_SYNC })
   } catch (error) {
     return responseErreur(error)
   }

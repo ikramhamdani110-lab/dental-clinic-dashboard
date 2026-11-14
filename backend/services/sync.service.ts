@@ -4,6 +4,7 @@ import { prisma } from '@backend/database/prisma'
 import { erreurs } from '@backend/errors/app-error'
 import { logger } from '@backend/logging/logger'
 import { ACTIONS, journaliser } from '@backend/services/activity-log.service'
+import { tombstonesDepuis } from '@backend/services/sync-tombstones.service'
 
 /**
  * =============================================================================
@@ -22,8 +23,17 @@ import { ACTIONS, journaliser } from '@backend/services/activity-log.service'
  *      (`sync_conflicts`, resolution PENDING) — jamais de « dernier gagnant ».
  */
 
-/** Tables metier synchronisees. */
-export const TABLES_SYNC = ['patients', 'appointments', 'treatments', 'payments', 'documents'] as const
+/** Tables metier synchronisees — prescriptions, odontogramme et dossiers medicaux inclus (audit G7). */
+export const TABLES_SYNC = [
+  'patients',
+  'appointments',
+  'treatments',
+  'payments',
+  'documents',
+  'prescriptions',
+  'odontogramEntries',
+  'medicalRecords',
+] as const
 export type TableSync = (typeof TABLES_SYNC)[number]
 
 /** Statuts explicites d'une operation de la file locale. */
@@ -263,6 +273,124 @@ async function appliquerOperation(
         return { operationId: operation.operationId, outcome: 'APPLIED' }
       }
 
+      if (entityType === 'prescriptions') {
+        const donnees = payload as Record<string, unknown>
+        const existant = await tx.prescription.findUnique({ where: { id: entityId } })
+        if (existant) {
+          const modifieLocalement = new Date(String(payload.updatedAt ?? 0))
+          if (existant.updatedAt > modifieLocalement) {
+            await tx.syncConflict.create({
+              data: {
+                entityType,
+                entityId,
+                deviceId,
+                localValue: JSON.stringify(payload),
+                remoteValue: JSON.stringify(existant),
+                localUpdatedAt: modifieLocalement,
+                remoteUpdatedAt: existant.updatedAt,
+              },
+            })
+            return { operationId: operation.operationId, outcome: 'CONFLICT', detail: 'Ordonnance modifiee des deux cotes — arbitrage requis.' }
+          }
+          await tx.prescription.update({
+            where: { id: entityId },
+            data: {
+              ...(donnees.date !== undefined ? { date: new Date(String(donnees.date)) } : {}),
+              ...(donnees.notes !== undefined ? { notes: donnees.notes === null ? null : String(donnees.notes) } : {}),
+              ...(donnees.treatmentId !== undefined ? { treatmentId: donnees.treatmentId ? String(donnees.treatmentId) : null } : {}),
+            },
+          })
+        } else {
+          await tx.prescription.create({
+            data: {
+              id: entityId,
+              patientId: String(donnees.patientId),
+              treatmentId: donnees.treatmentId ? String(donnees.treatmentId) : null,
+              date: new Date(String(donnees.date ?? new Date().toISOString())),
+              notes: donnees.notes ? String(donnees.notes) : null,
+            },
+          })
+        }
+        return { operationId: operation.operationId, outcome: 'APPLIED' }
+      }
+
+      if (entityType === 'odontogramEntries') {
+        // L'odontogramme est un HISTORIQUE d'ajouts (§20) : une entree n'est
+        // jamais modifiee. Un CREATE connu = deja applique (idempotence), un
+        // UPDATE est impossible par conception → rejet explicite.
+        if (type === 'UPDATE') {
+          return {
+            operationId: operation.operationId,
+            outcome: 'REJECTED' as const,
+            detail: 'Une entree d’odontogramme n’est jamais modifiee (historique §20).',
+          }
+        }
+        const dejaLa = await tx.odontogramEntry.findUnique({ where: { id: entityId } })
+        if (dejaLa) return { operationId: operation.operationId, outcome: 'ALREADY_APPLIED' }
+        const donneesDent = payload as Record<string, unknown>
+        await tx.odontogramEntry.create({
+          data: {
+            id: entityId,
+            patientId: String(donneesDent.patientId),
+            treatmentId: donneesDent.treatmentId ? String(donneesDent.treatmentId) : null,
+            numeroDent: String(donneesDent.numeroDent),
+            etat: donneesDent.etat as never,
+            commentaire: donneesDent.commentaire ? String(donneesDent.commentaire) : null,
+            date: new Date(String(donneesDent.date ?? new Date().toISOString())),
+          },
+        })
+        return { operationId: operation.operationId, outcome: 'APPLIED' }
+      }
+
+      if (entityType === 'medicalRecords') {
+        const donnees = payload as Record<string, unknown>
+        const existant = await tx.medicalRecord.findUnique({ where: { id: entityId } })
+        if (existant) {
+          const modifieLocalement = new Date(String(payload.updatedAt ?? 0))
+          if (existant.updatedAt > modifieLocalement) {
+            await tx.syncConflict.create({
+              data: {
+                entityType,
+                entityId,
+                deviceId,
+                localValue: JSON.stringify(payload),
+                remoteValue: JSON.stringify(existant),
+                localUpdatedAt: modifieLocalement,
+                remoteUpdatedAt: existant.updatedAt,
+              },
+            })
+            return { operationId: operation.operationId, outcome: 'CONFLICT', detail: 'Dossier medical modifie des deux cotes — arbitrage requis.' }
+          }
+          await tx.medicalRecord.update({
+            where: { id: entityId },
+            data: {
+              ...(donnees.motifPlainte !== undefined ? { motifPlainte: donnees.motifPlainte === null ? null : String(donnees.motifPlainte) } : {}),
+              ...(donnees.examen !== undefined ? { examen: donnees.examen === null ? null : String(donnees.examen) } : {}),
+              ...(donnees.diagnostic !== undefined ? { diagnostic: donnees.diagnostic === null ? null : String(donnees.diagnostic) } : {}),
+              ...(donnees.traitementRealise !== undefined ? { traitementRealise: donnees.traitementRealise === null ? null : String(donnees.traitementRealise) } : {}),
+              ...(donnees.observations !== undefined ? { observations: donnees.observations === null ? null : String(donnees.observations) } : {}),
+              ...(donnees.recommandations !== undefined ? { recommandations: donnees.recommandations === null ? null : String(donnees.recommandations) } : {}),
+            },
+          })
+        } else {
+          await tx.medicalRecord.create({
+            data: {
+              id: entityId,
+              patientId: String(donnees.patientId),
+              treatmentId: donnees.treatmentId ? String(donnees.treatmentId) : null,
+              date: new Date(String(donnees.date ?? new Date().toISOString())),
+              ...(donnees.motifPlainte !== undefined ? { motifPlainte: donnees.motifPlainte === null ? null : String(donnees.motifPlainte) } : {}),
+              ...(donnees.examen !== undefined ? { examen: donnees.examen === null ? null : String(donnees.examen) } : {}),
+              ...(donnees.diagnostic !== undefined ? { diagnostic: donnees.diagnostic === null ? null : String(donnees.diagnostic) } : {}),
+              ...(donnees.traitementRealise !== undefined ? { traitementRealise: donnees.traitementRealise === null ? null : String(donnees.traitementRealise) } : {}),
+              ...(donnees.observations !== undefined ? { observations: donnees.observations === null ? null : String(donnees.observations) } : {}),
+              ...(donnees.recommandations !== undefined ? { recommandations: donnees.recommandations === null ? null : String(donnees.recommandations) } : {}),
+            },
+          })
+        }
+        return { operationId: operation.operationId, outcome: 'APPLIED' }
+      }
+
       return { operationId: operation.operationId, outcome: 'REJECTED', detail: `Table non supportee : ${entityType}` }
     }
 
@@ -321,7 +449,20 @@ function entityTypeVersTypeSupprimable(entityType: string) {
     treatments: 'TRAITEMENT',
     payments: 'PAIEMENT',
     documents: 'DOCUMENT',
-  } as Record<string, 'PATIENT' | 'RENDEZ_VOUS' | 'TRAITEMENT' | 'PAIEMENT' | 'DOCUMENT'>
+    prescriptions: 'ORDONNANCE',
+    odontogramEntries: 'ENTREE_ODONTOGRAMME',
+    medicalRecords: 'DOSSIER_MEDICAL',
+  } as Record<
+    string,
+    | 'PATIENT'
+    | 'RENDEZ_VOUS'
+    | 'TRAITEMENT'
+    | 'PAIEMENT'
+    | 'DOCUMENT'
+    | 'ORDONNANCE'
+    | 'ENTREE_ODONTOGRAMME'
+    | 'DOSSIER_MEDICAL'
+  >
   const valeur = table[entityType]
   if (!valeur) throw erreurs.validation(`Type d'entite non supprimable : ${entityType}`)
   return valeur as never
@@ -429,6 +570,7 @@ export async function tirerChangements(
 ): Promise<{
   curseurs: Record<string, string>
   lots: Partial<Record<TableSync, Array<Record<string, unknown>>>>
+  tombstones: Array<{ entityType: string; entityId: string; type: string; deletedAt: string }>
 }> {
   // Verification d'appareil hors transaction (lecture seule) : la revocation
   // est re-verifiee transactionnellement a chaque push.
@@ -479,6 +621,25 @@ export async function tirerChangements(
         take: 200,
         orderBy: { createdAt: 'asc' },
       })
+    } else if (table === 'prescriptions') {
+      lignes = (await prisma.prescription.findMany({
+        where: { updatedAt: { gt: depuis } },
+        take: 500,
+        orderBy: { updatedAt: 'asc' },
+        include: { items: { orderBy: { position: 'asc' } } },
+      })) as Array<Record<string, unknown>>
+    } else if (table === 'odontogramEntries') {
+      lignes = (await prisma.odontogramEntry.findMany({
+        where: { createdAt: { gt: depuis } },
+        take: 500,
+        orderBy: { createdAt: 'asc' },
+      })) as Array<Record<string, unknown>>
+    } else if (table === 'medicalRecords') {
+      lignes = (await prisma.medicalRecord.findMany({
+        where: { updatedAt: { gt: depuis } },
+        take: 500,
+        orderBy: { updatedAt: 'asc' },
+      })) as Array<Record<string, unknown>>
     }
 
     const nouveauCurseur = new Date()
@@ -491,11 +652,21 @@ export async function tirerChangements(
     lots[table] = lignes
   }
 
+  // TOMBSTONES DURABLES (G6 + §3 mission finale) : lus depuis le JOURNAL
+  // sync_tombstones — indépendant de la purge 24 h de la corbeille. Un appareil
+  // hors ligne plusieurs jours reçoit quand même les suppressions (curseur
+  // dédié, avance SEULEMENT après une lecture réussie). Format :
+  //   { entityType, entityId, type: DELETE|RESTORE, deletedAt }
+  const journal = await tombstonesDepuis(deviceId)
+  const tombstones = journal.tombstones.filter((t) =>
+    tables.includes(t.entityType as TableSync),
+  )
+
   await prisma.syncEvent.create({
     data: { deviceId, direction: 'PULL', entityType: tables.join(','), outcome: 'APPLIED' },
   })
 
-  return { curseurs, lots }
+  return { curseurs, lots, tombstones }
 }
 
 /**

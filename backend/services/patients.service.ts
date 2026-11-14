@@ -4,6 +4,7 @@ import { prisma } from '@backend/database/prisma'
 import { erreurs } from '@backend/errors/app-error'
 import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pagination'
 import { filtreExclusion } from '@backend/services/trash.service'
+import { chargeUtile, journaliserOperationLocale } from '@backend/services/sync-outbox.service'
 
 /**
  * =============================================================================
@@ -223,7 +224,7 @@ export interface DonneesCreationPatient {
 }
 
 export async function creerPatient(donnees: DonneesCreationPatient): Promise<PatientPublic> {
-  return prisma.patient.create({
+  const patient = await prisma.patient.create({
     data: {
       nom: donnees.nom,
       prenom: donnees.prenom,
@@ -242,6 +243,16 @@ export async function creerPatient(donnees: DonneesCreationPatient): Promise<Pat
     },
     select: selectionPatient,
   })
+
+  // File de synchronisation locale (bureau uniquement, inactif en production).
+  await journaliserOperationLocale({
+    entityType: 'patients',
+    entityId: patient.id,
+    operation: 'CREATE',
+    payload: chargeUtile(patient as unknown as Record<string, unknown>),
+  })
+
+  return patient
 }
 
 /**
@@ -260,7 +271,7 @@ export async function modifierPatient(
   // erreur de contrainte brute.
   await obtenirPatient(patientId)
 
-  return prisma.patient.update({
+  const patient = await prisma.patient.update({
     where: { id: patientId },
     data: {
       ...(donnees.nom !== undefined ? { nom: donnees.nom } : {}),
@@ -287,6 +298,16 @@ export async function modifierPatient(
     },
     select: selectionPatient,
   })
+
+  // File de synchronisation locale (bureau uniquement, inactif en production).
+  await journaliserOperationLocale({
+    entityType: 'patients',
+    entityId: patient.id,
+    operation: 'UPDATE',
+    payload: chargeUtile(patient as unknown as Record<string, unknown>),
+  })
+
+  return patient
 }
 
 // -----------------------------------------------------------------------------

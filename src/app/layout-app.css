@@ -521,6 +521,56 @@ a.rail-item:focus,
   color: var(--texte-tertiaire);
 }
 
+/* =============================================================================
+ *  INDICATEUR DE SYNCHRONISATION (application de bureau uniquement)
+ * ========================================================================== */
+
+/*
+ * Bandeau discret sous le titre de page. Visible UNIQUEMENT dans l'application
+ * de bureau : le composant rend null sur les sites web, ces règles ne servent
+ * donc que dans le runtime embarqué. Couleurs sobres : état OK vert calme,
+ * activité bleue, alerte ambre, erreur rouge doux.
+ */
+.sync-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--espace-2);
+
+  padding: 0.375rem 0.75rem;
+  margin-bottom: var(--espace-3);
+  border-radius: 0.5rem;
+  font-size: var(--taille-petite);
+  border: 1px solid var(--bordure);
+  background-color: var(--fond-surface-eleve);
+  color: var(--texte-secondaire);
+}
+
+.sync-badge-texte {
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.sync-badge-detail {
+  color: var(--texte-tertiaire);
+}
+
+.sync-ok .sync-badge-texte {
+  color: #1a7f4b;
+}
+
+.sync-encours .sync-badge-texte {
+  color: var(--accent);
+}
+
+.sync-horsligne .sync-badge-texte {
+  color: #b07d10;
+}
+
+.sync-erreur .sync-badge-texte {
+  color: #b3261e;
+}
+
 /* ── Titres internes encore utilises par certaines pages ───────────────────── */
 
 .entete-page-titre {

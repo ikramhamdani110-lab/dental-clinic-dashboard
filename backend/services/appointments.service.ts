@@ -7,6 +7,7 @@ import { calcTotalPaye } from '@backend/services/payments.service'
 import { bornesPrisma, construirePage, type PageResult } from '@backend/http/pagination'
 import { ACTIONS, journaliser, type JournalContext } from '@backend/services/activity-log.service'
 import { filtreExclusion, identifiantsEnCorbeille } from '@backend/services/trash.service'
+import { chargeUtile, journaliserOperationLocale } from '@backend/services/sync-outbox.service'
 import { TYPES_TRAITEMENT_RENDEZ_VOUS } from '@backend/domain/constants'
 
 /**
@@ -301,6 +302,15 @@ export async function creerRendezVous(
       statut: donnees.statut,
     },
     select: { id: true },
+  })
+
+  // File de synchronisation locale (bureau uniquement, inactif en production).
+  const rdvComplet = await prisma.appointment.findUniqueOrThrow({ where: { id: rendezVous.id } })
+  await journaliserOperationLocale({
+    entityType: 'appointments',
+    entityId: rendezVous.id,
+    operation: 'CREATE',
+    payload: chargeUtile(rdvComplet as unknown as Record<string, unknown>),
   })
 
   await journaliser(contexte, ACTIONS.RENDEZ_VOUS_CREE, {
@@ -709,6 +719,14 @@ export async function modifierRendezVous(
         ...(donnees.motifStatut !== undefined ? { motifStatut: donnees.motifStatut } : {}),
       },
     })
+    const modifie = await tx.appointment.findUniqueOrThrow({ where: { id } })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'appointments',
+      entityId: id,
+      operation: 'UPDATE',
+      payload: chargeUtile(modifie as unknown as Record<string, unknown>),
+    })
   })
 
   await journaliser(contexte, ACTIONS.RENDEZ_VOUS_MODIFIE, {
@@ -769,6 +787,14 @@ export async function reprogrammerRendezVous(
         motifStatut: donnees.motif,
       },
     })
+    const reprogramme = await tx.appointment.findUniqueOrThrow({ where: { id } })
+    await journaliserOperationLocale({
+      tx,
+      entityType: 'appointments',
+      entityId: id,
+      operation: 'UPDATE',
+      payload: chargeUtile(reprogramme as unknown as Record<string, unknown>),
+    })
   })
 
   await journaliser(contexte, ACTIONS.RENDEZ_VOUS_REPROGRAMME, {
@@ -825,6 +851,14 @@ export async function changerStatut(
   await prisma.appointment.update({
     where: { id },
     data: { statut, motifStatut },
+  })
+  // File de synchronisation locale (bureau uniquement, inactif en production).
+  const statutModifie = await prisma.appointment.findUniqueOrThrow({ where: { id } })
+  await journaliserOperationLocale({
+    entityType: 'appointments',
+    entityId: id,
+    operation: 'UPDATE',
+    payload: chargeUtile(statutModifie as unknown as Record<string, unknown>),
   })
 
   await journaliser(contexte, ACTIONS.RENDEZ_VOUS_MODIFIE, {

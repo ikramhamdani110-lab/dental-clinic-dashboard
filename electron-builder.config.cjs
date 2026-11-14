@@ -25,6 +25,8 @@ const config = {
   // extraResources : electron-builder le copie verbatim SANS re-collecter ni
   // elaguer les node_modules (cause du bug de demarrage apres installation).
   files: ['**/*'],
+  // Le preload (contextBridge étroit : état de sync + appairage uniquement).
+  extraFiles: [{ from: 'desktop/preload.cjs', to: 'app/preload.cjs' }],
   // DEUX entrées : une copie de runtime complet, une seconde JUSTE pour
   // runtime/node_modules.electron-builder ignore les node_modules dans les
   // copies d'extraResources (comportement interne app-builder), donc sans cette
@@ -53,9 +55,12 @@ const config = {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
     perMachine: false,
-    artifactName: 'Clinique-Sahed-Setup-${version}.exe',
+    // Nom d'artefact exigé : Sahed-Dental-Clinic-Setup-x64.exe
+    artifactName: 'Sahed-Dental-Clinic-Setup-${version}-x64.exe',
     shortcutName: productName,
     uninstallDisplayName: productName,
+    // JAMAIS de suppression des données cliniques (AppData\Clinique Sahed)
+    // à la désinstallation ou lors d'une mise à jour USB.
     deleteAppDataOnUninstall: false,
   },
   // Aucune mise a jour en ligne : l'application fonctionne hors ligne.
