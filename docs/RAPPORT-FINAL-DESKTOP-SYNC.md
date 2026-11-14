@@ -3,9 +3,11 @@
 > Date : 2026-11-14 (v2, mission de complétion) · Branché sur l'audit
 > `docs/AUDIT-DESKTOP-OFFLINE-SYNC.md`. **Aucune écriture en production.**
 >
-> **État Git final** : branche locale, **38 fichiers stagés**, rien committé,
-> rien poussé, rien déployé. Point de récupération : `git stash` (créé avant
-> la vérification finale).
+> **État Git final (v3)** : branche `main` — commit **06f3d09** poussé sur
+> `origin/main` ET `origin/finance-dashboard-v2` (hashes identiques vérifiés
+> via `git ls-remote`). Déploiement Vercel vérifié EN LIGNE : `/api/health`
+> HTTP 200, pages de connexion fonctionnelles, API privées protégées (401
+> sans session, y compris `/api/sync/push`).
 
 ## 0. Vérification indépendante (mission finale) — ce qui a été revu et corrigé
 
