@@ -193,14 +193,16 @@ POSTE DE BUREAU (hors-ligne)              SYSTÈME EN LIGNE (autorité)
 
 Voir `docs/ACTIVATION-PRODUCTION.md` : endpoints, migrations, appairage,
 revocation, sauvegarde/rollback, contrôle d'intégrité post-sync. **Aucune
-criture, migration ou appairage production n'a été effectué** et ne le sera
+écriture, migration ou appairage production n'a été effectué** et ne le sera
 sans votre accord explicite.
 
 ## 11. Mode d'emploi pour Dr. Sahed
 
 1. **Installer** : suivre `docs/INSTALLATION-USB.md` (clé USB, 5 minutes).
-2. **Première connexion** : `clinic@gmail.dz` / `Clinic+123` → changement de
-   mot de passe obligatoire.
+2. **Première connexion** : identifiant `clinic@gmail.dz` → le mot de passe
+   initial est transmis par canal séparé (jamais dans un document) et son
+   changement est obligatoire dès cette première connexion
+   (voir `docs/INSTALLATION-USB.md`, § réinitialisation du mot de passe).
 3. **Utiliser** normalement : patients, rendez-vous, traitements, paiements,
    ordonnances, impression — tout fonctionne sans Internet.
 4. **Connecter la sync** (une fois, avec Internet) :
