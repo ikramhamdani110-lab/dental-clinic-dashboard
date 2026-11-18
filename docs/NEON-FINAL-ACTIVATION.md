@@ -183,13 +183,38 @@ SELECT migration_name,
 ```sql
 UPDATE _prisma_migrations
    SET rolled_back_at = now(),
-       logs = logs || CASE WHEN logs IS NULL OR logs = '' THEN '' ELSE ' | ' END
+       logs = COALESCE(logs, '')
+              || CASE WHEN COALESCE(logs, '') = '' THEN '' ELSE ' | ' END
               || 'cloture manuelle : echec patient_age marque rolled-back (colonne age deja presente en production, migration re-appliquee avec succes juste apres)'
  WHERE migration_name = '20260928000000_patient_age'
    AND applied_steps_count = 0
    AND finished_at IS NULL
    AND rolled_back_at IS NULL;
 ```
+
+> **Condition préalable à la réparation — LIRE AVANT D'EXÉCUTER.**
+> Marquer un échec comme `rolled-back` n'est sûr que si le changement de
+> schéma visé par la migration est RÉELLEMENT en place dans la base — sinon
+> `migrate deploy` considérera la migration comme déjà traitée et la colonne
+> `age` ne sera jamais créée : l'application plantera à la première lecture
+> des patients (`column "age" does not exist`). Vérifiez donc d'abord :
+>
+```sql
+SELECT count(*)::int AS colonne_age_existe
+  FROM information_schema.columns
+ WHERE table_schema = 'public' AND table_name = 'patients'
+   AND column_name = 'age';
+```
+>
+> **Attendu : `1`.** Si le résultat est `0`, **STOP** : la colonne `age`
+> n'existe pas en production — la vraie migration n'a jamais réussi. Il faut
+> alors m'envoyer la sortie complète de 1.1 et de cette requête AVANT toute
+> action : la réparation à appliquer serait différente (il faudrait laisser
+> la ligne en échec et exécuter le DDL manuellement via un chemin validé,
+> pas le marquer rolled-back). Si le résultat est `1` ET que 1.1 montre une
+> ligne `20260928000000_patient_age` en `OK` (`applied_steps_count = 1`,
+> `finished_at` renseigné), le changement est bien appliqué et la clôture de
+> la ligne en échec est sûre.
 
 **Attendu** : `UPDATE 1` (exactement une ligne clôturée), puis 1.1 relancé
 affiche `ANNULEE` pour cette ligne et `OK` pour les 9 autres.
