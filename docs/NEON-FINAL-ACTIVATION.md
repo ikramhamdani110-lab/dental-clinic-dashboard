@@ -11,6 +11,7 @@
 > | Vérification | Méthode | Résultat |
 > |---|---|---|
 > | Contenu du fichier de migration | lecture du fichier du dépôt | 3 `CREATE TABLE` + 6 index, aucun `ALTER`/`DROP` |
+> | Historique de référence (1.1) | reproduction sur base jetable avec échec `patient_age` simulé, puis réparé | 2 cas couverts (voir ci-dessous) |
 > | Checksum | `prisma migrate deploy` réel (Prisma **6.1.0**) sur base jetable | `68b8eda7f7d98da577d75f3a34ec1f031e8b2b7d59b97107dfe70920726fb385` |
 > | SHA-256 du fichier | `crypto` sur les octets du fichier | **identique** au checksum ci-dessus |
 > | Réconciliation sur historique complet | 9 migrations préalables + `INSERT` manuel + `migrate deploy` | `No pending migrations to apply`, aucune migration rejouée |
@@ -24,6 +25,7 @@
 > node scripts/verifier-checksum-prisma.mjs
 > node scripts/verifier-reconciliation-neon.mjs
 > node scripts/verifier-sql-documentation.mjs
+> node scripts/verifier-resolution-echec-patient-age.mjs   # cas échec non résolu 1.1
 > ```
 
 ---
@@ -106,37 +108,104 @@ Exécuter sur la **branche de production** (pas la sauvegarde).
 ### 1.1 — État de l'historique Prisma
 
 ```sql
-SELECT migration_name, length(checksum) AS longueur_checksum,
-       applied_steps_count, rolled_back_at IS NULL AS appliquee_ok
+SELECT migration_name,
+       length(checksum) AS longueur_checksum,
+       applied_steps_count,
+       finished_at IS NOT NULL AS terminee,
+       rolled_back_at IS NULL AS non_annulee,
+       CASE WHEN finished_at IS NULL AND rolled_back_at IS NULL THEN 'ECHEC_NON_RESOLU'
+            WHEN rolled_back_at IS NOT NULL THEN 'ANNULEE'
+            ELSE 'OK' END AS etat,
+       substring(logs for 120) AS logs_extrait,
+       started_at
   FROM _prisma_migrations
  ORDER BY started_at;
 ```
 
-**Attendu** : **9 lignes**.
+**Attendu : 9 lignes**, dont exactement 8 migrations avec `etat = 'OK'` (les 9 noms ci-dessous) et 1 ligne supplémentaire `20260928000000_patient_age` en `ANNULEE` OU `ECHEC_NON_RESOLU` — les deux états sont acceptés à cette étape, seule leur présence est attendue :
 
-| migration_name | longueur_checksum | appliquee_ok |
+| migration_name | longueur_checksum | appliquée |
 |---|---|---|
-| `20250101000000_initial_schema` | 64 | `true` |
-| `20250101000001_postgresql_integrity` | 64 | `true` |
-| `20260927000000_appointment_submission_key` | 64 | `true` |
-| `20260928000000_patient_age` | 64 | `true` |
-| `20261028000000_finances_privees` | 64 | `true` |
-| `20261030193357_transactions_personnelles` | 64 | `true` |
-| `20261031011158_paiements_acompte` | 64 | `true` |
-| `20261101000000_sync_offline_first` | 64 | `true` |
-| `20261107000000_ordonnance_idempotence_entete` | 64 | `true` |
+| `20250101000000_initial_schema` | 64 | `OK` |
+| `20250101000001_postgresql_integrity` | 64 | `OK` |
+| `20260927000000_appointment_submission_key` | 64 | `OK` |
+| `20260928000000_patient_age` | 64 | `OK` |
+| `20261028000000_finances_privees` | 64 | `OK` |
+| `20261030193357_transactions_personnelles` | 64 | `OK` |
+| `20261031011158_paiements_acompte` | 64 | `OK` |
+| `20261101000000_sync_offline_first` | 64 | `OK` |
+| `20261107000000_ordonnance_idempotence_entete` | 64 | `OK` |
 
-**STOP** si :
-- le nombre de lignes n'est pas 9 ;
-- une ligne a `appliquee_ok = false` ;
-- **la migration `20261114000000_sync_tombstones_durables` apparaît déjà**
-  (dans ce cas le travail est déjà fait : passez à l'étape 3, ne l'insérez
-  pas deux fois).
+**Règle d'acceptation :**
 
-> Une ligne `20260928000000_patient_age` avec `applied_steps_count = 0` et un
-> `logs` contenant « column "age" already exists » est un **état historique
-> connu et sans effet** : la seconde ligne `applied_steps_count = 1` est
-> l'application réelle. Ne la corrigez pas pendant cette procédure.
+| Condition | Résultat |
+|---|---|
+| Exactement 9 lignes, chacune des 9 migrations ci-dessus présentes exactement une fois en `etat = 'OK'` | ✅ passez à 1.2 |
+| 10 lignes : les 9 en `OK` **+** une ligne `20260928000000_patient_age` avec `applied_steps_count = 0` et `logs` contenant « column "age" already exists » | ✅ **état historique connu et sans effet** (voir encadré ci-dessous) — passez à 1.2 |
+| Toute autre configuration (10ᵉ ligne sur une AUTRE migration, ou ligne en échec autre que le cas ci-dessus, ou migration manquante/dupliquée) | 🔴 **STOP** — envoyez-moi la sortie complète, ne rien exécuter de plus |
+
+> **Pourquoi ce cas particulier `patient_age` est sûr (explication factuelle)**
+>
+> 1. Le fichier `20260928000000_patient_age/migration.sql` du dépôt contient
+>    exactement une instruction : `ALTER TABLE "patients" ADD COLUMN "age" INTEGER;`.
+>    Elle n'est pas idempotente (pas de `IF NOT EXISTS`), donc si la colonne
+>    `age` existe déjà, l'instruction échoue.
+> 2. Quand Prisma exécute une migration qui échoue, il écrit D'ABORD une ligne
+>    `applied_steps_count = 0` / `finished_at = NULL`, PUIS (en l'absence de
+>    `--rollback`) laisse cette ligne en échec non résolu.
+> 3. Une ligne d'échec non résolu bloque `migrate deploy` et `migrate status`
+>    (Prisma refuse d'aller plus loin : « migration failed »). Or vous exécutez
+>    ce pré-contrôle via l'éditeur SQL Neon, PAS via Prisma — l'éditeur n'est
+>    pas bloqué, il affiche simplement l'état réel de la table.
+> 4. **Deux scénarios différents sont donc possibles sur votre base réelle,**
+>    et le document ne peut pas trancher à votre place (c'est pourquoi 1.1 est
+>    une lecture, pas une condition unique) :
+>    - **Cas A — `ANNULEE`** (`rolled_back_at` renseigné) : quelqu'un a exécuté
+>      `prisma migrate resolve --rolled-back` après l'échec. La ligne est
+>      clôturée, elle n'affectera jamais `deploy`/`status`. La vraie migration
+>      (la ligne en `OK`) a ensuite été appliquée.
+>    - **Cas B — `ECHEC_NON_RESOLU`** (`finished_at = NULL` ET
+>      `rolled_back_at = NULL`) : personne n'a résolu l'échec. Cette ligne est
+>      toujours « ouverte ».
+> 5. **Dans le cas B**, vous devrez exécuter une action de réparation AVANT
+>    l'étape 2 — voir `Réparation du cas B` juste après le tableau. Cette
+>    action est sûre : elle ne touche AUCUNE donnée clinique.
+> 6. Le `checksum` d'une ligne en échec peut être correct (64 caractères) : ce
+>    n'est PAS un signe de réussite. Seul `finished_at` renseigné fait foi.
+>
+> Référence Prisma : la table `_prisma_migrations` et la sémantique de
+> `migrate resolve` sont documentées dans
+> [Prisma — Migration issues](https://www.prisma.io/docs/orm/prisma-migrate/workflows/patching-and-generating-a-migration-history).
+
+**Réparation du cas B (SEULE si 1.1 montre un `ECHEC_NON_RESOLU` sur
+`20260928000000_patient_age`)** — exécutez ce bloc, puis relancez 1.1 :
+
+```sql
+UPDATE _prisma_migrations
+   SET rolled_back_at = now(),
+       logs = logs || CASE WHEN logs IS NULL OR logs = '' THEN '' ELSE ' | ' END
+              || 'cloture manuelle : echec patient_age marque rolled-back (colonne age deja presente en production, migration re-appliquee avec succes juste apres)'
+ WHERE migration_name = '20260928000000_patient_age'
+   AND applied_steps_count = 0
+   AND finished_at IS NULL
+   AND rolled_back_at IS NULL;
+```
+
+**Attendu** : `UPDATE 1` (exactement une ligne clôturée), puis 1.1 relancé
+affiche `ANNULEE` pour cette ligne et `OK` pour les 9 autres.
+
+**STOP** si `UPDATE` renvoie autre chose que 1 (0 ligne : le diagnostic ne
+correspond pas à la réalité — envoyez-moi la sortie de 1.1 avant toute
+autre action ; ≥ 2 lignes : n'insistez pas, il y a plusieurs échecs sur ce
+nom — même chose).
+
+**Note** : cette réparation n'est PAS destructive : elle ne modifie QUE la
+table `_prisma_migrations` (l'historique), jamais une table clinique. Elle
+calque exactement ce que fait `prisma migrate resolve --rolled-back` —
+commande officielle de Prisma pour clôturer un échec — reproduite en SQL
+pour être exécutable dans l'éditeur Neon. Son effet est vérifié par le
+harnais ci-dessous (aucune différence de comportement de `migrate deploy`
+après).
 
 ### 1.2 — Les tables de synchronisation n'existent pas encore
 
@@ -437,25 +506,65 @@ npx prisma migrate deploy --schema database/prisma/schema.prisma
 | Étape 2.1 échoue | `BEGIN`/`COMMIT` a tout annulé. Vérifier `3.1` → 0 ligne. Corriger la cause, recommencer 2.1. |
 | Étape 2.1 réussie, 2.2 échoue | Tables présentes, historique absent. **Ne relancez pas 2.1.** Réexécutez seulement 2.2. |
 | `migrate deploy` tente de **rejouer** la migration | Le checksum ou le nom diffère. Vérifiez `3.4`. Ne forcez pas : `prisma migrate resolve --rolled-back` **n'est pas** la bonne action ici. |
-| Données cliniques anormales | **Restaurer la branche de sauvegarde** : Neon → branche `backup-avant-sync-tombstones-20261114` → promouvoir en branche principale. Ne tentez jamais une « réparation » manuelle de données cliniques. |
+| 1.1 montre un échec non résolu (`ECHEC_NON_RESOLU`) sur `patient_age` | Exécuter le bloc de réparation sous 1.1 (marquer la ligne en échec comme `rolled-back`, comme le ferait `prisma migrate resolve`). Puis relancer 1.1 pour confirmer `ANNULEE`, et passer à 1.2. |
+| Données cliniques anormales | **Restaurer la branche de sauvegarde** — voir la procédure contrôlée ci-dessus. Ne tentez jamais une « réparation » manuelle de données cliniques. |
 | Tout est bloqué | Le système reste utilisable : le bureau fonctionne hors ligne et le site web n'utilise **pas** ces tables tant qu'aucun appareil n'est appairé. |
 
-### Retour arrière complet (avant tout appairage)
+### Restauration de la sauvegarde — procédure contrôlée (PAS de promotion à l'aveugle)
 
-Uniquement si la migration doit être annulée **et** qu'aucun appareil n'a été
-appairé — donc qu'aucune donnée de synchronisation n'existe :
+**Quand restaurer ?** Uniquement sur un incident avéré affectant les données
+c Cliniques (un volume de l'étape 3.5 a diminué, une table clinique absente, un
+comportement inexpliqué après l'étape 2). Un simple échec d'étape 2 (tables
+non créées, INSERT refusé) ne justifie PAS une restauration : il suffit de
+corriger la cause et de relancer l'étape concernée.
+
+**Quoi faire exactement, dans l'ordre :**
+
+1. **Stoppez tout** : aucun nouvel SQL, aucun `migrate`, aucune ouverture de
+   l'application. Notez l'heure de l'incident et les résultats des étapes
+   1.3 / 3.5.
+2. **Faites un diagnostic AVANT de toucher quoi que ce soit** : dans la branche
+   de production, exécutez les requêtes de l'étape 3.1 à 3.6 et notez la
+   sortie exacte. C'est elle qui dira si l'incident est réellement une perte de
+   données ou un simple problème cosmétique.
+3. **Si (et seulement si) une perte de données clinique est confirmée** :
+   console Neon → projet → **Branches**.
+4. **Vérifiez d'abord la branche de sauvegarde AVANT de la toucher** :
+   ouvrez son **SQL Editor** et exécutez :
 
 ```sql
-SELECT (SELECT count(*)::int FROM sync_tombstones)
-     + (SELECT count(*)::int FROM sync_tombstone_cursors)
-     + (SELECT count(*)::int FROM sync_tombstone_retention) AS lignes_sync;
+SELECT (SELECT count(*)::int FROM patients)     AS patients,
+       (SELECT count(*)::int FROM appointments) AS rendez_vous,
+       (SELECT count(*)::int FROM treatments)   AS traitements,
+       (SELECT count(*)::int FROM payments)     AS paiements,
+       (SELECT count(*)::int FROM users)        AS utilisateurs;
 ```
 
-**Si et seulement si** `lignes_sync = 0`, alors — et alors seulement — vous
-pouvez envisager la suppression des trois tables (aucune donnée clinique
-concernée). Cette opération n'est **pas** incluse comme instruction à exécuter :
-préférez toujours la restauration de la branche de sauvegarde, qui est
-réversible et n'exige aucune commande destructive.
+   Comparez à vos volumes de référence (étape 1.3) : ils doivent être
+   **identiques** (la branche a été créée AVANT l'étape 2). Si ce n'est pas le
+   cas, la sauvegarde est elle-même défectueuse — **STOP**, ne la promouvez
+   surtout pas, signalez-moi l'incident.
+5. **Uniquement si les volumes correspondent**, deux options de restauration
+   (au choix, selon la durée d'interruption acceptable) :
+
+   | Option | Procédure | Avantage / limite |
+   |---|---|---|
+   | **A — Promotion de branche** | Console Neon → branche de sauvegarde → `⋯` (menu) → **Set as default branch** (ou « Promote to primary »). Vérifiez ensuite que l'application pointe bien la nouvelle branche par défaut (Neon met à jour l'endpoint automatiquement, mais Vercel peut avoir une chaîne de connexion épingle — vérifiez dans Neon → Dashboard que la chaîne affichée correspond à la branche promue) | Instantané, zéro copie de données. Limite : l'endpoint change potentiellement d'identifiant ; testez `/api/health` après coup |
+   | **B — Restauration sélective** | Ne pas toucher aux branches ; exécuter dans la branche de production un `pg_dump` de la sauvegarde (via la Console Neon ou `pg_dump` depuis votre machine avec la chaîne de la branche de sauvegarde) et restaurer UNIQUEMENT les objets manquants/endommagés | Plus fine, mais plus longue et exige une manipulation `pg_dump` correcte — à privilégier si l'incident ne touche qu'une table précise |
+
+6. **Après restauration, re-exécutez l'étape 3 (contrôles) pour confirmer**
+   que les volumes correspondent à 1.3, puis — seulement à ce moment —
+   reprenez la procédure à l'étape où l'incident s'est produit.
+7. **Consignez** dans le journal de bord : heure, symptôme, résultat du
+   diagnostic de l'étape 2, option choisie (A ou B), résultat final.
+
+**Dans TOUS les cas** : envoyez-moi les sorties complètes AVANT et APRÈS toute
+opération de restauration — je ne considère la situation comme maîtrisée
+qu'après une vérification contradictoire de votre côté et du mien.
+
+> La branche de sauvegarde est une copie complète et instantanée
+> (copy-on-write) : elle ne consomme quasiment rien. **Ne la supprimez pas**
+> avant la validation finale de la procédure.
 
 ---
 

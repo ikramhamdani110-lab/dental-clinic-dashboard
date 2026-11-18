@@ -49,9 +49,20 @@ async function principal() {
   const blocs = [...doc.matchAll(/```sql\r?\n([\s\S]*?)```/g)].map((m) => m[1])
   console.log(`[doc] ${blocs.length} blocs SQL trouves dans ${path.basename(DOC)}`)
   verifier(blocs.length >= 5, 'le document contient les blocs SQL attendus', `n=${blocs.length}`)
-  // Le document ne doit proposer AUCUNE instruction destructive.
+  // Le document ne doit proposer AUCUNE instruction destructive sur les donnees.
+  // Les blocs BEGIN; ... COMMIT; sont executes bloc par bloc ; les instructions
+  // UPDATE sur _prisma_migrations (reparation d'un echec non resolu, étape 1.1)
+  // sont AUTORISEES : elles touchent uniquement l'historique, jamais une table
+  // clinique. On interdit donc : DROP / TRUNCATE / DELETE, et tout UPDATE dont
+  // la cible n'est PAS _prisma_migrations.
   const sqlTotal = blocs.join('\n')
-  verifier(!/^\s*(DROP|TRUNCATE|DELETE|UPDATE)\b/im.test(sqlTotal), 'aucune instruction destructive (DROP/TRUNCATE/DELETE/UPDATE)')
+  verifier(!/^\s*(DROP|TRUNCATE|DELETE)\b/im.test(sqlTotal),
+    'aucune instruction DROP/TRUNCATE/DELETE dans le document')
+  const updatesAutorises = [...sqlTotal.matchAll(/^\s*UPDATE\s+(?:"?([A-Za-z_][A-Za-z0-9_]*)"?)?/gim)]
+  const ciblesInterdites = updatesAutorises.filter((u) => u[1] && u[1] !== '_prisma_migrations')
+  verifier(ciblesInterdites.length === 0,
+    'aucun UPDATE hors _prisma_migrations (les updates autorises ne touchent que l historique)',
+    ciblesInterdites.map((u) => u[1]).join(', ') || 'aucun')
   verifier(!/\.\.\./.test(blocs.join('\n')), 'aucune ellipse dans le SQL')
   verifier(!/passwo?rd\s*=\s*\S|postgres(ql)?:\/\/[^@\s]+@/i.test(doc), 'aucun identifiant de connexion dans le document')
 
