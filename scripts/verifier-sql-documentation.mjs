@@ -97,6 +97,29 @@ async function principal() {
     await db.$executeRawUnsafe(`INSERT INTO patients (id, nom, prenom, telephone, "createdAt", "updatedAt")
       VALUES (gen_random_uuid(),'SENTINELLE-DOC','Patient','0000000000',now(),now())`)
 
+    // Reproduction de l'état RÉEL de la production Neon (mesuré par le
+    // propriétaire le 2026-11-18) : 10 lignes d'historique — la première
+    // tentative de `20261101000000_sync_offline_first` a échoué puis a été
+    // marquée rolled-back, suivie d'une seconde tentative réussie.
+    //  `patient_age` est FINI (une seule ligne, OK) — pas de ligne en échec.
+    await db.$executeRawUnsafe(`
+      INSERT INTO _prisma_migrations
+        (id, checksum, migration_name, logs, rolled_back_at, started_at, finished_at, applied_steps_count)
+      SELECT gen_random_uuid()::text, checksum, migration_name,
+             'premiere tentative echouee puis rolled-back (etat production reel)',
+             started_at + interval '1 minute', started_at, NULL, 0
+        FROM _prisma_migrations
+       WHERE migration_name = '20261101000000_sync_offline_first'
+         AND applied_steps_count = 1
+       ORDER BY started_at LIMIT 1`)
+    await db.$executeRawUnsafe(`
+      UPDATE _prisma_migrations
+         SET started_at = started_at - interval '2 minutes'
+       WHERE migration_name = '20261101000000_sync_offline_first'
+         AND applied_steps_count = 0`)
+    const hist10 = await db.$queryRawUnsafe('SELECT count(*)::int AS n FROM _prisma_migrations')
+    verifier(Number(hist10[0].n) === 10, 'historique = 10 lignes (etat production reel : 9 OK + 1 rolled-back sync_offline_first)', `n=${hist10[0].n}`)
+
     // ── Execution des blocs, dans l'ordre du document.
     //  L'editeur SQL de Neon accepte plusieurs instructions par requete (un jeu
     //  de resultats par instruction). L'API `$queryRawUnsafe` de Prisma, elle,
@@ -131,11 +154,18 @@ async function principal() {
         WHERE table_schema='public' AND table_name IN ('sync_tombstones','sync_tombstone_cursors','sync_tombstone_retention')`)
     verifier(Number(tables[0].n) === 3, 'les 3 tables existent', `n=${tables[0].n}`)
 
-    const hist = await db.$queryRawUnsafe(
+    const histFin = await db.$queryRawUnsafe(
       `SELECT count(*)::int AS n, min(checksum) AS c FROM _prisma_migrations WHERE migration_name='${CIBLE}'`)
-    verifier(Number(hist[0].n) === 1, 'historique : exactement 1 ligne pour la migration', `n=${hist[0].n}`)
-    verifier(hist[0].c === '68b8eda7f7d98da577d75f3a34ec1f031e8b2b7d59b97107dfe70920726fb385',
-      'checksum enregistre correct', String(hist[0].c))
+    verifier(Number(histFin[0].n) === 1, 'historique : exactement 1 ligne pour la migration', `n=${histFin[0].n}`)
+    verifier(histFin[0].c === '68b8eda7f7d98da577d75f3a34ec1f031e8b2b7d59b97107dfe70920726fb385',
+      'checksum enregistre correct', String(histFin[0].c))
+
+    // Historique final : 11 lignes (10 production + 1 ajoutée) — aucune ligne
+    // en échec non résolu ne doit rester.
+    const total = await db.$queryRawUnsafe(
+      `SELECT count(*)::int AS n FROM _prisma_migrations
+        WHERE finished_at IS NULL AND rolled_back_at IS NULL`)
+    verifier(Number(total[0].n) === 0, 'aucun échec non résolu dans l historique final', `n=${total[0].n}`)
 
     const sent = await db.$queryRawUnsafe(`SELECT count(*)::int AS n FROM patients WHERE nom='SENTINELLE-DOC'`)
     verifier(Number(sent[0].n) === 1, 'donnee clinique sentinelle intacte')

@@ -11,7 +11,8 @@
 > | Vérification | Méthode | Résultat |
 > |---|---|---|
 > | Contenu du fichier de migration | lecture du fichier du dépôt | 3 `CREATE TABLE` + 6 index, aucun `ALTER`/`DROP` |
-> | Historique de référence (1.1) | reproduction sur base jetable avec échec `patient_age` simulé, puis réparé | 2 cas couverts (voir ci-dessous) |
+> | Historique de référence (1.1) | reproduction sur base jetable de l'état production RÉEL (10 lignes : 9 OK + 1 `sync_offline_first` rolled-back) puis de la réconciliation | conforme, aucune réparation nécessaire |
+> | Version PostgreSQL production | mesurée par le propriétaire (2026-11-18) | **PostgreSQL 18.7** — compatible (voir étape 0) |
 > | Checksum | `prisma migrate deploy` réel (Prisma **6.1.0**) sur base jetable | `68b8eda7f7d98da577d75f3a34ec1f031e8b2b7d59b97107dfe70920726fb385` |
 > | SHA-256 du fichier | `crypto` sur les octets du fichier | **identique** au checksum ci-dessus |
 > | Réconciliation sur historique complet | 9 migrations préalables + `INSERT` manuel + `migrate deploy` | `No pending migrations to apply`, aucune migration rejouée |
@@ -89,7 +90,16 @@ SELECT current_database() AS base, version() AS version_postgres;
 ```
 
 **Attendu** : 1 ligne, `base` = le nom de la base de production, `version_postgres`
-commence par `PostgreSQL 16` ou `PostgreSQL 17`.
+commence par `PostgreSQL 16`, `PostgreSQL 17` **ou `PostgreSQL 18`**.
+
+> **Version réelle mesurée en production (2026-11-18)** : **PostgreSQL 18.7**.
+> PostgreSQL 18 est la version par défaut des nouveaux projets Neon depuis
+> juin 2026 (voir [Neon — changelog 2026-06-05](https://neon.com/docs/changelog/2026-06-05))
+> et reste supportée (voir [Neon — Postgres Version Support](https://neon.com/docs/postgresql/postgres-version-support)).
+> La migration cible n'utilise aucune fonctionnalité spécifique à une version :
+> uniquement `CREATE TABLE` + index UUID/timestamptz, disponibles depuis
+> PostgreSQL 13 (`gen_random_uuid()` natif). **PG 18.7 est donc compatible**
+> — aucune adaptation nécessaire.
 
 **STOP** si la branche n'est pas `Ready`, ou si la requête échoue.
 
@@ -122,70 +132,113 @@ SELECT migration_name,
  ORDER BY started_at;
 ```
 
-**Attendu : 9 lignes**, dont exactement 8 migrations avec `etat = 'OK'` (les 9 noms ci-dessous) et 1 ligne supplémentaire `20260928000000_patient_age` en `ANNULEE` OU `ECHEC_NON_RESOLU` — les deux états sont acceptés à cette étape, seule leur présence est attendue :
+**Attendu : 10 lignes**, correspondant à l'état RÉEL mesuré en production
+(2026-11-18) : **9 migrations réussies (`etat = 'OK'`) + 1 ligne
+`20261101000000_sync_offline_first` en `ANNULEE`** (première tentative
+échouée puis marquée rolled-back, suivie d'une seconde tentative réussie).
 
-| migration_name | longueur_checksum | appliquée |
+| migration_name | etat attendu | notes |
 |---|---|---|
-| `20250101000000_initial_schema` | 64 | `OK` |
-| `20250101000001_postgresql_integrity` | 64 | `OK` |
-| `20260927000000_appointment_submission_key` | 64 | `OK` |
-| `20260928000000_patient_age` | 64 | `OK` |
-| `20261028000000_finances_privees` | 64 | `OK` |
-| `20261030193357_transactions_personnelles` | 64 | `OK` |
-| `20261031011158_paiements_acompte` | 64 | `OK` |
-| `20261101000000_sync_offline_first` | 64 | `OK` |
-| `20261107000000_ordonnance_idempotence_entete` | 64 | `OK` |
+| `20250101000000_initial_schema` | `OK` | |
+| `20250101000001_postgresql_integrity` | `OK` | |
+| `20260927000000_appointment_submission_key` | `OK` | |
+| `20260928000000_patient_age` | `OK` | **FINI — une seule ligne**, pas d'échec (confirmé en production le 2026-11-18) |
+| `20261028000000_finances_privees` | `OK` | |
+| `20261030193357_transactions_personnelles` | `OK` | |
+| `20261031011158_paiements_acompte` | `OK` | |
+| `20261101000000_sync_offline_first` | `OK` **+** `ANNULEE` (2 lignes) | la ligne `ANNULEE` (`applied_steps_count = 0`, `finished_at` NULL, `rolled_back_at` renseigné) est la 1ʳᵉ tentative échouée — voir encadré ci-dessous |
+| `20261107000000_ordonnance_idempotence_entete` | `OK` | |
 
 **Règle d'acceptation :**
 
 | Condition | Résultat |
 |---|---|
-| Exactement 9 lignes, chacune des 9 migrations ci-dessus présentes exactement une fois en `etat = 'OK'` | ✅ passez à 1.2 |
-| 10 lignes : les 9 en `OK` **+** une ligne `20260928000000_patient_age` avec `applied_steps_count = 0` et `logs` contenant « column "age" already exists » | ✅ **état historique connu et sans effet** (voir encadré ci-dessous) — passez à 1.2 |
-| Toute autre configuration (10ᵉ ligne sur une AUTRE migration, ou ligne en échec autre que le cas ci-dessus, ou migration manquante/dupliquée) | 🔴 **STOP** — envoyez-moi la sortie complète, ne rien exécuter de plus |
+| Exactement 10 lignes : les 9 migrations ci-dessus présentes (dont
+`sync_offline_first` 2 fois — 1 OK + 1 ANNULEE) et **aucune** ligne en
+`ECHEC_NON_RESOLU` | ✅ passez à 1.2 |
+| Toute ligne en `ECHEC_NON_RESOLU` (quel que soit son nom) | 🔴 **STOP** — envoyez-moi la sortie complète avant toute action |
+| Toute autre configuration (migration manquante, dupliquée, ou ligne
+`ANNULEE` sur un autre nom que `sync_offline_first`) | 🔴 **STOP** — envoyez-moi la sortie complète |
 
-> **Pourquoi ce cas particulier `patient_age` est sûr (explication factuelle)**
+> **Pourquoi la ligne `sync_offline_first` en `ANNULEE` est sûre (explication
+> factuelle)**
 >
-> 1. Le fichier `20260928000000_patient_age/migration.sql` du dépôt contient
->    exactement une instruction : `ALTER TABLE "patients" ADD COLUMN "age" INTEGER;`.
->    Elle n'est pas idempotente (pas de `IF NOT EXISTS`), donc si la colonne
->    `age` existe déjà, l'instruction échoue.
-> 2. Quand Prisma exécute une migration qui échoue, il écrit D'ABORD une ligne
->    `applied_steps_count = 0` / `finished_at = NULL`, PUIS (en l'absence de
->    `--rollback`) laisse cette ligne en échec non résolu.
-> 3. Une ligne d'échec non résolu bloque `migrate deploy` et `migrate status`
->    (Prisma refuse d'aller plus loin : « migration failed »). Or vous exécutez
->    ce pré-contrôle via l'éditeur SQL Neon, PAS via Prisma — l'éditeur n'est
->    pas bloqué, il affiche simplement l'état réel de la table.
-> 4. **Deux scénarios différents sont donc possibles sur votre base réelle,**
->    et le document ne peut pas trancher à votre place (c'est pourquoi 1.1 est
->    une lecture, pas une condition unique) :
->    - **Cas A — `ANNULEE`** (`rolled_back_at` renseigné) : quelqu'un a exécuté
->      `prisma migrate resolve --rolled-back` après l'échec. La ligne est
->      clôturée, elle n'affectera jamais `deploy`/`status`. La vraie migration
->      (la ligne en `OK`) a ensuite été appliquée.
->    - **Cas B — `ECHEC_NON_RESOLU`** (`finished_at = NULL` ET
->      `rolled_back_at = NULL`) : personne n'a résolu l'échec. Cette ligne est
->      toujours « ouverte ».
-> 5. **Dans le cas B**, vous devrez exécuter une action de réparation AVANT
->    l'étape 2 — voir `Réparation du cas B` juste après le tableau. Cette
->    action est sûre : elle ne touche AUCUNE donnée clinique.
-> 6. Le `checksum` d'une ligne en échec peut être correct (64 caractères) : ce
->    n'est PAS un signe de réussite. Seul `finished_at` renseigné fait foi.
+> 1. Le fichier `20261101000000_sync_offline_first/migration.sql` du dépôt
+>    contient 6 `CREATE TABLE` (sync_state, sync_seen_operations,
+>    sync_events, sync_conflicts, device_sessions, sync_queue), 3 `ALTER
+>    TABLE ADD COLUMN "syncStatut"`, une extension btree_gist, un
+>    déclencheur `creneau` et une contrainte EXCLUDE anti-chevauchement.
+>    Les `CREATE TABLE` ne sont pas idempotents (pas de `IF NOT EXISTS`) :
+>    si l'une des tables existait déjà, la migration échouait à cette
+>    instruction.
+> 2. **Le scénario réel mesuré en production** : une première exécution a
+>    échoué (ligne `applied_steps_count = 0`), la ligne a été clôturée par
+>    `prisma migrate resolve --rolled-back` (ou équivalent SQL), PUIS la
+>    migration a été rejouée avec succès (seconde ligne,
+>    `applied_steps_count = 1`, `finished_at` renseigné).
+> 3. **Pourquoi c'est sans effet sur la suite :**
+>    - `prisma migrate status` / `migrate deploy` ignorent les lignes
+>      `rolled_back_at` renseigné — elles sont considérées comme
+>      « retirées de l'historique actif ». Prisma ne les rejoue PAS et ne
+>      se bloque PAS dessus (vérifié sur base jetable : harnais
+>      `verifier-resolution-echec-patient-age.mjs`, étapes C→E).
+>    - La ligne en `OK` (la seconde) fait foi pour Prisma : la migration
+>      est considérée appliquée.
+>    - Les tables qu'elle a créées existent bien (vérifié par l'étape 1.2
+>      côté sync : `sync_events` répond normalement, cf. étape 3.6).
+> 4. **Aucune réparation n'est nécessaire** pour cette ligne : elle est
+>    déjà correctement clôturée (`rolled_back_at` renseigné). Le bloc de
+>    réparation patient_age plus bas ne s'applique PAS à votre base
+>    (`patient_age` est déjà `OK`, une seule ligne).
 >
 > Référence Prisma : la table `_prisma_migrations` et la sémantique de
 > `migrate resolve` sont documentées dans
 > [Prisma — Migration issues](https://www.prisma.io/docs/orm/prisma-migrate/workflows/patching-and-generating-a-migration-history).
 
-**Réparation du cas B (SEULE si 1.1 montre un `ECHEC_NON_RESOLU` sur
-`20260928000000_patient_age`)** — exécutez ce bloc, puis relancez 1.1 :
+> **Pourquoi une ligne `ANNULEE` est sans effet, et pourquoi un échec non
+> résolu ne l'est pas (explication factuelle)**
+>
+> 1. Prisma écrit une ligne dans `_prisma_migrations` AVANT d'exécuter la
+>    migration. En cas d'échec, cette ligne reste avec `finished_at = NULL`
+>    et `applied_steps_count = 0`.
+> 2. **Ligne `ANNULEE`** (`rolled_back_at` renseigné) : elle a été clôturée
+>    par `prisma migrate resolve --rolled-back` (ou équivalent SQL). Prisma
+>    l'ignore ensuite — ni `migrate status` ni `migrate deploy` ne la
+>    rejouent ni ne se bloquent dessus (vérifié sur base jetable,
+>    harnais `verifier-resolution-echec-patient-age.mjs`).
+> 3. **Ligne `ECHEC_NON_RESOLU`** (`finished_at = NULL` ET
+>    `rolled_back_at = NULL`) : elle bloque `migrate deploy` et
+>    `migrate status` (Prisma refuse d'aller plus loin : « migration
+>    failed »). Une réparation est alors requise AVANT l'étape 2 — voir
+>    1.1bis. Votre exécution se fait via l'éditeur SQL Neon, qui n'est pas
+>    bloqué : la ligne apparaît simplement dans 1.1.
+> 4. Le `checksum` d'une ligne en échec peut être correct (64 caractères) :
+>    ce n'est PAS un signe de réussite. Seul `finished_at` renseigné fait
+>    foi.
+>
+> Référence Prisma : la table `_prisma_migrations` et la sémantique de
+> `migrate resolve` sont documentées dans
+> [Prisma — Migration issues](https://www.prisma.io/docs/orm/prisma-migrate/workflows/patching-and-generating-a-migration-history).
+
+### 1.1bis — Réparation d'un échec NON résolu (SEULEMENT si 1.1 en montre un)
+
+> **État réel de la production (2026-11-18) : AUCUNE réparation nécessaire.**
+> `patient_age` est `OK` (une ligne, finie) et la seule ligne non-OK est
+> `sync_offline_first` déjà en `ANNULEE` — les deux cas sont sans effet.
+> Cette section ne s'applique donc PAS à votre base actuelle. Elle est
+> conservée au cas où une nouvelle exécution de 1.1 (par exemple après
+> l'étape 2, si quelque chose tournait mal) révélait un échec non résolu.
+
+**Réparation (SEULE si 1.1 montre une ligne `ECHEC_NON_RESOLU`)** —
+vérifiez D'ABORD que le changement de schéma visé est en place (bloc
+`colonne_age_existe` ci-dessous), puis exécutez ce bloc, et relancez 1.1 :
 
 ```sql
 UPDATE _prisma_migrations
    SET rolled_back_at = now(),
        logs = COALESCE(logs, '')
               || CASE WHEN COALESCE(logs, '') = '' THEN '' ELSE ' | ' END
-              || 'cloture manuelle : echec patient_age marque rolled-back (colonne age deja presente en production, migration re-appliquee avec succes juste apres)'
+              || 'cloture manuelle : echec marque rolled-back (changement de schema verifie present, migration re-appliquee avec succes juste apres)'
  WHERE migration_name = '20260928000000_patient_age'
    AND applied_steps_count = 0
    AND finished_at IS NULL
@@ -198,14 +251,14 @@ UPDATE _prisma_migrations
 > `migrate deploy` considérera la migration comme déjà traitée et la colonne
 > `age` ne sera jamais créée : l'application plantera à la première lecture
 > des patients (`column "age" does not exist`). Vérifiez donc d'abord :
->
+
 ```sql
 SELECT count(*)::int AS colonne_age_existe
   FROM information_schema.columns
  WHERE table_schema = 'public' AND table_name = 'patients'
    AND column_name = 'age';
 ```
->
+
 > **Attendu : `1`.** Si le résultat est `0`, **STOP** : la colonne `age`
 > n'existe pas en production — la vraie migration n'a jamais réussi. Il faut
 > alors m'envoyer la sortie complète de 1.1 et de cette requête AVANT toute
@@ -217,7 +270,7 @@ SELECT count(*)::int AS colonne_age_existe
 > la ligne en échec est sûre.
 
 **Attendu** : `UPDATE 1` (exactement une ligne clôturée), puis 1.1 relancé
-affiche `ANNULEE` pour cette ligne et `OK` pour les 9 autres.
+affiche `ANNULEE` pour cette ligne et `OK` pour les autres.
 
 **STOP** si `UPDATE` renvoie autre chose que 1 (0 ligne : le diagnostic ne
 correspond pas à la réalité — envoyez-moi la sortie de 1.1 avant toute
@@ -229,8 +282,7 @@ table `_prisma_migrations` (l'historique), jamais une table clinique. Elle
 calque exactement ce que fait `prisma migrate resolve --rolled-back` —
 commande officielle de Prisma pour clôturer un échec — reproduite en SQL
 pour être exécutable dans l'éditeur Neon. Son effet est vérifié par le
-harnais ci-dessous (aucune différence de comportement de `migrate deploy`
-après).
+harnais (aucune différence de comportement de `migrate deploy` après).
 
 ### 1.2 — Les tables de synchronisation n'existent pas encore
 
@@ -531,7 +583,7 @@ npx prisma migrate deploy --schema database/prisma/schema.prisma
 | Étape 2.1 échoue | `BEGIN`/`COMMIT` a tout annulé. Vérifier `3.1` → 0 ligne. Corriger la cause, recommencer 2.1. |
 | Étape 2.1 réussie, 2.2 échoue | Tables présentes, historique absent. **Ne relancez pas 2.1.** Réexécutez seulement 2.2. |
 | `migrate deploy` tente de **rejouer** la migration | Le checksum ou le nom diffère. Vérifiez `3.4`. Ne forcez pas : `prisma migrate resolve --rolled-back` **n'est pas** la bonne action ici. |
-| 1.1 montre un échec non résolu (`ECHEC_NON_RESOLU`) sur `patient_age` | Exécuter le bloc de réparation sous 1.1 (marquer la ligne en échec comme `rolled-back`, comme le ferait `prisma migrate resolve`). Puis relancer 1.1 pour confirmer `ANNULEE`, et passer à 1.2. |
+| 1.1 montre un échec non résolu (`ECHEC_NON_RESOLU`) | Ne pas exécuter l'étape 2. Exécuter la réparation de 1.1bis (avec vérification préalable du schéma), relancer 1.1, puis m'envoyer les sorties. |
 | Données cliniques anormales | **Restaurer la branche de sauvegarde** — voir la procédure contrôlée ci-dessus. Ne tentez jamais une « réparation » manuelle de données cliniques. |
 | Tout est bloqué | Le système reste utilisable : le bureau fonctionne hors ligne et le site web n'utilise **pas** ces tables tant qu'aucun appareil n'est appairé. |
 
