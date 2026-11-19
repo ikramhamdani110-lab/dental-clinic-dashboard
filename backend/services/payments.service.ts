@@ -851,8 +851,8 @@ export async function revenusParMois(
   //   On convertit donc l'instant stocke vers l'heure locale AVANT de le
   //   tronquer au mois. La colonne est un TIMESTAMP naif qui contient un instant
   //   UTC : on le declare d'abord comme `timestamptz` en UTC (`AT TIME ZONE
-  //   'UTC'`), puis on le ramene dans le fuseau du serveur (`AT TIME ZONE
-  //   current_setting('TimeZone')`). Les deux etapes sont necessaires : sans la
+  //   'UTC'`), puis on le ramene dans le fuseau du cabinet (`AT TIME ZONE
+  //   'Africa/Algiers'`). Les deux etapes sont necessaires : sans la
   //   premiere, le moteur interpreterait la valeur comme deja locale.
   //
   //   La borne basse est elle aussi exprimee dans le MEME calendrier local, afin
@@ -873,7 +873,7 @@ export async function revenusParMois(
       SELECT
         DATE_TRUNC(
           'month',
-          ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE current_setting('TimeZone')
+          ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Algiers'
         ) AS mois_local,
         "montantCentimes"
       FROM "payments"
@@ -982,7 +982,7 @@ export async function revenusParPeriode(
         SELECT
           DATE_TRUNC(
             'day',
-            ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE current_setting('TimeZone')
+            ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Algiers'
           ) AS jour_local,
           "montantCentimes"
         FROM "payments"
@@ -1031,7 +1031,7 @@ export async function revenusParPeriode(
       SELECT
         DATE_TRUNC(
           'month',
-          ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE current_setting('TimeZone')
+          ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Algiers'
         ) AS mois_local,
         "montantCentimes"
       FROM "payments"
@@ -1110,7 +1110,7 @@ export async function revenusParAnnee(
       SELECT
         DATE_TRUNC(
           'month',
-          ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE current_setting('TimeZone')
+          ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Algiers'
         ) AS mois_local,
         "montantCentimes"
       FROM "payments"

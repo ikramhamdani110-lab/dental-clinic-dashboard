@@ -355,7 +355,7 @@ export async function evolutionFinanciere(periode: Periode): Promise<EvolutionFi
       SELECT ${maille === 'mois' ? Prisma.sql`TO_CHAR(jour, 'YYYY-MM')` : Prisma.sql`TO_CHAR(jour, 'YYYY-MM-DD')`} AS cle,
              SUM(p."montantCentimes")::bigint AS total
         FROM (
-          SELECT (p."datePaiement" AT TIME ZONE 'UTC' AT TIME ZONE current_setting('TimeZone'))::date AS jour,
+          SELECT (p."datePaiement" AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date AS jour,
                  p."montantCentimes"
             FROM payments p
            WHERE p.statut = 'VALIDE'
@@ -370,7 +370,7 @@ export async function evolutionFinanciere(periode: Periode): Promise<EvolutionFi
       SELECT ${maille === 'mois' ? Prisma.sql`TO_CHAR(jour, 'YYYY-MM')` : Prisma.sql`TO_CHAR(jour, 'YYYY-MM-DD')`} AS cle,
              SUM(d."montantCentimes")::bigint AS total
         FROM (
-          SELECT (d."date" AT TIME ZONE 'UTC' AT TIME ZONE current_setting('TimeZone'))::date AS jour,
+          SELECT (d."date" AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date AS jour,
                  d."montantCentimes"
             FROM expenses d
            WHERE d."date" >= ${periode.debut}
@@ -601,7 +601,7 @@ export async function tendancesMensuelles(
              EXTRACT(MONTH FROM mois_local)::int AS mois,
              SUM("montantCentimes")::bigint AS total
       FROM (
-        SELECT DATE_TRUNC('month', ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE current_setting('TimeZone')) AS mois_local,
+        SELECT DATE_TRUNC('month', ("datePaiement" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Algiers') AS mois_local,
                "montantCentimes"
         FROM "payments"
         WHERE "statut" = 'VALIDE'::"StatutPaiement"
@@ -615,7 +615,7 @@ export async function tendancesMensuelles(
              EXTRACT(MONTH FROM mois_local)::int AS mois,
              SUM("montantCentimes")::bigint AS total
       FROM (
-        SELECT DATE_TRUNC('month', ("date" AT TIME ZONE 'UTC') AT TIME ZONE current_setting('TimeZone')) AS mois_local,
+        SELECT DATE_TRUNC('month', ("date" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Algiers') AS mois_local,
                "montantCentimes"
         FROM "manual_incomes"
         WHERE "date" >= ${debut}::timestamp
@@ -628,7 +628,7 @@ export async function tendancesMensuelles(
              EXTRACT(MONTH FROM mois_local)::int AS mois,
              SUM("montantCentimes")::bigint AS total
       FROM (
-        SELECT DATE_TRUNC('month', ("date" AT TIME ZONE 'UTC') AT TIME ZONE current_setting('TimeZone')) AS mois_local,
+        SELECT DATE_TRUNC('month', ("date" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Algiers') AS mois_local,
                "montantCentimes"
         FROM "expenses"
         WHERE "date" >= ${debut}::timestamp
@@ -747,7 +747,7 @@ export async function serieJournaliereRevenus(periode: Periode): Promise<PointJo
       : []
 
   const lignes = await prisma.$queryRaw<Array<{ jour: Date; total: bigint | number }>>`
-    SELECT (p."datePaiement" AT TIME ZONE 'UTC' AT TIME ZONE current_setting('TimeZone'))::date AS jour,
+    SELECT (p."datePaiement" AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Algiers')::date AS jour,
            SUM(p."montantCentimes")::bigint AS total
       FROM payments p
      WHERE p.statut = 'VALIDE'

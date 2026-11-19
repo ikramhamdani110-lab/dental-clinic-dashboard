@@ -326,7 +326,11 @@ describe.skipIf(!ACTIVE)('synchronisation offline-first', () => {
     const contrainte = await dbClient().$queryRaw<Array<{ exists: boolean }>>`
       SELECT EXISTS (
         SELECT 1 FROM pg_constraint
-        WHERE conname = 'appointments_no_overlap'
+        -- Index unique partiel pose hors migration Prisma en production (voir
+        -- .local/prod-migrer-neon-option2.mjs) OU contrainte EXCLUDE de la migration :
+        -- au moins l'un des deux doit exister.
+        WHERE conname = 'appointments_no_double_booking'
+           OR conname = 'appointments_no_overlap'
       ) AS "exists"
     `
     expect(contrainte[0]?.exists).toBe(true)

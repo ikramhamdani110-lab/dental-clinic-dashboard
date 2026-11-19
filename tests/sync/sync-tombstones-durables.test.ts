@@ -76,8 +76,12 @@ describe.skipIf(!ACTIVE)('tombstones durables — aucune résurrection', () => {
     await dbClient().trashEntry.updateMany({
       where: { entityId: patient.id },
       data: {
-        supprimeLe: new Date(Date.now() - 25 * 60 * 60 * 1000),
-        expireLe: new Date(Date.now() - 1 * 60 * 60 * 1000),
+        // Retour arriere DETERMINISTE : base = maintenant arrondi a la minute, moins
+        // 48 h exactes. expireLe = supprimeLe + EXACTEMENT 24 h, donc la contrainte
+        // trash_entries_fenetre_24h_check est satisfaite quel que soit l'horloge,
+        // et l'entree est bien expiree depuis 24 h.
+        supprimeLe: new Date(Math.floor(Date.now() / 60_000) * 60_000 - 48 * 3600_000),
+        expireLe: new Date(Math.floor(Date.now() / 60_000) * 60_000 - 24 * 3600_000),
       },
     })
     await supprimerDefinitivement(

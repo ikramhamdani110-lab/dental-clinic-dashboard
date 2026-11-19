@@ -90,6 +90,12 @@ const config = [
       'scripts/qa-acompte.cjs',
       'scripts/qa-affectation.cjs',
       'scripts/iso-personnelles.cjs',
+      // Harnais de verification de la migration Prisma / Neon : bases JETABLES
+      // uniquement, sortie console = rapport de verification.
+      'scripts/verifier-checksum-prisma.mjs',
+      'scripts/verifier-reconciliation-neon.mjs',
+      'scripts/verifier-sql-documentation.mjs',
+      'scripts/verifier-resolution-echec-patient-age.mjs',
     ],
     rules: {
       'no-console': 'off',

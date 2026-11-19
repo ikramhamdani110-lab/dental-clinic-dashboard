@@ -15,6 +15,10 @@
 // via `Reflect.set` pour l'assigner sans casser le typage strict.
 const env: NodeJS.ProcessEnv = process.env
 if (!env.NODE_ENV) Reflect.set(env, 'NODE_ENV', 'test')
+// Garde-fou D0 : si TEST_DATABASE_URL est defini (base jetable du harnais),
+// DATABASE_URL NE DOIT JAMAIS pointer ailleurs — Prisma ne doit pas pouvoir
+// retomber silencieusement sur la base d'exploitation via le .env principal.
+if (env.TEST_DATABASE_URL) Reflect.set(env, 'DATABASE_URL', env.TEST_DATABASE_URL)
 process.env.DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgresql://test:test@localhost:5432/sahed_test'
 process.env.DATABASE_PROVIDER = process.env.DATABASE_PROVIDER ?? 'postgresql'

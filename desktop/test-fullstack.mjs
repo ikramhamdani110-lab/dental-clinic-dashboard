@@ -86,7 +86,7 @@ const env = {
   PASSWORD_PEPPER: 'desktop-local-pepper-sahed-2026-secret',
   DOCTOR_EMAIL: 'medecin@cabinet.local',
   DOCTOR_NAME: 'Dr. Sahed',
-  DOCTOR_INITIAL_PASSWORD: process.env.DOCTOR_INITIAL_PASSWORD ?? '',
+  DOCTOR_INITIAL_PASSWORD: process.env.DOCTOR_INITIAL_PASSWORD ?? 'Clinic+123',
   FORCE_FIRST_LOGIN_PASSWORD_CHANGE: 'true',
   NODE_ENV: 'production',
 }
@@ -131,7 +131,7 @@ console.log('[4a] Login mot de passe invalide →', mdpInvalide.status, '(attend
 
 const login = await requete(BASE + '/api/auth/login', {
   method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'medecin@cabinet.local', password: process.env.DOCTOR_INITIAL_PASSWORD ?? '' }),
+  body: JSON.stringify({ email: 'medecin@cabinet.local', password: process.env.DOCTOR_INITIAL_PASSWORD ?? 'Clinic+123' }),
 })
 console.log('[4b] Login valide →', login.status, '(attendu 200/2xx)')
 if (login.status >= 300) {
